@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="en" data-page="climb">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Token Climb · Tokenopolis</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏔️</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+  <style>
+    :root { --text: #f6f1ea; --muted: #c9bfb3; --panel: rgba(18, 14, 12, 0.72); --gold: #ffcf3a; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0f1e; color: var(--text); font-family: 'Nunito', system-ui, sans-serif; }
+    #stage { position: fixed; inset: 0; touch-action: none; user-select: none; -webkit-user-select: none; }
+    #stage canvas { display: block; }
+    /* token ruler (2D canvas) and the layer of tags, plates and signs, over the scene */
+    #stage #ruler { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+    #marks { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 2; }
+    #marks > * { position: absolute; left: 0; top: 0; }
+    .hud {
+      position: fixed; top: 14px; left: 14px; z-index: 5; padding: 12px 16px; border-radius: 12px;
+      background: var(--panel); backdrop-filter: blur(6px); max-width: min(420px, calc(100vw - 28px));
+    }
+    .hud h1 { margin: 0; font-size: 20px; font-weight: 900; letter-spacing: .3px; }
+    .hud h1 small { font-size: 11px; font-weight: 700; color: var(--gold); margin-left: 6px; vertical-align: middle; border: 1px solid var(--gold); border-radius: 99px; padding: 1px 7px; }
+    .hud p { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
+    .hud b { color: var(--text); font-variant-numeric: tabular-nums; }
+    .hud .credit { font-size: 10px; opacity: .7; }
+    .hud .credit a { color: inherit; }
+    .links { position: fixed; top: 14px; right: 14px; z-index: 5; display: flex; gap: 8px; }
+    .links a { color: var(--text); text-decoration: none; font-size: 13px; font-weight: 700; padding: 8px 12px; border-radius: 10px; background: var(--panel); backdrop-filter: blur(6px); }
+    .links a:hover { background: rgba(60, 45, 35, 0.85); }
+    .links[hidden] { display: none; }
+    /* ❔ help: the button next to the links and the panel below them (the guide comes from
+       i18n/<locale>/help-climb.html, filled in by initI18n) */
+    .links .help-btn { font: inherit; font-size: 14px; line-height: 1; color: var(--text); border: 0; cursor: pointer; padding: 8px 10px; border-radius: 10px; background: var(--panel); backdrop-filter: blur(6px); }
+    .links .help-btn:hover, .links .help-btn[aria-expanded="true"] { background: rgba(60, 45, 35, 0.85); }
+    .links .help-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+    .help-panel {
+      position: fixed; top: 58px; right: 14px; z-index: 8; width: min(380px, calc(100vw - 28px)); max-height: calc(100vh - 140px); overflow-y: auto;
+      padding: 10px 14px 12px; border-radius: 12px; background: rgba(18, 14, 12, 0.92); backdrop-filter: blur(6px); box-shadow: 0 8px 26px rgba(0, 0, 0, .45);
+      font-size: 13px; line-height: 1.35; scrollbar-width: thin; outline: none;
+    }
+    .help-panel[hidden] { display: none; }
+    .help-panel header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; }
+    .help-panel h2 { margin: 0; font-size: 15px; font-weight: 900; }
+    .help-panel .close { font: inherit; font-size: 18px; line-height: 1; color: var(--muted); background: transparent; border: 0; border-radius: 6px; padding: 2px 8px; cursor: pointer; }
+    .help-panel .close:hover { color: var(--text); background: rgba(255, 255, 255, .1); }
+    .help-panel h3 { margin: 10px 0 5px; font-size: 12px; font-weight: 900; letter-spacing: .4px; color: var(--gold); text-transform: uppercase; }
+    .help-panel ul { list-style: none; display: grid; gap: 5px; margin: 0; padding: 0; }
+    .help-panel li { display: grid; grid-template-columns: 22px 1fr; gap: 6px; color: var(--muted); }
+    .help-panel li > span:first-child { text-align: center; }
+    .help-panel b { color: var(--text); }
+    .help-panel kbd { font: inherit; font-size: 11px; font-weight: 900; color: var(--text); padding: 0 5px; border-radius: 4px; border: 1px solid rgba(255, 255, 255, .3); }
+    /* 🌐 language switcher: EN / PT, the active one pressed; choosing reloads the page */
+    .lang { display: flex; align-items: center; gap: 2px; padding: 4px 6px 4px 10px; border-radius: 10px; background: var(--panel); backdrop-filter: blur(6px); font-size: 14px; }
+    .lang button { font: inherit; font-size: 12px; font-weight: 900; color: var(--muted); background: transparent; border: 0; border-radius: 7px; padding: 4px 7px; cursor: pointer; }
+    .lang button:hover { color: var(--text); background: rgba(255, 255, 255, .1); }
+    .lang button[aria-pressed="true"] { color: #1a1408; background: var(--gold); }
+    .lang button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+    .below { position: fixed; right: 14px; bottom: 14px; z-index: 5; padding: 8px 12px; border-radius: 10px; background: var(--panel); font-size: 13px; color: var(--muted); }
+    .summit-sign { position: fixed; left: 50%; top: 14px; transform: translateX(-50%); z-index: 5; padding: 8px 14px; border-radius: 10px; background: var(--panel); font-size: 14px; text-align: center; }
+    .summit-sign small { display: block; color: var(--muted); font-size: 12px; }
+    #loading { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; background: #0b0f1e; font-size: 18px; font-weight: 700; transition: opacity .6s; }
+    /* error notice inside the HUD (at the top): never covers the zoom buttons or the links */
+    .hud #error { margin: 6px 0 0; padding: 5px 9px; border-radius: 8px; background: #5a1424dd; color: var(--text); font-size: 12px; max-width: 380px; }
+    .hud #error[hidden] { display: none; }
+    /* display switches: names always (or only on hover), ranking list and record plaques */
+    .hud .view { display: flex; gap: 6px; margin-top: 8px; }
+    .view button {
+      font: inherit; font-size: 12px; font-weight: 800; color: var(--muted); background: transparent; cursor: pointer;
+      border: 1px solid rgba(255, 255, 255, .25); border-radius: 99px; padding: 3px 10px;
+    }
+    .view button:hover { color: var(--text); border-color: rgba(255, 255, 255, .5); }
+    .view button[aria-pressed="true"] { color: #1a1408; background: var(--gold); border-color: var(--gold); }
+    .view button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+    /* ranking list, on the left, below the HUD (the top comes from measureUI) */
+    .board {
+      position: fixed; left: 14px; top: var(--board-top, 150px); bottom: 70px; width: 250px; z-index: 5; display: flex; flex-direction: column;
+      border-radius: 12px; background: var(--panel); backdrop-filter: blur(6px);
+    }
+    .board[hidden] { display: none; }
+    .board header { display: flex; align-items: center; justify-content: space-between; padding: 8px 8px 4px 14px; }
+    .board h2 { margin: 0; font-size: 14px; font-weight: 900; }
+    .board .close { font: inherit; font-size: 18px; line-height: 1; color: var(--muted); background: transparent; border: 0; border-radius: 6px; padding: 2px 8px; cursor: pointer; }
+    .board .close:hover { color: var(--text); background: rgba(255, 255, 255, .1); }
+    .board ol { list-style: none; margin: 0; padding: 0 6px 4px; overflow-y: auto; scrollbar-width: thin; }
+    .board li {
+      display: flex; align-items: baseline; gap: 8px; padding: 4px 8px; border-radius: 7px; font-size: 13px; font-weight: 800; cursor: pointer;
+      border-left: 3px solid transparent;
+    }
+    .board li:hover, .board li.hi { background: rgba(255, 255, 255, .13); border-left-color: var(--c); }
+    .board li.sel { background: rgba(255, 207, 58, .16); border-left-color: var(--c); }
+    .board .r { color: var(--c); min-width: 28px; font-variant-numeric: tabular-nums; }
+    .board .n { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+    .board .t { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .board .more { margin: 0; padding: 2px 14px 10px; font-size: 12px; color: var(--muted); }
+    .board .more:empty { display: none; }
+    /* list tabs in the stage: Today (the stage) and Week (overall standings) */
+    .board .tabs { display: flex; gap: 2px; padding: 2px; border-radius: 9px; background: rgba(255, 255, 255, .07); }
+    .board .tabs[hidden] { display: none; }
+    .board .tabs button {
+      font: inherit; font-size: 12px; font-weight: 800; color: var(--muted); background: transparent; border: 0; border-radius: 7px;
+      padding: 3px 12px; cursor: pointer;
+    }
+    .board .tabs button:hover { color: var(--text); }
+    .board .tabs button[aria-selected="true"] { color: #1a1408; background: var(--gold); }
+    .board .tabs button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+    .board .s { font-size: 12px; white-space: nowrap; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .board li.off .n { color: var(--muted); }
+    .board .h { font-size: 11px; font-weight: 700; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .board.week { width: 300px; } /* Week tab: name, "today #8", 🟡🏅 and tokens */
+    .board li.empty { display: block; cursor: default; font-weight: 700; color: var(--muted); line-height: 1.35; }
+    .board li.empty:hover { background: none; border-left-color: transparent; }
+    /* card camera on the Today tab: out of the row's flow (hidden, it takes no room from the name), over
+       the "M" of the tokens with the mouse or the focus on the row; on touch, on the chosen row */
+    .board li { position: relative; }
+    .board .cam {
+      position: absolute; right: 1px; top: 50%; transform: translateY(-50%); font: inherit; font-size: 12px; line-height: 1; padding: 3px;
+      border: 0; border-radius: 6px; background: rgba(42, 36, 32, .97); box-shadow: 0 0 0 1px rgba(255, 255, 255, .18), -4px 0 8px rgba(18, 14, 12, .6);
+      cursor: pointer; opacity: 0; pointer-events: none;
+    }
+    .board li:hover .cam, .board li.hi .cam, .board li:focus-within .cam { opacity: 1; pointer-events: auto; }
+    .board .cam:hover { background: #4a4039; }
+    .board .cam:focus-visible { opacity: 1; outline: 2px solid var(--gold); outline-offset: 0; }
+    @media (hover: none) { .board li.sel .cam { opacity: 1; pointer-events: auto; } }
+    /* highlight of whoever is under the mouse (on the body or in the list): a halo around the body */
+    .spot {
+      border-radius: 50%; pointer-events: none; border: 2px solid var(--c, #fff);
+      background: radial-gradient(circle closest-side, transparent 62%, color-mix(in srgb, var(--c, #fff) 45%, transparent) 82%, transparent 100%);
+      box-shadow: 0 0 14px color-mix(in srgb, var(--c, #fff) 70%, transparent); animation: spot 1.3s ease-in-out infinite;
+    }
+    @keyframes spot { 0%, 100% { opacity: .6; } 50% { opacity: 1; } }
+    /* whoever is on the ranking row under the mouse, but off the frame: a notice on the edge */
+    .offhint {
+      position: fixed; z-index: 6; transform: translate(-50%, -50%); padding: 5px 11px; border-radius: 99px; pointer-events: none; white-space: nowrap;
+      font-size: 13px; font-weight: 800; color: var(--text); background: rgba(18, 14, 12, .9); border: 2px solid var(--c, #fff); box-shadow: 0 4px 14px rgba(0, 0, 0, .4);
+    }
+    .offhint[hidden] { display: none; }
+    /* soft vignette on the edges (CSS only, costs nothing on the GPU) */
+    .vignette { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(120% 95% at 62% 42%, transparent 58%, rgba(6, 8, 22, 0.32) 100%); }
+    /* tags attached to the climbers; position and kind (full, one line, plate) in layoutMarks() */
+    .tag-wrap { pointer-events: none; will-change: transform; }
+    .tag {
+      position: relative; padding: 4px 9px 5px; border-radius: 8px; background: rgba(18, 14, 12, 0.84); border: 2px solid var(--c, #fff);
+      font-size: 13px; font-weight: 900; white-space: nowrap; color: var(--text); pointer-events: none;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, .35); will-change: transform;
+    }
+    .tag .rank { color: var(--c, #fff); margin-right: 4px; }
+    .tag small { display: block; font-size: 11px; font-weight: 700; color: var(--muted); }
+    .tag small[hidden] { display: none; }
+    .tag .gap { color: #e8dccd; }
+    .tag .sum, .tag .ctok.gold { color: var(--gold); }
+    .tag.full .ctok { display: none; }
+    /* "📸 Card": only on the tag of whoever was clicked (the tag ignores the mouse; the button does not) */
+    .tag .tag-card { display: none; }
+    .tag.sel .tag-card {
+      display: block; margin-top: 5px; pointer-events: auto; cursor: pointer; font: inherit; font-size: 12px; font-weight: 900;
+      color: #1a1408; background: var(--gold); border: 0; border-radius: 99px; padding: 3px 11px;
+    }
+    .tag.sel .tag-card:hover { background: #ffe07a; }
+    .tag.sel .tag-card:focus-visible { outline: 2px solid var(--text); outline-offset: 1px; }
+    .tag.compact { padding: 2px 8px 3px; font-size: 12px; border-width: 1.5px; }
+    .tag.compact small { display: none; }
+    .tag.compact .ctok { font-weight: 800; color: var(--muted); }
+    .tag-line {
+      display: none; position: absolute; left: 50%; top: 50%; height: 2px; margin-top: -1px; transform-origin: 0 50%;
+      background: var(--c, #fff); opacity: .8; box-shadow: 0 0 3px rgba(0, 0, 0, .6); pointer-events: none;
+    }
+    /* ranking plate (small body on screen): pinned to the token line, at the hand */
+    .plate {
+      width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; display: grid; place-items: center;
+      font-size: 11px; font-weight: 900; color: #15110d; background: var(--c, #9aa0ad); border: 2px solid rgba(18, 14, 12, .85);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, .45); pointer-events: auto; cursor: pointer; font-variant-numeric: tabular-nums; will-change: transform;
+    }
+    .plate.tie::after { content: '='; position: absolute; right: -8px; top: -8px; font-size: 11px; color: var(--text); text-shadow: 0 1px 3px #000; }
+    /* group of overlapping plates: opens on hover (or touch) */
+    .pill {
+      padding: 2px 9px 3px; border-radius: 99px; background: rgba(18, 14, 12, .88); border: 2px solid var(--c, #9aa0ad);
+      font-size: 11px; font-weight: 900; white-space: nowrap; color: var(--text); pointer-events: auto; cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, .45); font-variant-numeric: tabular-nums; will-change: transform;
+    }
+    .pill-list {
+      display: none; position: absolute; left: 50%; bottom: calc(100% + 6px); transform: translateX(-50%); min-width: 200px;
+      padding: 6px; border-radius: 10px; background: rgba(18, 14, 12, .95); box-shadow: 0 6px 18px rgba(0, 0, 0, .5);
+    }
+    .pill:hover .pill-list, .pill.open .pill-list { display: block; }
+    .pill-list .row { display: flex; gap: 6px; align-items: baseline; padding: 3px 6px; border-radius: 6px; font-size: 12px; font-weight: 800; }
+    .pill-list .row:hover { background: rgba(255, 255, 255, .1); }
+    .pill-list em { font-style: normal; color: var(--text); overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
+    .pill-list span { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
+    /* signs in the world: camps, base camp, empty season */
+    .sign {
+      padding: 3px 8px 4px; border-radius: 7px; background: rgba(18, 14, 12, .7); border-left: 3px solid #ffb547;
+      font-size: 11px; line-height: 1.25; white-space: nowrap; pointer-events: none; will-change: transform;
+    }
+    .sign b { display: block; font-weight: 900; }
+    .sign small { display: block; color: var(--muted); font-weight: 700; font-size: 10px; }
+    .sign.empty { font-size: 14px; border-left-color: var(--gold); padding: 8px 12px; }
+    /* record plaques (3D): label of the personal-best piton (the owner's place in its color, as on the
+       tags; the border is the piton's: bronze, or gold with the record beaten today) and a plaque's tip */
+    .pb-tag {
+      padding: 1px 7px 2px 6px; border-radius: 6px; background: rgba(18, 14, 12, .84); border: 1.5px solid #c98a4b; border-left: 3px solid var(--c, #c98a4b);
+      color: #f3d6b0; font-size: 11px; font-weight: 800; white-space: nowrap; pointer-events: none; will-change: transform; font-variant-numeric: tabular-nums;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, .4);
+    }
+    .pb-tag b { color: var(--c, #f3d6b0); font-weight: 900; }
+    .pb-tag.gold { border-color: var(--gold); border-left-color: var(--c, var(--gold)); color: var(--gold); }
+    .plaque-tip {
+      max-width: min(340px, calc(100vw - 12px)); padding: 6px 10px 7px; border-radius: 9px; background: rgba(18, 14, 12, .93);
+      border-left: 3px solid #aeb5bf; font-size: 12px; font-weight: 700; line-height: 1.4; white-space: pre-line; pointer-events: none;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, .45); font-variant-numeric: tabular-nums;
+    }
+    .plaque-tip.bronze { border-left-color: #c98a4b; }
+    /* preview of the "my climb" card */
+    .card-dlg {
+      position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 14px;
+      background: rgba(5, 7, 15, .76); backdrop-filter: blur(4px);
+    }
+    .card-dlg[hidden] { display: none; }
+    .card-box { display: flex; flex-direction: column; align-items: center; gap: 10px; max-width: 100%; max-height: 100%; outline: none; }
+    .card-box h2 { margin: 0; font-size: 15px; font-weight: 900; text-align: center; }
+    .card-img, .card-wait {
+      display: block; max-width: min(100%, 540px); max-height: calc(100vh - 150px); max-height: calc(100dvh - 150px);
+      border-radius: 14px; box-shadow: 0 10px 40px rgba(0, 0, 0, .6);
+    }
+    .card-img { width: auto; height: auto; min-height: 0; }
+    .card-img[hidden], .card-wait[hidden] { display: none; }
+    .card-wait {
+      height: min(560px, calc(100dvh - 150px)); aspect-ratio: 9 / 16; display: grid; place-items: center;
+      background: #141826; color: var(--muted); font-weight: 800; font-size: 14px;
+    }
+    .card-msg { margin: 0; min-height: 1.3em; font-size: 13px; color: var(--muted); text-align: center; max-width: 420px; }
+    .card-msg:empty { display: none; }
+    .card-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+    .card-actions button {
+      font: inherit; font-size: 14px; font-weight: 800; color: var(--text); background: rgba(255, 255, 255, .1); cursor: pointer;
+      border: 1px solid rgba(255, 255, 255, .25); border-radius: 99px; padding: 8px 16px;
+    }
+    .card-actions button:hover:not(:disabled) { background: rgba(255, 255, 255, .18); }
+    .card-actions button.primary { color: #1a1408; background: var(--gold); border-color: var(--gold); }
+    .card-actions button.primary:hover:not(:disabled) { background: #ffe07a; }
+    .card-actions button:disabled { opacity: .45; cursor: default; }
+    .card-actions button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+    /* zoom: levels plus − and + */
+    .zoom {
+      position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 6; display: flex; gap: 2px; padding: 4px;
+      border-radius: 12px; background: var(--panel); backdrop-filter: blur(6px);
+    }
+    .zoom button {
+      font: inherit; font-size: 13px; font-weight: 800; color: var(--text); background: transparent; border: 0; border-radius: 8px;
+      padding: 7px 11px; cursor: pointer; white-space: nowrap;
+    }
+    .zoom button:hover { background: rgba(255, 255, 255, .1); }
+    .zoom button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+    .zoom button.on { background: var(--gold); color: #1a1408; }
+    .zoom button[hidden] { display: none; }
+    .zoom .step { font-size: 17px; line-height: 1; width: 34px; padding: 6px 0; }
+    /* arrow on the edge: someone off the frame climbed (manual camera) */
+    #edges { position: fixed; inset: 0; pointer-events: none; z-index: 6; }
+    .edge {
+      position: absolute; transform: translateX(-50%); pointer-events: auto; font: inherit; font-size: 13px; font-weight: 800;
+      color: #0f2a1f; background: #3ef0b5; border: 0; border-radius: 99px; padding: 6px 12px; cursor: pointer;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, .4); animation: edgein .35s ease-out;
+    }
+    @keyframes edgein { from { opacity: 0; } to { opacity: 1; } }
+    .toast {
+      position: fixed; left: 50%; top: 86px; transform: translateX(-50%); z-index: 7; padding: 8px 14px; border-radius: 10px;
+      background: rgba(255, 207, 58, .95); color: #1a1408; font-weight: 800; font-size: 14px; box-shadow: 0 6px 18px rgba(0, 0, 0, .4);
+    }
+    .toast[hidden] { display: none; }
+    /* "LIVE": strip of the stage's events (at the bottom, left of the zoom bar; the width comes from measureUI) */
+    .ticker {
+      position: fixed; left: 14px; bottom: 14px; z-index: 5; display: flex; align-items: center; gap: 8px; max-width: var(--ticker-max, 460px);
+      padding: 6px 12px 6px 7px; border-radius: 10px; background: var(--panel); backdrop-filter: blur(6px); font-size: 13px; font-weight: 700; cursor: default;
+    }
+    .ticker[hidden] { display: none; }
+    .ticker.link { cursor: pointer; }
+    .ticker .live {
+      flex: none; color: #fff; background: #d62839; border-radius: 6px; padding: 2px 7px; font-size: 10px; font-weight: 900; letter-spacing: .6px;
+      animation: live 2s ease-in-out infinite;
+    }
+    @keyframes live { 0%, 100% { opacity: 1; } 50% { opacity: .65; } }
+    .ticker .msg { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: opacity .35s; }
+    .ticker .msg.out { opacity: 0; }
+    /* message longer than the strip: still for 1 s, scrolls to the end and stays there (measureUI/tickerNext set --dx) */
+    .ticker .msg.scroll { text-overflow: clip; animation: marquee 5.4s ease-in-out 1 forwards; }
+    @keyframes marquee { 0%, 18% { text-indent: 0; } 82%, 100% { text-indent: var(--dx, 0); } }
+    /* duel: who catches the one above in less than 90 min at the current pace */
+    .duel {
+      padding: 3px 9px 4px; border-radius: 99px; background: rgba(18, 14, 12, .88); border: 1.5px solid #ff7b54; color: #ffd7c8;
+      font-size: 12px; font-weight: 800; white-space: nowrap; pointer-events: none; box-shadow: 0 3px 10px rgba(0, 0, 0, .4); will-change: transform;
+    }
+    /* narrow screens: more compact tags and HUD */
+    .compact .tag { padding: 3px 7px 4px; font-size: 12px; border-width: 1.5px; }
+    .compact .tag small { font-size: 10px; }
+    @media (max-width: 900px) {
+      .summit-sign { top: auto; bottom: 64px; font-size: 13px; padding: 6px 12px; max-width: calc(100vw - 20px); }
+      .zoom { left: 14px; transform: none; }
+      .board { bottom: 110px; }
+      /* with the LIVE strip: it sits right above the zoom bar and the rest moves up with it */
+      .ticker { bottom: 64px; max-width: calc(100vw - 28px); }
+      .has-ticker .summit-sign { bottom: 108px; }
+      .has-ticker .board { bottom: 154px; }
+    }
+    @media (max-width: 640px) {
+      .hud { top: 10px; left: 10px; padding: 8px 12px; border-radius: 10px; max-width: calc(100vw - 20px); }
+      .hud h1 { font-size: 16px; }
+      .hud p { font-size: 12px; margin-top: 2px; }
+      .links { top: auto; bottom: 10px; left: 10px; right: auto; }
+      .links a { font-size: 12px; padding: 6px 10px; }
+      .links .help-btn { font-size: 12px; padding: 6px 8px; }
+      .help-panel { top: auto; bottom: 48px; left: 10px; right: 10px; width: auto; max-height: calc(100vh - 120px); }
+      .below { right: 10px; bottom: 10px; font-size: 12px; padding: 6px 10px; }
+      .below .wide { display: none; } /* "+438 below #25": fits next to the links */
+      .zoom { left: 10px; right: 10px; bottom: 48px; padding: 3px; }
+      .zoom button { flex: 1 1 auto; padding: 7px 4px; font-size: 12px; }
+      .zoom .step { flex: 0 0 32px; width: 32px; }
+      .summit-sign { bottom: 96px; width: max-content; font-size: 12px; padding: 5px 10px; }
+      .summit-sign small { font-size: 11px; }
+      .toast { top: auto; bottom: 140px; max-width: calc(100vw - 20px); text-align: center; }
+      .plate { width: 20px; height: 20px; margin: -10px 0 0 -10px; font-size: 10px; }
+      .sign { padding: 2px 6px 3px; font-size: 10px; }
+      .sign small { font-size: 9px; }
+      .board, .board.week { left: 10px; width: min(260px, calc(100vw - 20px)); bottom: 152px; }
+      .board .h { font-size: 10px; }
+      .ticker { left: 10px; right: 10px; bottom: 92px; max-width: none; font-size: 12px; padding: 5px 10px 5px 6px; }
+      .has-ticker .summit-sign { bottom: 130px; }
+      .has-ticker .toast { bottom: 178px; }
+      .has-ticker .board { bottom: 186px; }
+      .duel { font-size: 11px; padding: 2px 7px 3px; }
+    }
+    .gain { font-size: 16px; font-weight: 900; color: #3ef0b5; text-shadow: 0 2px 6px #000a; animation: rise 2.6s ease-out forwards; pointer-events: none; }
+    .zzz { font-size: 18px; font-weight: 900; color: #fff; text-shadow: 0 2px 6px #000a; animation: zzz 2.4s ease-in-out infinite; pointer-events: none; }
+    @keyframes rise { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-60px); opacity: 0; } }
+    @keyframes zzz { 0% { transform: translate(0, 0); opacity: 0; } 30% { opacity: 1; } 100% { transform: translate(14px, -26px); opacity: 0; } }
+  </style>
+</head>
+<body>
+  <div id="stage"><canvas id="ruler" aria-hidden="true"></canvas><div id="marks"></div></div>
+  <div class="hud">
+    <h1 data-i18n-html="html.hud.title">Token Climb <small>3D prototype</small></h1>
+    <p><span id="season-pre" data-i18n="html.hud.season">Season </span><b id="season">—</b><span data-i18n="html.hud.endsIn"> · ends in </span><b id="countdown">—</b></p>
+    <p id="stage-line" hidden><span id="stage-name" data-i18n="html.hud.stage">Today’s stage</span><span data-i18n="html.hud.mark"> · mark of the day </span><b id="stage-mark">—</b></p>
+    <p id="clock"></p>
+    <p class="credit"><span data-i18n="html.hud.credit">People:</span> <a href="models/rocketbox/LICENSE.md" target="_blank" rel="noopener">Microsoft Rocketbox (MIT)</a></p>
+    <p id="error" role="alert" hidden></p>
+    <div class="view" role="group" aria-label="Display" data-i18n-aria="html.view.aria">
+      <button type="button" id="t-names" aria-pressed="true" title="Names always shown; off, only on mouse hover (N key)" data-i18n="html.view.names" data-i18n-title="html.view.namesTitle">🏷️ Names</button>
+      <button type="button" id="t-board" aria-pressed="false" title="Ranking as a list (R key)" data-i18n="html.view.board" data-i18n-title="html.view.boardTitle">📋 Board</button>
+      <button type="button" id="t-plaques" aria-pressed="true" hidden title="Record plaques on the rock: summit wall, latest stages and everyone’s personal best (P key)" data-i18n="html.view.plaques" data-i18n-title="html.view.plaquesTitle">🪧 Plaques</button>
+    </div>
+  </div>
+  <aside id="board" class="board" aria-label="Ranking" data-i18n-aria="html.board.aria" hidden>
+    <header>
+      <h2 id="board-title" data-i18n="html.board.title">🏆 Ranking</h2>
+      <div id="board-tabs" class="tabs" role="tablist" aria-label="Ranking" data-i18n-aria="html.board.aria" hidden>
+        <button type="button" role="tab" data-tab="today" aria-selected="true" title="Today’s stage: tokens since midnight (T switches)" data-i18n="html.board.today" data-i18n-title="html.board.todayTitle">Today</button>
+        <button type="button" role="tab" data-tab="week" aria-selected="false" title="Overall standings of the week (T switches)" data-i18n="html.board.week" data-i18n-title="html.board.weekTitle">Week</button>
+      </div>
+      <button type="button" class="close" aria-label="Hide the ranking" title="Hide (R key)" data-i18n-aria="html.board.hide" data-i18n-title="html.board.hideTitle">×</button>
+    </header>
+    <ol id="board-list"></ol>
+    <p id="board-more" class="more"></p>
+  </aside>
+  <div id="offhint" class="offhint" hidden></div>
+  <div id="ticker" class="ticker" role="status" aria-live="polite" hidden><span class="live" data-i18n="html.live">LIVE</span><span id="ticker-msg" class="msg"></span></div>
+  <!-- the other page (the city) and the 🌐 language switcher -->
+  <nav class="links">
+    <a href="city.html" title="Open Tokenopolis" data-i18n="nav.city.label" data-i18n-title="nav.city.title">🏙️ Tokenopolis</a>
+    <button type="button" id="t-help" class="help-btn" aria-expanded="false" aria-controls="help" title="Help (? key)" aria-label="Help" data-i18n-title="help.buttonTitle" data-i18n-aria="help.button">❔</button>
+    <span class="lang" role="group" aria-label="Language" data-i18n-aria="switcher.aria">🌐<button type="button" data-lang="en" aria-pressed="true" title="English" data-i18n-title="switcher.en">EN</button><button type="button" data-lang="pt-BR" aria-pressed="false" title="Português (Brasil)" data-i18n-title="switcher.pt">PT</button></span>
+  </nav>
+  <div id="help" class="help-panel" role="dialog" aria-labelledby="help-title" tabindex="-1" hidden>
+    <header><h2 id="help-title" data-i18n="help.title">❔ How the climb works</h2><button type="button" class="close" aria-label="Close the help" data-i18n-aria="help.close">×</button></header>
+    <div data-i18n-partial="help-climb"></div>
+  </div>
+  <div id="summit-sign" class="summit-sign" hidden></div>
+  <nav id="zoom" class="zoom" aria-label="Wall zoom" data-i18n-aria="html.zoom.aria">
+    <button type="button" class="step" data-step="out" title="Zoom out (−)" aria-label="Zoom out" data-i18n-title="html.zoom.outTitle" data-i18n-aria="html.zoom.out">−</button>
+    <button type="button" data-level="top5" title="Top 5 (key 1)" data-i18n="html.zoom.top5" data-i18n-title="html.zoom.top5Title">Top 5</button>
+    <button type="button" data-level="top10" title="Top 10 (key 2)" data-i18n="html.zoom.top10" data-i18n-title="html.zoom.top10Title">Top 10</button>
+    <button type="button" data-level="top25" title="Top 25 (key 3)" data-i18n="html.zoom.top25" data-i18n-title="html.zoom.top25Title">Top 25</button>
+    <button type="button" data-level="wall" title="Whole wall (key 4)" data-i18n="html.zoom.wall" data-i18n-title="html.zoom.wallTitle">Whole wall</button>
+    <button type="button" class="step" data-step="in" title="Zoom in (+)" aria-label="Zoom in" data-i18n-title="html.zoom.inTitle" data-i18n-aria="html.zoom.in">+</button>
+  </nav>
+  <div id="edges"></div>
+  <div id="toast" class="toast" role="status" hidden></div>
+  <div id="below" class="below" hidden></div>
+  <div id="card-dlg" class="card-dlg" hidden>
+    <div id="card-box" class="card-box" role="dialog" aria-modal="true" aria-labelledby="card-title" tabindex="-1">
+      <h2 id="card-title" data-i18n="html.card.title">Card</h2>
+      <div id="card-wait" class="card-wait" role="status" data-i18n="html.card.wait">Making the card…</div>
+      <img id="card-img" class="card-img" alt="" hidden />
+      <p id="card-msg" class="card-msg" role="status"></p>
+      <div class="card-actions">
+        <button type="button" id="card-dl" class="primary" disabled data-i18n="html.card.download">⬇️ Download PNG</button>
+        <button type="button" id="card-copy" disabled data-i18n="html.card.copy">📋 Copy image</button>
+        <button type="button" id="card-close" data-i18n="html.card.close">Close</button>
+      </div>
+    </div>
+  </div>
+  <div id="loading" data-i18n="html.loading">Loading the wall…</div>
+  <script type="module">
+    import { initI18n } from './i18n/index.js';
+    await initI18n();
+    await import('./climb/main.js');
+  </script>
+</body>
+</html>

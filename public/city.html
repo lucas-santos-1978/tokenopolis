@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en" data-page="city">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tokenopolis</title>
+  <!-- hidden until initI18n() fills the text (no English flash for pt-BR visitors) -->
+  <style>html:not(.i18n-ready) { visibility: hidden; }</style>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏙️</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="city.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="stage"></div>
+  <header class="topbar">
+    <button id="back" class="back" type="button" data-back hidden aria-label="Back to the region" data-i18n-aria="html.header.back">‹</button>
+    <span class="logo">🏙️</span>
+    <strong id="title" class="title" data-i18n="html.header.title">TOKENOPOLIS</strong>
+    <span id="subtitle" class="subtitle"></span>
+    <span id="mode-pill" class="pill" hidden data-i18n="html.header.mockPill">🧪 sample data</span>
+    <span id="stale-pill" class="pill warn" hidden></span>
+    <span class="stats">
+      <span>📅 <b id="stat-date">—</b></span>
+      <span>🏢 <b id="stat-buildings">—</b></span>
+      <span>📐 <b id="stat-floors">—</b></span>
+    </span>
+    <nav id="tools" class="tools" aria-label="Tools" data-i18n-aria="html.tools.aria">
+      <button type="button" data-tool="me" id="me-btn" title="Go to my building" data-i18n-title="html.tools.me" hidden>📍</button>
+      <button type="button" data-tool="find" title="Find a building" data-i18n-title="html.tools.find">🔍</button>
+      <button type="button" data-tool="maps" title="Data maps" data-i18n-title="html.tools.maps">🗺️</button>
+      <button type="button" data-tool="paper" title="The Daily Token" data-i18n-title="html.tools.paper">📰</button>
+      <button type="button" data-tool="history" title="Time-lapse and the city race" data-i18n-title="html.tools.history">🎬</button>
+      <button type="button" data-tool="sky" id="sky-btn" title="Time of day" data-i18n-title="html.tools.sky">🌗</button>
+      <button type="button" data-tool="panels" id="panels-btn" title="Panels and names (the P key hides them all)" data-i18n-title="html.tools.panels">👁️</button>
+      <button type="button" data-tool="help" title="How to read Tokenopolis (? key)" data-i18n-title="html.tools.help">❔</button>
+    </nav>
+    <a class="switch" href="climb.html" title="Open the Token Climb" data-i18n="nav.climb.label" data-i18n-title="nav.climb.title">🏔️ Token Climb</a>
+    <span class="lang" role="group" aria-label="Language" data-i18n-aria="switcher.aria">🌐<button type="button" data-lang="en" aria-pressed="true" title="English" data-i18n-title="switcher.en">EN</button><button type="button" data-lang="pt-BR" aria-pressed="false" title="Português (Brasil)" data-i18n-title="switcher.pt">PT</button></span>
+  </header>
+
+  <!-- region view -->
+  <aside id="trophies" class="trophies" data-for="region"></aside>
+  <aside id="ranking" class="card ranking" data-for="region">
+    <button type="button" class="panel-x" data-hide-panel="ranking" aria-label="Hide this week’s builds" title="Hide this week’s builds (the 👁️ brings it back)" data-i18n-aria="html.ranking.hide" data-i18n-title="html.ranking.hideTitle">×</button>
+    <h2 data-i18n-html="html.ranking.heading">THIS WEEK’S BUILDS <small>floors added</small></h2>
+    <ol id="ranking-list"></ol>
+  </aside>
+  <aside id="derby" class="card derby" data-for="region"></aside>
+  <aside id="countdown" class="card countdown" data-for="region"></aside>
+  <aside class="card legend" data-for="region">
+    <button type="button" class="panel-x" data-hide-panel="legend" aria-label="Hide the legend" title="Hide the legend (the 👁️ brings it back)" data-i18n-aria="html.legend.hide" data-i18n-title="html.legend.hideTitle">×</button>
+    <h2 data-i18n-html="html.legend.heading">LEGEND <small>1 floor = 1 million tokens</small></h2>
+    <ul class="kinds">
+      <li data-i18n-html="html.legend.houses"><b>🏠 Houses</b> up to 14: single-story, townhouse (3+), with pool (7+), condo (11+)</li>
+      <li data-i18n-html="html.legend.buildings"><b>🏢 Buildings</b> building (15+), tower (150+), skyscraper (450+)</li>
+      <li data-i18n-html="html.legend.giants"><b>🚀 Giants</b> supertower (1,000+), clouds (2,500+), orbital (5,000+), space elevator (10,000)</li>
+    </ul>
+    <ul class="marks">
+      <li data-i18n-html="html.legend.top"><i class="sw works"></i>Yellow top: floors added this week</li>
+      <li data-i18n="html.legend.crane">🏗️ Crane: building now · 🎈 newcomer</li>
+      <li data-i18n="html.legend.helipad">🚁 Helipad: the biggest build of the week in the city</li>
+      <li data-i18n="html.legend.garden">🌿 Rooftop garden: 5 workdays in a row</li>
+      <li data-i18n="html.legend.neon">🦉 Pink neon: works at night · 📡 used today</li>
+      <li data-i18n="html.legend.road">🟡 Golden road: people in common</li>
+      <li data-i18n="html.legend.network">🚩 Network (2 cities) · 👑 3+ · 🎩 mayor of the month</li>
+      <li data-i18n="html.legend.pagoda">🥋 Black pagoda: Dojo black belt · the city’s Dojo grows with them</li>
+    </ul>
+    <button type="button" class="more" data-tool="help" data-i18n="html.legend.more">❔ See all the meanings</button>
+  </aside>
+  <div id="mapkey" class="mapkey"></div>
+
+  <!-- city view -->
+  <aside id="hall" class="hall" data-for="city" hidden></aside>
+
+  <!-- camera -->
+  <nav class="cam" aria-label="Camera" data-i18n-aria="html.cam.aria">
+    <button type="button" data-dir="0" title="Front view" data-i18n="html.cam.front" data-i18n-title="html.cam.frontTitle">Front</button>
+    <button type="button" data-dir="1" title="View from the right" data-i18n="html.cam.right" data-i18n-title="html.cam.rightTitle">Right</button>
+    <button type="button" data-dir="2" title="View from the back" data-i18n="html.cam.back" data-i18n-title="html.cam.backTitle">Back</button>
+    <button type="button" data-dir="3" title="View from the left" data-i18n="html.cam.left" data-i18n-title="html.cam.leftTitle">Left</button>
+    <button type="button" id="spin" aria-pressed="false" title="Spin on its own (G key)" data-i18n="html.cam.spin" data-i18n-title="html.cam.spinTitle">🔄 Spin</button>
+    <button type="button" id="refit" title="Back to the default framing" data-i18n-title="html.cam.refit">⤢</button>
+  </nav>
+
+  <footer class="ticker">
+    <span class="ticker-label" data-i18n="html.ticker">NEWS</span>
+    <div class="ticker-track"><div id="news" class="ticker-items"></div></div>
+  </footer>
+  <div id="tl-bar" class="tl-bar" hidden><span class="tl-date"></span><i class="tl-prog"></i><span class="tl-sub"></span><button type="button" data-tl-stop data-i18n="html.timelapseStop">■ Stop</button></div>
+
+  <div id="sheet" class="sheet" role="dialog" aria-label="Building details" data-i18n-aria="html.sheet" hidden></div>
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+  <div id="error" class="error" hidden></div>
+
+  <!-- popovers: maps, history, 👁️ panels, 🌗 time of day -->
+  <div id="maps" class="popover tool-pop" role="menu" hidden>
+    <button type="button" data-map-mode="default"><span>🏙️</span><div><b data-i18n="map.default.name">Normal</b><small data-i18n="map.default.desc">the city as it is</small></div></button>
+    <button type="button" data-map-mode="now"><span>🔥</span><div><b data-i18n="map.now.name">Now</b><small data-i18n="map.now.desc">who is building right now</small></div></button>
+    <button type="button" data-map-mode="week"><span>📈</span><div><b data-i18n="map.week.name">This week’s builds</b><small data-i18n="map.week.desc">from cold (nothing) to hot (biggest build)</small></div></button>
+    <button type="button" data-map-mode="network"><span>🚩</span><div><b data-i18n="map.network.name">Network</b><small data-i18n="map.network.desc">who builds in more than one city</small></div></button>
+    <button type="button" data-map-mode="model"><span>🧠</span><div><b data-i18n="map.model.name">Model</b><small data-i18n="map.model.desc">the model each person used most this week</small></div></button>
+    <button type="button" data-map-mode="belts"><span>🥋</span><div><b data-i18n="map.belts.name">Dojo</b><small data-i18n="map.belts.desc">who is already a black belt</small></div></button>
+  </div>
+  <div id="films" class="popover tool-pop" role="menu" hidden>
+    <button type="button" data-film="timelapse"><span>⏩</span><div><b data-i18n="html.films.timelapse">Time-lapse</b><small data-i18n="html.films.timelapseDesc">Tokenopolis rising, since the start</small></div></button>
+    <button type="button" data-film="race"><span>🏁</span><div><b data-i18n="html.films.race">City race</b><small data-i18n="html.films.raceDesc">week by week, with the overtakes</small></div></button>
+  </div>
+  <div id="panels" class="popover panels tool-pop" role="menu" hidden>
+    <h4 data-i18n-html="html.panels.heading">PANELS <small><kbd>P</kbd> hides them all</small></h4>
+    <button type="button" role="menuitemcheckbox" data-panel="trophies" aria-checked="true"><span>🏆</span><div><b data-i18n="html.panels.trophies">Trophies</b><small data-i18n="html.panels.trophiesDesc">build of the week, biggest metropolis…</small></div><i class="tg"></i></button>
+    <button type="button" role="menuitemcheckbox" data-panel="ranking" aria-checked="true"><span>📋</span><div><b data-i18n="html.panels.ranking">This week’s builds</b><small data-i18n="html.panels.rankingDesc">the ranking of the cities</small></div><i class="tg"></i></button>
+    <button type="button" role="menuitemcheckbox" data-panel="derby" aria-checked="true"><span>⚔️</span><div><b data-i18n="html.panels.derby">Derby of the week</b><small data-i18n="html.panels.derbyDesc">the two closest cities</small></div><i class="tg"></i></button>
+    <button type="button" role="menuitemcheckbox" data-panel="countdown" aria-checked="true"><span>⏳</span><div><b data-i18n="html.panels.countdown">Countdown</b><small data-i18n="html.panels.countdownDesc">the milestone closest to falling</small></div><i class="tg"></i></button>
+    <button type="button" role="menuitemcheckbox" data-panel="legend" aria-checked="true"><span>🔎</span><div><b data-i18n="html.panels.legend">Legend</b><small data-i18n="html.panels.legendDesc">what each mark means</small></div><i class="tg"></i></button>
+    <button type="button" role="menuitemcheckbox" data-panel="hall" aria-checked="true"><span>🏛️</span><div><b data-i18n="html.panels.hall">City Hall</b><small data-i18n="html.panels.hallDesc">in the city view</small></div><i class="tg"></i></button>
+    <button type="button" role="menuitemcheckbox" data-panel="news" aria-checked="true"><span>📰</span><div><b data-i18n="html.panels.news">News ticker</b><small data-i18n="html.panels.newsDesc">the footer</small></div><i class="tg"></i></button>
+    <h4 data-i18n="html.panels.onMap">ON THE MAP</h4>
+    <button type="button" role="menuitemcheckbox" data-panel="names" aria-checked="true"><span>🪧</span><div><b data-i18n="html.panels.names">City names</b><small data-i18n="html.panels.namesDesc">the signs over each city</small></div><i class="tg"></i></button>
+    <footer><button type="button" data-panels="show" data-i18n="html.panels.showAll">Show all</button><button type="button" class="primary" data-panels="hide" data-i18n="html.panels.hideAll">Hide all</button></footer>
+  </div>
+  <div id="sky" class="popover sky tool-pop" hidden>
+    <h4 data-i18n="html.sky.heading">TIME OF DAY</h4>
+    <div class="row"><input type="range" id="hour" min="0" max="24" step="0.25" aria-label="Time of day" data-i18n-aria="html.sky.slider" /><output id="hour-out">—</output></div>
+    <footer><button type="button" data-hour="auto" data-i18n="html.sky.auto">Automatic</button><button type="button" data-hour="12" data-i18n="html.sky.noon">☀️ Noon</button><button type="button" data-hour="21" data-i18n="html.sky.night">🌙 Night</button></footer>
+  </div>
+
+  <!-- dialogs: finder, newspaper, race, help -->
+  <div id="finder" class="modal" hidden>
+    <div class="finder" role="dialog" aria-label="Find a building" data-i18n-aria="html.finder.aria">
+      <input id="finder-q" type="search" placeholder="Type a name to find the building" data-i18n-placeholder="html.finder.placeholder" autocomplete="off" spellcheck="false" />
+      <ol id="finder-list"></ol>
+    </div>
+  </div>
+  <div id="newspaper" class="modal" hidden>
+    <div class="paper" role="dialog" aria-label="The Daily Token" data-i18n-aria="html.paper">
+      <button class="close" type="button" data-close-modal aria-label="Close" data-i18n-aria="html.close">×</button>
+      <div id="newspaper-body"></div>
+    </div>
+  </div>
+  <div id="race" class="modal" hidden>
+    <div class="race" role="dialog" aria-label="City race" data-i18n-aria="html.race.aria">
+      <button class="close" type="button" data-close-modal aria-label="Close" data-i18n-aria="html.close">×</button>
+      <header><h2 data-i18n="html.race.heading">🏁 City race</h2><p data-i18n="html.race.intro">Floors accumulated since the start, week by week. 1 floor = 1 million tokens.</p></header>
+      <div class="race-week"><b id="race-label">—</b><span id="race-news"></span></div>
+      <div id="race-bars" class="race-bars"></div>
+      <footer><button type="button" data-race="replay" data-i18n="html.race.replay">↺ Watch again</button></footer>
+    </div>
+  </div>
+  <div id="help" class="modal" hidden>
+    <div class="help" role="dialog" aria-label="How to read Tokenopolis" data-i18n-aria="html.help.aria">
+      <button class="close" type="button" data-close-modal aria-label="Close" data-i18n-aria="html.close">×</button>
+      <header><h2 data-i18n="html.help.heading">❔ How to read Tokenopolis</h2><p data-i18n="html.help.intro">Each team is a city and each person a building. 1 floor = 1 million tokens since the start, and the total never resets. The race is weekly, Monday to Sunday.</p>
+        <nav class="tabs" aria-label="Help tabs" data-i18n-aria="html.help.tabs"><button type="button" class="on" data-help-tab="read" data-i18n="html.help.read">📖 How to read</button><button type="button" data-help-tab="links" data-i18n="html.help.links">🔗 Links, TV and parameters</button></nav>
+      </header>
+      <div data-help-pane="links" hidden></div>
+      <div data-help-pane="read" class="cols" data-i18n-partial="help-city"></div>
+      <footer><span data-i18n="html.help.footer">The short legend stays in the corner of the map.</span><button type="button" class="primary" data-close-modal data-i18n="html.help.ok">Got it</button></footer>
+    </div>
+  </div>
+
+  <div id="loading" data-i18n="html.loading">Building the region…</div>
+  <script type="module">
+    import { initI18n } from './i18n/index.js';
+    await initI18n();
+    await import('./city/main.js');
+  </script>
+</body>
+</html>

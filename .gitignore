@@ -1,0 +1,16 @@
+node_modules/
+.env
+
+# local data about real people: never committed
+team.json
+nicknames.json
+belts.json
+data.json
+public/avatars/*
+!public/avatars/example.svg
+
+# deploy secrets and private working files
+deploy/hostinger/vps.local.json
+_private/
+analise-uso/
+IDEIAS.md

@@ -1,0 +1,16 @@
+# docker compose up -d   →   http://localhost:3000
+# Copy .env.example to .env first. To feed local data files, uncomment the volumes you have.
+services:
+  tokenopolis:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    restart: unless-stopped
+    # volumes:
+    #   - ./belts.json:/app/belts.json:ro
+    #   - ./nicknames.json:/app/nicknames.json:ro
+    #   - ./team.json:/app/team.json:ro
+    #   - ./data.json:/app/data.json:ro
+    #   - ./avatars:/app/public/avatars:ro

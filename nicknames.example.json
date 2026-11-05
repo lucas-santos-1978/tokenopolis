@@ -1,0 +1,6 @@
+{
+  "_comment": "Optional display names per e-mail (with or without the @). Copy to nicknames.json. name: shown instead of the e-mail-derived name; avatar: an emoji; photo: an https URL or a file under public/avatars/; body: m, f or a model id from public/models/climbers.json (the climber's 3D body). Every field is optional.",
+  "ana.souza@example.com": { "name": "Ana", "avatar": "🦊", "photo": "avatars/example.svg", "body": "f" },
+  "bruno.lima@example.com": { "name": "Bruno L.", "body": "m" },
+  "carla.mendes@example.com": { "avatar": "🐧" }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "tokenopolis",
+  "version": "0.23.0",
+  "description": "A living 3D city that grows with your team's AI usage: a gamified Claude Code token dashboard.",
+  "license": "MIT",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lucas-santos-1978/tokenopolis.git"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22.15"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "start:proxy": "node --use-system-ca server/index.js",
+    "mock": "node server/index.js --mock"
+  }
+}

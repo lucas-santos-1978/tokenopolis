@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Syntax check every module
+        run: |
+          set -e
+          for f in $(git ls-files '*.js' '*.mjs' '*.cjs'); do node --check "$f"; done
+      - name: Boot with generated data and hit the API
+        env:
+          PORT: "3999"
+          TIMEZONE: UTC
+        run: |
+          set -e
+          node server/index.js --mock > server.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://localhost:3999/api/config > /dev/null && break; sleep 1; done
+          curl -sf http://localhost:3999/api/config | tee config.json
+          node -e "const c=require('./config.json'); if (c.appName!=='Tokenopolis' || c.mode!=='mock') process.exit(1)"
+          for p in /api/state /api/cities /api/history /api/config?demo /api/cities?demo; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:3999$p"); echo "$p -> $code"; [ "$code" = 200 ]
+          done
+          curl -sf http://localhost:3999/ | grep -q '<html' && echo "city page served"
+          cat server.log

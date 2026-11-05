@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "tokenopolis",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["--use-system-ca", "server/index.js"],
+      "port": 3000
+    },
+    {
+      "name": "tokenopolis-mock",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["server/index.js", "--mock"],
+      "port": 3000
+    },
+    {
+      "name": "tokenopolis-mock-3300",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": ["-NoProfile", "-Command", "$env:PORT=3300; node server/index.js --mock"],
+      "port": 3300
+    }
+  ]
+}

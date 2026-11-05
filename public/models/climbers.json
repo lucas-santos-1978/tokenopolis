@@ -1,0 +1,104 @@
+{
+  "source": "Microsoft Rocketbox (MIT)",
+  "repo": "https://github.com/microsoft/Microsoft-Rocketbox/tree/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Adults",
+  "license": "models/rocketbox/LICENSE.md",
+  "conventions": "meters; feet at y = 0; hips at x = z = 0; facing +Z (the character's left = +X); rest = bind in A-pose (arms ~42-45 degrees below horizontal); every bone with identity rest rotation (translation only, as in Mixamo rigs); Mixamo bone names without prefix; materials Body/Head (opaque) and Hair (alphaTest 0.5, double-sided)",
+  "models": [
+    {
+      "id": "Female_Adult_03",
+      "file": "models/rocketbox/Female_Adult_03.glb",
+      "sex": "female",
+      "label": "Woman with short black hair, purple tank top and black trousers",
+      "heightM": 1.739,
+      "headTopM": 1.731,
+      "hipsM": 0.923,
+      "materials": ["Body","Head","Hair"],
+      "sizeMB": 1.36,
+      "bones": ["Hips","Spine","Spine1","Spine2","Neck","Head","HeadTop_End","LeftEye","RightEye","LeftShoulder","LeftArm","LeftForeArm","LeftHand","LeftHandThumb1","LeftHandThumb2","LeftHandThumb3","LeftHandIndex1","LeftHandIndex2","LeftHandIndex3","LeftHandMiddle1","LeftHandMiddle2","LeftHandMiddle3","LeftHandRing1","LeftHandRing2","LeftHandRing3","LeftHandPinky1","LeftHandPinky2","LeftHandPinky3","RightShoulder","RightArm","RightForeArm","RightHand","RightHandThumb1","RightHandThumb2","RightHandThumb3","RightHandIndex1","RightHandIndex2","RightHandIndex3","RightHandMiddle1","RightHandMiddle2","RightHandMiddle3","RightHandRing1","RightHandRing2","RightHandRing3","RightHandPinky1","RightHandPinky2","RightHandPinky3","LeftUpLeg","LeftLeg","LeftFoot","LeftToeBase","LeftToe_End","RightUpLeg","RightLeg","RightFoot","RightToeBase","RightToe_End"]
+    },
+    {
+      "id": "Female_Adult_04",
+      "file": "models/rocketbox/Female_Adult_04.glb",
+      "sex": "female",
+      "label": "Blonde woman, leather jacket, cargo trousers and boots",
+      "heightM": 1.766,
+      "headTopM": 1.744,
+      "hipsM": 0.927,
+      "materials": ["Body","Head","Hair"],
+      "sizeMB": 1.32,
+      "bones": ["Hips","Spine","Spine1","Spine2","Neck","Head","HeadTop_End","LeftEye","RightEye","LeftShoulder","LeftArm","LeftForeArm","LeftHand","LeftHandThumb1","LeftHandThumb2","LeftHandThumb3","LeftHandIndex1","LeftHandIndex2","LeftHandIndex3","LeftHandMiddle1","LeftHandMiddle2","LeftHandMiddle3","LeftHandRing1","LeftHandRing2","LeftHandRing3","LeftHandPinky1","LeftHandPinky2","LeftHandPinky3","RightShoulder","RightArm","RightForeArm","RightHand","RightHandThumb1","RightHandThumb2","RightHandThumb3","RightHandIndex1","RightHandIndex2","RightHandIndex3","RightHandMiddle1","RightHandMiddle2","RightHandMiddle3","RightHandRing1","RightHandRing2","RightHandRing3","RightHandPinky1","RightHandPinky2","RightHandPinky3","LeftUpLeg","LeftLeg","LeftFoot","LeftToeBase","LeftToe_End","RightUpLeg","RightLeg","RightFoot","RightToeBase","RightToe_End"]
+    },
+    {
+      "id": "Female_Adult_08",
+      "file": "models/rocketbox/Female_Adult_08.glb",
+      "sex": "female",
+      "label": "Woman with long brown hair, grey T-shirt, jeans and boots",
+      "heightM": 1.735,
+      "headTopM": 1.735,
+      "hipsM": 0.924,
+      "materials": ["Body","Head","Hair"],
+      "sizeMB": 1.32,
+      "bones": ["Hips","Spine","Spine1","Spine2","Neck","Head","HeadTop_End","LeftEye","RightEye","LeftShoulder","LeftArm","LeftForeArm","LeftHand","LeftHandThumb1","LeftHandThumb2","LeftHandThumb3","LeftHandIndex1","LeftHandIndex2","LeftHandIndex3","LeftHandMiddle1","LeftHandMiddle2","LeftHandMiddle3","LeftHandRing1","LeftHandRing2","LeftHandRing3","LeftHandPinky1","LeftHandPinky2","LeftHandPinky3","RightShoulder","RightArm","RightForeArm","RightHand","RightHandThumb1","RightHandThumb2","RightHandThumb3","RightHandIndex1","RightHandIndex2","RightHandIndex3","RightHandMiddle1","RightHandMiddle2","RightHandMiddle3","RightHandRing1","RightHandRing2","RightHandRing3","RightHandPinky1","RightHandPinky2","RightHandPinky3","LeftUpLeg","LeftLeg","LeftFoot","LeftToeBase","LeftToe_End","RightUpLeg","RightLeg","RightFoot","RightToeBase","RightToe_End"]
+    },
+    {
+      "id": "Female_Adult_12",
+      "file": "models/rocketbox/Female_Adult_12.glb",
+      "sex": "female",
+      "label": "Woman with bangs, black sweatshirt, denim shorts and sneakers",
+      "heightM": 1.727,
+      "headTopM": 1.727,
+      "hipsM": 0.924,
+      "materials": ["Body","Head","Hair"],
+      "sizeMB": 1.29,
+      "bones": ["Hips","Spine","Spine1","Spine2","Neck","Head","HeadTop_End","LeftEye","RightEye","LeftShoulder","LeftArm","LeftForeArm","LeftHand","LeftHandThumb1","LeftHandThumb2","LeftHandThumb3","LeftHandIndex1","LeftHandIndex2","LeftHandIndex3","LeftHandMiddle1","LeftHandMiddle2","LeftHandMiddle3","LeftHandRing1","LeftHandRing2","LeftHandRing3","LeftHandPinky1","LeftHandPinky2","LeftHandPinky3","RightShoulder","RightArm","RightForeArm","RightHand","RightHandThumb1","RightHandThumb2","RightHandThumb3","RightHandIndex1","RightHandIndex2","RightHandIndex3","RightHandMiddle1","RightHandMiddle2","RightHandMiddle3","RightHandRing1","RightHandRing2","RightHandRing3","RightHandPinky1","RightHandPinky2","RightHandPinky3","LeftUpLeg","LeftLeg","LeftFoot","LeftToeBase","LeftToe_End","RightUpLeg","RightLeg","RightFoot","RightToeBase","RightToe_End"]
+    },
+    {
+      "id": "Male_Adult_04",
+      "file": "models/rocketbox/Male_Adult_04.glb",
+      "sex": "male",
+      "label": "Man with curly hair, black jacket, cargo trousers and sneakers",
+      "heightM": 1.869,
+      "headTopM": 1.847,
+      "hipsM": 0.896,
+      "materials": ["Body","Head","Hair"],
+      "sizeMB": 1.39,
+      "bones": ["Hips","Spine","Spine1","Spine2","Neck","Head","HeadTop_End","LeftEye","RightEye","LeftShoulder","LeftArm","LeftForeArm","LeftHand","LeftHandThumb1","LeftHandThumb2","LeftHandThumb3","LeftHandIndex1","LeftHandIndex2","LeftHandIndex3","LeftHandMiddle1","LeftHandMiddle2","LeftHandMiddle3","LeftHandRing1","LeftHandRing2","LeftHandRing3","LeftHandPinky1","LeftHandPinky2","LeftHandPinky3","RightShoulder","RightArm","RightForeArm","RightHand","RightHandThumb1","RightHandThumb2","RightHandThumb3","RightHandIndex1","RightHandIndex2","RightHandIndex3","RightHandMiddle1","RightHandMiddle2","RightHandMiddle3","RightHandRing1","RightHandRing2","RightHandRing3","RightHandPinky1","RightHandPinky2","RightHandPinky3","LeftUpLeg","LeftLeg","LeftFoot","LeftToeBase","LeftToe_End","RightUpLeg","RightLeg","RightFoot","RightToeBase","RightToe_End"]
+    },
+    {
+      "id": "Male_Adult_05",
+      "file": "models/rocketbox/Male_Adult_05.glb",
+      "sex": "male",
+      "label": "Grey-haired man with a beard, hiking vest and boots",
+      "heightM": 1.812,
+      "headTopM": 1.796,
+      "hipsM": 0.896,
+      "materials": ["Body","Head","Hair"],
+      "sizeMB": 1.41,
+      "bones": ["Hips","Spine","Spine1","Spine2","Neck","Head","HeadTop_End","LeftEye","RightEye","LeftShoulder","LeftArm","LeftForeArm","LeftHand","LeftHandThumb1","LeftHandThumb2","LeftHandThumb3","LeftHandIndex1","LeftHandIndex2","LeftHandIndex3","LeftHandMiddle1","LeftHandMiddle2","LeftHandMiddle3","LeftHandRing1","LeftHandRing2","LeftHandRing3","LeftHandPinky1","LeftHandPinky2","LeftHandPinky3","RightShoulder","RightArm","RightForeArm","RightHand","RightHandThumb1","RightHandThumb2","RightHandThumb3","RightHandIndex1","RightHandIndex2","RightHandIndex3","RightHandMiddle1","RightHandMiddle2","RightHandMiddle3","RightHandRing1","RightHandRing2","RightHandRing3","RightHandPinky1","RightHandPinky2","RightHandPinky3","LeftUpLeg","LeftLeg","LeftFoot","LeftToeBase","LeftToe_End","RightUpLeg","RightLeg","RightFoot","RightToeBase","RightToe_End"]
+    },
+    {
+      "id": "Male_Adult_10",
+      "file": "models/rocketbox/Male_Adult_10.glb",
+      "sex": "male",
+      "label": "Man in a red track jacket, dark trousers and sneakers",
+      "heightM": 1.831,
+      "headTopM": 1.824,
+      "hipsM": 0.898,
+      "materials": ["Body","Head","Hair"],
+      "sizeMB": 1.13,
+      "bones": ["Hips","Spine","Spine1","Spine2","Neck","Head","HeadTop_End","LeftEye","RightEye","LeftShoulder","LeftArm","LeftForeArm","LeftHand","LeftHandThumb1","LeftHandThumb2","LeftHandThumb3","LeftHandIndex1","LeftHandIndex2","LeftHandIndex3","LeftHandMiddle1","LeftHandMiddle2","LeftHandMiddle3","LeftHandRing1","LeftHandRing2","LeftHandRing3","LeftHandPinky1","LeftHandPinky2","LeftHandPinky3","RightShoulder","RightArm","RightForeArm","RightHand","RightHandThumb1","RightHandThumb2","RightHandThumb3","RightHandIndex1","RightHandIndex2","RightHandIndex3","RightHandMiddle1","RightHandMiddle2","RightHandMiddle3","RightHandRing1","RightHandRing2","RightHandRing3","RightHandPinky1","RightHandPinky2","RightHandPinky3","LeftUpLeg","LeftLeg","LeftFoot","LeftToeBase","LeftToe_End","RightUpLeg","RightLeg","RightFoot","RightToeBase","RightToe_End"]
+    },
+    {
+      "id": "Male_Adult_12",
+      "file": "models/rocketbox/Male_Adult_12.glb",
+      "sex": "male",
+      "label": "Man in a denim jacket, jeans and sneakers",
+      "heightM": 1.807,
+      "headTopM": 1.807,
+      "hipsM": 0.896,
+      "materials": ["Body","Head"],
+      "sizeMB": 1.05,
+      "bones": ["Hips","Spine","Spine1","Spine2","Neck","Head","HeadTop_End","LeftEye","RightEye","LeftShoulder","LeftArm","LeftForeArm","LeftHand","LeftHandThumb1","LeftHandThumb2","LeftHandThumb3","LeftHandIndex1","LeftHandIndex2","LeftHandIndex3","LeftHandMiddle1","LeftHandMiddle2","LeftHandMiddle3","LeftHandRing1","LeftHandRing2","LeftHandRing3","LeftHandPinky1","LeftHandPinky2","LeftHandPinky3","RightShoulder","RightArm","RightForeArm","RightHand","RightHandThumb1","RightHandThumb2","RightHandThumb3","RightHandIndex1","RightHandIndex2","RightHandIndex3","RightHandMiddle1","RightHandMiddle2","RightHandMiddle3","RightHandRing1","RightHandRing2","RightHandRing3","RightHandPinky1","RightHandPinky2","RightHandPinky3","LeftUpLeg","LeftLeg","LeftFoot","LeftToeBase","LeftToe_End","RightUpLeg","RightLeg","RightFoot","RightToeBase","RightToe_End"]
+    }
+  ]
+}
