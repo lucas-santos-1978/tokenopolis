@@ -25,6 +25,9 @@ docker compose up -d     # builds the image from the Dockerfile, reads .env
 `nicknames.json`, `team.json`, `data.json`, `avatars/`). The image runs as the unprivileged `node`
 user and exposes port 3000.
 
+Set `TIMEZONE` in `.env` when you run in a container: the default is the host's zone, and inside
+most images that is UTC, which moves every day boundary (and the weekly season) by your offset.
+
 ## On a TV
 
 Open `/?tour` (the city flying from the region to each city) or `/climb.html?tour` (cycling zoom
