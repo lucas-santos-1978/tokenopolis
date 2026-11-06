@@ -1,13 +1,13 @@
-# Avatares Microsoft Rocketbox
+# Microsoft Rocketbox avatars
 
-Os arquivos `.glb` desta pasta foram convertidos dos avatares da
+The `.glb` files in this folder were converted from the avatars of the
 [Microsoft Rocketbox Avatar Library](https://github.com/microsoft/Microsoft-Rocketbox)
-(commit `0943055db6ec570bcef9f2c8b41c9e5467c808f9`, pasta `Assets/Avatars/Adults/`),
-distribuídos sob a licença MIT reproduzida abaixo.
+(commit `0943055db6ec570bcef9f2c8b41c9e5467c808f9`, folder `Assets/Avatars/Adults/`),
+distributed under the MIT license reproduced below.
 
-Alterações feitas na conversão: unidades em metros, pés em y = 0, ossos renomeados para os
-nomes do Mixamo (ossos faciais fundidos na cabeça, pontas `HeadTop_End`/`*Toe_End` acrescentadas),
-materiais PBR e texturas reduzidas (1024/512 px) embutidas no GLB.
+Changes made in the conversion: units in meters, feet at y = 0, bones renamed to the Mixamo
+names (facial bones merged into the head, `HeadTop_End`/`*Toe_End` tips added), PBR materials
+and downscaled textures (1024/512 px) embedded in the GLB.
 
 ---
 
