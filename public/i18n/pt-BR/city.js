@@ -90,16 +90,18 @@ export default {
     corp: { one: '{n} pessoa daqui também constrói em outras cidades', other: '{n} pessoas daqui também constroem em outras cidades' },
   },
   dojo: {
+    members: { one: '{n} faixa', other: '{n} faixas' },
     blackBelts: { one: '{n} faixa preta', other: '{n} faixas pretas' },
     next: {
-      one: ({ level }) => `falta 1 faixa preta para virar ${level.name}`,
-      other: ({ n, level }) => `faltam ${n} faixas pretas para virar ${level.name}`,
+      one: ({ level }) => `falta 1 faixa para virar ${level.name}`,
+      other: ({ n, level }) => `faltam ${n} faixas para virar ${level.name}`,
     },
     top: 'o maior templo que existe',
     tap: 'toque para ver os mestres',
     masters: 'MESTRES',
+    noMasters: 'Ainda sem faixa preta: a primeira ganha o pagode preto.',
     onTheWay: 'A CAMINHO',
-    note: 'Quem chega à faixa preta ganha um pagode preto no lugar do prédio e faz o Dojo da cidade crescer. Só a preta aparece no mapa: as outras faixas, só aqui.',
+    note: 'O Dojo da cidade nasce com a primeira faixa do time (branca inclusive) e cresce com todas elas. Só a faixa preta muda o mapa: um pagode preto no lugar do prédio. As outras faixas aparecem aqui e no mapa 🥋.',
   },
 
   // a ficha do prédio
@@ -113,7 +115,7 @@ export default {
     now: '🏗️ construindo agora',
     idle: '💤 parado agora',
     new: '🎈 estreou na semana',
-    blackBelt: ({ since }) => `🥋 faixa preta do Dojo${since ? ` desde ${since}` : ''}`,
+    belt: ({ belt, since }) => `🥋 ${belt.lower} do Dojo${since ? ` desde ${since}` : ''}`,
     dojoTitle: 'Ver o Dojo da cidade',
     alsoIn: 'Também constrói em {list}',
     timelineLoading: 'carregando a linha do tempo…',
@@ -173,7 +175,7 @@ export default {
   // etiquetas no mundo 3D
   float: { floors: { one: '+{n} andar', other: '+{n} andares' } },
   tip: {
-    dojo: { one: '{n} faixa preta do Dojo · toque para ver os mestres', other: '{n} faixas pretas do Dojo · toque para ver os mestres' },
+    dojo: { one: '{n} faixa no Dojo · toque para ver os mestres', other: '{n} faixas no Dojo · toque para ver os mestres' },
     week: '+{n} na semana',
   },
   sign: { route: '🚩 {n} em comum' },

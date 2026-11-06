@@ -72,7 +72,7 @@ Unchanged fields are not listed. Changes:
 | `week`, `month`, `lastMonth` | Period (**removed:** `name`) |
 | `today` | `{ day, start }` unchanged |
 | `cities[]` | City + `{ floors, week, people, builders, building, sessions, growth, buildings[] }` |
-| `cities[].buildings[]` | Person identity + `{ belt, beltSince, floors, week, today, month, lastMonth, streak, hours, night, model, modelShare, now, isNew, cities, others }`. `belt ∈ null \| "blue" \| "purple" \| "brown" \| "black"` (was `dojo`), `beltSince` ISO day or null (was `dojoDesde`). `model ∈ "opus" \| "sonnet" \| "haiku" \| "fable" \| "other"` (was `outro`) |
+| `cities[].buildings[]` | Person identity + `{ belt, beltSince, floors, week, today, month, lastMonth, streak, hours, night, model, modelShare, now, isNew, cities, others }`. `belt ∈ null \| "white" \| "blue" \| "purple" \| "brown" \| "black"` (was `dojo`), `beltSince` ISO day or null (was `dojoDesde`). `model ∈ "opus" \| "sonnet" \| "haiku" \| "fable" \| "other"` (was `outro`) |
 | `links[]` | `{ a, b, n }` unchanged |
 | `belts` | `{ total, unmatched }` — counts only (was `dojo: { total, semPredio: [...] }`, which leaked e-mails) |
 | `error` | see conventions |
@@ -115,7 +115,7 @@ New or renamed variables. Everything else keeps its current name and meaning (se
 { "belts": [ { "name": "Marina Albuquerque", "belt": "black", "since": "2025-08-01" },
              { "email": "otavio@example.com", "belt": "brown" } ] }
 ```
-`belt` accepts `blue | purple | brown | black` and, for convenience, `azul | roxa | marrom | preta`.
+`belt` accepts `white | blue | purple | brown | black` and, for convenience, `branca | azul | roxa | marrom | preta`. Every belt counts for the city's Dojo; only black changes the building.
 
 `nicknames.json`: per e-mail `{ "name", "avatar", "photo", "body": "m" | "f" }` (`body` was `corpo`).
 

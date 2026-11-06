@@ -171,7 +171,7 @@ export function createCities(config, source) {
           id: id.id,
           name: id.name,
           anon: id.anon,
-          ...(belt ? { belt: belt.belt, ...(belt.since ? { beltSince: belt.since } : {}) } : {}), // blue, purple, brown or black; only black shows on the map
+          ...(belt ? { belt: belt.belt, ...(belt.since ? { beltSince: belt.since } : {}) } : {}), // white, blue, purple, brown or black; only black changes the building
           floors: round1(r.total / floorTokens),
           week: round1(r.week / floorTokens),
           today: round1(r.today / floorTokens),

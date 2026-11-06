@@ -73,16 +73,16 @@
       <li data-i18n="html.legend.neon">🦉 Pink neon: works at night · 📡 used today</li>
       <li data-i18n="html.legend.road">🟡 Golden road: people in common</li>
       <li data-i18n="html.legend.network">🚩 Network (2 cities) · 👑 3+ · 🎩 mayor of the month</li>
-      <li data-i18n="html.legend.pagoda">🥋 Black pagoda: Dojo black belt · the city’s Dojo grows with them</li>
+      <li data-i18n="html.legend.pagoda">🥋 Black pagoda: Dojo black belt · the city’s Dojo grows with every belt</li>
     </ul>
     <button type="button" class="more" data-tool="help" data-i18n="html.legend.more">❔ See all the meanings</button>
   </aside>
-  <div id="mapkey" class="mapkey"></div>
 
   <!-- city view -->
   <aside id="hall" class="hall" data-for="city" hidden></aside>
 
-  <!-- camera -->
+  <!-- bottom-left corner: camera, and the color key of the data maps under it -->
+  <div class="corner">
   <nav class="cam" aria-label="Camera" data-i18n-aria="html.cam.aria">
     <button type="button" data-dir="0" title="Front view" data-i18n="html.cam.front" data-i18n-title="html.cam.frontTitle">Front</button>
     <button type="button" data-dir="1" title="View from the right" data-i18n="html.cam.right" data-i18n-title="html.cam.rightTitle">Right</button>
@@ -91,6 +91,8 @@
     <button type="button" id="spin" aria-pressed="false" title="Spin on its own (G key)" data-i18n="html.cam.spin" data-i18n-title="html.cam.spinTitle">🔄 Spin</button>
     <button type="button" id="refit" title="Back to the default framing" data-i18n-title="html.cam.refit">⤢</button>
   </nav>
+  <div id="mapkey" class="mapkey"></div>
+  </div>
 
   <footer class="ticker">
     <span class="ticker-label" data-i18n="html.ticker">NEWS</span>
@@ -109,7 +111,7 @@
     <button type="button" data-map-mode="week"><span>📈</span><div><b data-i18n="map.week.name">This week’s builds</b><small data-i18n="map.week.desc">from cold (nothing) to hot (biggest build)</small></div></button>
     <button type="button" data-map-mode="network"><span>🚩</span><div><b data-i18n="map.network.name">Network</b><small data-i18n="map.network.desc">who builds in more than one city</small></div></button>
     <button type="button" data-map-mode="model"><span>🧠</span><div><b data-i18n="map.model.name">Model</b><small data-i18n="map.model.desc">the model each person used most this week</small></div></button>
-    <button type="button" data-map-mode="belts"><span>🥋</span><div><b data-i18n="map.belts.name">Dojo</b><small data-i18n="map.belts.desc">who is already a black belt</small></div></button>
+    <button type="button" data-map-mode="belts"><span>🥋</span><div><b data-i18n="map.belts.name">Dojo</b><small data-i18n="map.belts.desc">everyone’s belt in the Dojo</small></div></button>
   </div>
   <div id="films" class="popover tool-pop" role="menu" hidden>
     <button type="button" data-film="timelapse"><span>⏩</span><div><b data-i18n="html.films.timelapse">Time-lapse</b><small data-i18n="html.films.timelapseDesc">Tokenopolis rising, since the start</small></div></button>

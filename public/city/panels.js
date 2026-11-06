@@ -125,7 +125,7 @@ function renderHall(c) {
       <div class="tier"><span class="ticon">${tr.icon}</span><div><b>${cityTier(tr.key).name} <small>${t('hall.style', { style: t(`style.${tr.style}`).lower })}</small></b><span>${tr.next ? t('hall.nextTier', { n: missing, floors: floorsText(missing), tier: cityTier(tr.next.key) }) : t('hall.topTier')}</span><i style="--p:${tr.progress.toFixed(3)}"></i></div></div>
       ${mayor || race ? `<div class="mayor"><span class="ticon">🎩</span><div>${mayor ? `${building(mayor, name(mayor))}<span>${t('hall.mayor', { month: thisM, lastMonth: lastM, floors: floorsText(mayor.lastMonth) })}</span>` : `<b>${t('hall.vacant')}</b><span>${t('hall.vacantText', { lastMonth: lastM })}</span>`}
         ${race ? `<span class="mrace">${t('hall.race', { month: thisM, name: building(race, displayName(race).short), n: fmt.int(race.month) })}</span>` : ''}</div></div>` : ''}
-      ${dj ? `<div class="mayor dojo" data-dojo="${esc(c.id)}"><span class="ticon">🥋</span><div><b>${plural(dj.blacks, 'dojo.blackBelts')} · ${t(`dojoLevel.${dj.key}`).name}</b><span>${dj.next ? plural(dj.next.missing, 'dojo.next', { level: t(`dojoLevel.${dj.next.key}`) }) : t('dojo.top')} · ${t('dojo.tap')}</span></div></div>` : ''}
+      ${dj ? `<div class="mayor dojo" data-dojo="${esc(c.id)}"><span class="ticon">🥋</span><div><b>${plural(dj.count, 'dojo.members')} · ${t(`dojoLevel.${dj.key}`).name}</b><span>${dj.next ? plural(dj.next.missing, 'dojo.next', { level: t(`dojoLevel.${dj.next.key}`) }) : t('dojo.top')} · ${t('dojo.tap')}</span></div></div>` : ''}
       ${rival ? `<div class="rival" data-city="${esc(rival.id)}">${t('hall.rival', { c: htmlCity(rival, true), mine: fmt.int(c.week), theirs: fmt.int(rival.week) })}</div>` : ''}
       <div class="grid">
         <div><b>${fmt.int(c.floors)}</b><span>${t('hall.grid.total')}</span></div>
@@ -173,7 +173,7 @@ function renderSheet(c, selected) {
     <div class="who"><b>${esc(name(b))}</b><span>${esc(t('sheet.ranks', { c, inCity: fmt.ordinal(inCity), inRegion: fmt.ordinal(inRegion) }))}</span></div>
     <div class="nums"><div><b>${fmt.int(b.floors)}</b><span>${plural(Math.round(b.floors), 'sheet.floors')}</span></div><div class="up"><b>+${fmt.int(b.week)}</b><span>${t('sheet.week')}</span></div><div><b>+${fmt.int(b.today)}</b><span>${t('sheet.today')}</span></div></div>
     <div class="ptier"><div class="row"><span>${tr.icon} ${buildingTier(tr.key).name}</span><small>${tr.next ? t('sheet.nextTier', { n: missing, floors: floorsText(missing), tier: buildingTier(tr.next.key) }) : t('sheet.topTier')}</small></div><i style="--p:${tr.progress.toFixed(3)}"></i></div>
-    <div class="chips">${b.now ? `<span>${t('sheet.now')}</span>` : `<span class="off">${t('sheet.idle')}</span>`}${b.isNew ? `<span>${t('sheet.new')}</span>` : ''}${b.belt === 'black' ? `<span class="badge dojo" data-dojo="${esc(c.id)}" title="${esc(t('sheet.dojoTitle'))}">${t('sheet.blackBelt', { since: b.beltSince ? fmt.isoDate(b.beltSince) : '' })}</span>` : ''}${badges.map((x) => `<span class="badge">${esc(x)}</span>`).join('')}</div>
+    <div class="chips">${b.now ? `<span>${t('sheet.now')}</span>` : `<span class="off">${t('sheet.idle')}</span>`}${b.isNew ? `<span>${t('sheet.new')}</span>` : ''}${b.belt ? `<span class="badge dojo" data-dojo="${esc(c.id)}" title="${esc(t('sheet.dojoTitle'))}">${t('sheet.belt', { belt: t(`belt.${b.belt}`), since: b.beltSince ? fmt.isoDate(b.beltSince) : '' })}</span>` : ''}${badges.map((x) => `<span class="badge">${esc(x)}</span>`).join('')}</div>
     ${others.length ? `<div class="corp">${b.cities >= 3 ? '👑' : '🚩'} ${t('sheet.alsoIn', { list: fmt.list(others.map((k) => `<button type="button" data-city="${esc(k.id)}" data-person="${esc(b.id)}">${esc(cityLabel(k))}</button>`)) })}</div>` : ''}
     <div class="timeline" id="timeline" data-key="${esc(keyOf(c.id, b.id))}"><small>${t('sheet.timelineLoading')}</small></div>
     <div class="actions"><button class="share" type="button" data-share="${esc(c.id)}|${esc(b.id)}">${t('sheet.share')}</button>
@@ -181,23 +181,24 @@ function renderSheet(c, selected) {
   api.timeline?.(c, b);
 }
 
-// The details card of the city's Dojo: the masters (black belts) and, only here, who is on the way.
+// The details card of the city's Dojo: the masters (black belts) and, only here, who is on the way
+// (brown, purple, blue, white). Every belt counts for the level.
 function renderDojoSheet(c) {
   const el = $('#sheet'), d = dojoOf(c);
   el.hidden = !d;
   if (!d) return;
-  const belts = { black: [], brown: [], purple: [], blue: [] };
+  const belts = { black: [], brown: [], purple: [], blue: [], white: [] };
   for (const b of c.buildings) if (belts[b.belt]) belts[b.belt].push(b);
   const byFloors = (a, b) => b.floors - a.floors;
   const li = (b) => `<li data-building="${esc(b.id)}"><span>${esc(name(b))}</span><b>${fmt.int(b.floors)}</b></li>`;
-  const road = ['brown', 'purple', 'blue'].filter((k) => belts[k].length);
-  const progress = d.next ? d.blacks / (d.blacks + d.next.missing) : 1, level = t(`dojoLevel.${d.key}`);
+  const road = ['brown', 'purple', 'blue', 'white'].filter((k) => belts[k].length);
+  const progress = d.next ? d.count / (d.count + d.next.missing) : 1, level = t(`dojoLevel.${d.key}`);
   el.innerHTML = `
     <button class="close" type="button" data-close aria-label="${esc(t('html.close'))}">×</button>
-    <div class="who"><b>🥋 ${esc(level.name)}</b><span>${esc(cityLabel(c))} · ${plural(d.blacks, 'dojo.blackBelts')}</span></div>
+    <div class="who"><b>🥋 ${esc(level.name)}</b><span>${esc(cityLabel(c))} · ${plural(d.count, 'dojo.members')}${d.blacks ? ` · ${plural(d.blacks, 'dojo.blackBelts')}` : ''}</span></div>
     <div class="ptier"><div class="row"><span>${d.icon} ${level.name}</span><small>${d.next ? plural(d.next.missing, 'dojo.next', { level: t(`dojoLevel.${d.next.key}`) }) : t('dojo.top')}</small></div><i style="--p:${progress.toFixed(3)}"></i></div>
     <h3>${t('dojo.masters')} <small>${t('belt.black').lower}</small></h3>
-    <ol class="works">${belts.black.sort(byFloors).map(li).join('')}</ol>
+    ${belts.black.length ? `<ol class="works">${belts.black.sort(byFloors).map(li).join('')}</ol>` : `<p class="note">${t('dojo.noMasters')}</p>`}
     ${road.length ? `<h3>${t('dojo.onTheWay')}</h3>${road.map((k) => { const bt = t(`belt.${k}`); return `<div class="belt"><span>${bt.icon} ${bt.lower}</span><ol class="works">${belts[k].sort(byFloors).map(li).join('')}</ol></div>`; }).join('')}` : ''}
     <p class="note">${t('dojo.note')}</p>`;
 }
@@ -242,17 +243,19 @@ export function locatePerson(pid, cityId) {
 const HEAT = ['#9aa5b1', '#c9e7a2', '#f3d85a', '#f59a3c', '#e8463a'];
 const MODEL_COLORS = { opus: '#2a78d6', sonnet: '#eb6834', haiku: '#1baf7a', fable: '#eda100' };
 const GREY = '#9aa5b1';
+// The belts map paints each building with its belt (and the rest grey).
+export const BELT_COLORS = { black: '#141418', brown: '#8b5a2b', purple: '#8e44ad', blue: '#2f7fe0', white: '#ffffff' };
 // The data maps (like SimCity's): icon and legend colors, in the order of the map.<key>.legend texts.
 export const MAPKEYS = {
   now: { icon: '🔥', colors: ['#e8463a', '#f5a63c', GREY] },
   week: { icon: '📈', colors: HEAT },
   network: { icon: '🚩', colors: ['#e0a400', '#ffd76e', GREY] },
   model: { icon: '🧠', colors: [MODEL_COLORS.opus, MODEL_COLORS.sonnet, MODEL_COLORS.haiku, MODEL_COLORS.fable, GREY] },
-  belts: { icon: '🥋', colors: ['#141418', '#c9ced4'] },
+  belts: { icon: '🥋', colors: [BELT_COLORS.black, BELT_COLORS.brown, BELT_COLORS.purple, BELT_COLORS.blue, BELT_COLORS.white, GREY] },
 };
 export function mapColorFor(mode, maxWeek) {
   return (b) => {
-    if (mode === 'belts') return b.belt === 'black' ? '#141418' : '#c9ced4';
+    if (mode === 'belts') return BELT_COLORS[b.belt] ?? GREY;
     if (mode === 'model') return MODEL_COLORS[b.model] ?? GREY;
     if (mode === 'now') return b.now ? '#e8463a' : b.today > 0 ? '#f5a63c' : GREY;
     if (mode === 'network') return b.cities >= 3 ? '#e0a400' : b.cities === 2 ? '#ffd76e' : GREY;

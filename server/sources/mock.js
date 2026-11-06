@@ -178,7 +178,7 @@ export function createMockSource(config) {
         const email = `${name}@example.com`;
         let h = 7; for (const ch of email) h = Math.imul(h ^ ch.charCodeAt(0), 2654435761);
         const r = (h >>> 0) / 4294967296;
-        const belt = r < 0.07 ? 'black' : r < 0.11 ? 'brown' : r < 0.15 ? 'purple' : r < 0.2 ? 'blue' : null;
+        const belt = r < 0.07 ? 'black' : r < 0.11 ? 'brown' : r < 0.15 ? 'purple' : r < 0.2 ? 'blue' : r < 0.27 ? 'white' : null;
         if (belt) out.set(personKey(email), { belt, since: null });
       }
       return out;

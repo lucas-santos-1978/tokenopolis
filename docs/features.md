@@ -61,10 +61,11 @@ maps (`?map=now|week|network|model|belts`), 📰 newspaper, 🎬 history (a time
 the timeline of a building, and a race of the cities week by week), ❔ help with a tab that builds
 URLs for every parameter and preset (TV, TV at night, clean, reset).
 
-**Belt program (optional).** With a `belts.json` (name or e-mail, belt, since), black belts get a
-black pagoda instead of their building and the city gets a Dojo that grows into a Temple (3 black
-belts) and a Great Temple (7). The Dojo sheet lists the masters and, only there, who is on the way
-(blue, purple, brown). The `belts` map paints everything else grey.
+**Belt program (optional).** With a `belts.json` (name or e-mail, belt, since), every belt holder
+(white to black) joins the city's Dojo, which appears with the team's first belt and grows into a
+Temple (3 belts) and a Great Temple (7). Black belts get a black pagoda instead of their building.
+The Dojo sheet lists the masters and, only there, who is on the way (white, blue, purple, brown).
+The `belts` map paints each building with its belt color and the rest grey.
 
 **URL parameters.** `city`, `person`, `hour` (0–24, fixes the sun), `map`, `style`
 (`brick|concrete|glass|deco|neon`), `panels=0`, `names=0`, `quality=low`, `monuments=all`,

@@ -57,7 +57,7 @@ to `.env`; every value has a default. An empty value counts as "not set".
 |---|---|---|
 | `TEAM_FILE` | `team.json` | JSON array of e-mails that take part; without the file, everyone in the filter does |
 | `NICKNAMES_FILE` | `nicknames.json` | Per e-mail: `name`, `avatar` (emoji), `photo` (https URL or a file in `public/avatars/`), `body` (`m`, `f` or a model id from `public/models/climbers.json`) |
-| `BELTS_FILE` | `belts.json` | The belt program: `{ "belts": [{ "name" or "email", "belt": "blue"\|"purple"\|"brown"\|"black", "since": "YYYY-MM-DD" }] }`. Re-read when it changes |
+| `BELTS_FILE` | `belts.json` | The belt program: `{ "belts": [{ "name" or "email", "belt": "white"\|"blue"\|"purple"\|"brown"\|"black", "since": "YYYY-MM-DD" }] }`. Re-read when it changes |
 | `ANONYMIZE` | `false` | Shows people as "Swift Llama" (stable per person); photos are hidden |
 | `ID_SALT` | | Salt mixed into the short person ids the browser sees. Set it once before going live: changing it changes every id (saved "my building", shared `?person=` links) |
 | `PANEL_PASSWORD` | | Basic-auth password for the whole panel (the user name is ignored). Without HTTPS it crosses the network in the clear |

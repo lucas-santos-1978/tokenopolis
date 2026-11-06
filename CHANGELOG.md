@@ -11,6 +11,9 @@ tool with another name; the open-source release renames it Tokenopolis.
 - Pluggable data sources: Datadog, a JSON file of daily records, or your own module
   (`DATA_SOURCE`); the demo region is built only when first requested.
 - The belt program reads `belts.json` at the project root (`BELTS_FILE`), with English belt names.
+  White belts count: the city's Dojo appears with the team's first belt and grows with every belt;
+  the black pagoda stays for black belts only; the 🥋 map paints each building with its belt color.
+- The map key of the data maps no longer hides under the camera bar (both stack in the corner).
 - Privacy: unmatched belt entries and upstream error details no longer reach the browser; optional
   `ID_SALT` for person ids; the climb's fallback model comes from the bundled Rocketbox set.
 - Pages and modules renamed (`city.html`, `climb.html`); URL parameters, storage keys and the debug

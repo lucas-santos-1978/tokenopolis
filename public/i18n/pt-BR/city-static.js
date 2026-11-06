@@ -38,7 +38,7 @@ export default {
       neon: '🦉 Neon rosa: trabalha de noite · 📡 usou hoje',
       road: '🟡 Estrada dourada: pessoas em comum',
       network: '🚩 Rede (2 cidades) · 👑 3+ · 🎩 prefeito do mês',
-      pagoda: '🥋 Pagode preto: faixa preta do Dojo · o Dojo da cidade cresce com elas',
+      pagoda: '🥋 Pagode preto: faixa preta do Dojo · o Dojo da cidade cresce com todas as faixas',
       more: '❔ Ver todos os significados',
     },
     cam: {

@@ -35,6 +35,7 @@ export default {
   },
 
   belt: {
+    white: { icon: '⚪', name: 'White belt', a: 'a white belt', lower: 'white belt', plural: 'white belts' },
     blue: { icon: '🔵', name: 'Blue belt', a: 'a blue belt', lower: 'blue belt', plural: 'blue belts' },
     purple: { icon: '🟣', name: 'Purple belt', a: 'a purple belt', lower: 'purple belt', plural: 'purple belts' },
     brown: { icon: '🟤', name: 'Brown belt', a: 'a brown belt', lower: 'brown belt', plural: 'brown belts' },
@@ -99,7 +100,7 @@ export default {
     week: { name: 'This week’s builds', title: 'This week’s builds', desc: 'from cold (nothing) to hot (biggest build)', legend: ['nothing', 'a little', 'average', 'a lot', 'the biggest'] },
     network: { name: 'Network', title: 'Network', desc: 'who builds in more than one city', legend: ['3 cities or more', '2 cities', '1 city'] },
     model: { name: 'Model', title: 'Most used model (7 days)', desc: 'the model each person used most this week', legend: ['Opus', 'Sonnet', 'Haiku', 'Fable', 'other or no data'] },
-    belts: { name: 'Dojo', title: 'Dojo', desc: 'who is already a black belt', legend: ['black belt', 'not yet'] },
+    belts: { name: 'Dojo', title: 'Dojo', desc: 'everyone’s belt in the Dojo', legend: ['black', 'brown', 'purple', 'blue', 'white', 'no belt'] },
   },
   style: {
     brick: { name: 'Exposed brick', lower: 'exposed brick' },

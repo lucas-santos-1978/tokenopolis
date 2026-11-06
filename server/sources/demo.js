@@ -65,7 +65,7 @@ const CITIES = {
     ['Lucas Benevides', 1050, { s: 'ramp', m: 'haiku' }],
     ...run(8, 980, 470, (i) => mix(i, i === 1 ? { p: 'turno', belt: 'purple' } : i === 4 ? { belt: 'blue', s: 'burst' } : i === 6 ? { p: 'turno' } : {})),
     ...run(14, 430, 160, (i) => mix(i + 3, i === 2 ? { belt: 'brown' } : i === 5 ? { belt: 'purple', s: 'ramp' } : i === 9 ? { belt: 'blue' } : i === 11 ? { s: 'stopped' } : {})),
-    ...run(12, 140, 16, (i) => mix(i + 7, i === 3 ? { belt: 'blue' } : i === 8 ? { belt: 'blue', p: 'night' } : {})),
+    ...run(12, 140, 16, (i) => mix(i + 7, i === 3 ? { belt: 'blue' } : i === 5 ? { belt: 'white' } : i === 8 ? { belt: 'blue', p: 'night' } : {})),
     ['Nina Kobayashi', 2.2, { a: 0.5, belt: 'black', since: '2026-08-10' }],
     ...run(8, 13.5, 1.4, (i) => mix(i + 11)),
     ...run(4, 6.5, 0.6, (i) => mix(i + 2, { s: 'new' })),
@@ -88,7 +88,7 @@ const CITIES = {
     ['Beatriz Nogueira', 4900, { a: 1, m: 'opus', belt: 'black', since: '2026-10-05' }],
     ['Caio Esteves', 3300, { s: 'ramp', m: 'sonnet' }],
     ...run(4, 2200, 1150, (i) => mix(i + 2, i === 1 ? { belt: 'blue' } : {})),
-    ...run(5, 980, 520, (i) => mix(i + 6, i === 2 ? { belt: 'blue', p: 'night' } : {})),
+    ...run(5, 980, 520, (i) => mix(i + 6, i === 2 ? { belt: 'blue', p: 'night' } : i === 4 ? { belt: 'white' } : {})),
     ...run(6, 410, 165, (i) => mix(i + 1)),
     ...run(5, 120, 18, (i) => mix(i + 5, i === 4 ? { s: 'new' } : {})),
     ...run(4, 11, 1.2, (i) => mix(i + 3)),
@@ -166,7 +166,7 @@ const EXTRA_NAMES = ['Scheduling', 'Billing', 'Payments', 'Checkout', 'Catalog',
 // four blocks (64 buildings) the cities look full and the region compact, instead of grass all around.
 const TIER_PLAN = [[10, 5, 9, 20, 240], [20, 10, 20, 260, 980], [25, 18, 36, 1050, 2900], [24, 30, 50, 3100, 7800], [9, 40, 58, 8200, 14500], [3, 48, 58, 15500, 28000], [1, 54, 58, 31000, 45000]];
 const SHAPES = ['flat', 'flat', 'flat', 'flat', 'flat', 'flat', 'flat', 'flat', 'flat', 'flat', 'flat', 'flat', 'ramp', 'ramp', 'burst', 'stopped', 'stopped', 'stopped', 'new'];
-const BELTS = [['black', 0.012], ['brown', 0.015], ['purple', 0.015], ['blue', 0.02]];
+const BELTS = [['black', 0.012], ['brown', 0.015], ['purple', 0.015], ['blue', 0.02], ['white', 0.03]];
 const usedNames = new Set();
 // Unique name drawn from the two lists (with a second surname when the pair has already come up).
 function uniqueName(r) {

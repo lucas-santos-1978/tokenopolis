@@ -192,8 +192,10 @@ body { font-family: Nunito, "Segoe UI", system-ui, sans-serif; color: var(--ink)
 #loading { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; background: #0b0f1e; color: #f6f1ea; font-size: 18px; font-weight: 700; transition: opacity .6s; }
 
 /* camera: fixed views, spin on its own and back to the default framing */
-.cam { position: fixed; left: 330px; bottom: 20px; z-index: 4; display: flex; gap: 4px; padding: 5px; border-radius: 12px; background: rgba(38, 49, 59, .9); box-shadow: 0 4px 14px rgba(0, 0, 0, .3); }
-[data-view=city] .cam, [data-hidden~=legend] .cam { left: 20px; }
+/* bottom-left corner: the camera bar stacked above the map key (when a data map is on), so neither covers the other */
+.corner { position: fixed; left: 330px; bottom: 54px; z-index: 4; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+[data-view=city] .corner, [data-hidden~=legend] .corner, [data-map] .corner { left: 20px; }
+.cam { display: flex; gap: 4px; padding: 5px; border-radius: 12px; background: rgba(38, 49, 59, .9); box-shadow: 0 4px 14px rgba(0, 0, 0, .3); }
 body:has(#sheet:not([hidden])) .cam { display: none; }
 .cam button { all: unset; cursor: pointer; padding: 6px 11px; border-radius: 8px; color: #fff; font-weight: 800; font-size: 13px; white-space: nowrap; }
 .cam button:hover { background: rgba(255, 255, 255, .12); }
@@ -264,16 +266,15 @@ kbd { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 5px
 @keyframes ticker { to { transform: translateX(-100%); } }
 @media (prefers-reduced-motion: reduce) { .ticker-items { animation: none; padding-left: 0; } }
 [data-hidden~=news] .ticker { display: none !important; }
-.legend { bottom: 54px; } .countdown { bottom: 54px; } .derby { bottom: 172px; } .cam { bottom: 54px; }
-[data-hidden~=news] .legend, [data-hidden~=news] .countdown, [data-hidden~=news] .cam { bottom: 20px; }
+.legend { bottom: 54px; } .countdown { bottom: 54px; } .derby { bottom: 172px; }
+[data-hidden~=news] .legend, [data-hidden~=news] .countdown, [data-hidden~=news] .corner { bottom: 20px; }
 [data-hidden~=news] .derby { bottom: 138px; }
 .hall { bottom: 54px; } [data-hidden~=news] .hall { bottom: 20px; }
 
 /* data maps: the color key */
-.mapkey { display: none; position: fixed; z-index: 4; left: 20px; bottom: 54px; align-items: center; gap: 10px; flex-wrap: wrap; max-width: 560px; padding: 8px 12px; border-radius: 12px; background: rgba(255, 255, 255, .96); box-shadow: 0 3px 10px rgba(0, 0, 0, .18); font-size: 12.5px; }
+.mapkey { display: none; align-items: center; gap: 10px; flex-wrap: wrap; max-width: 560px; padding: 8px 12px; border-radius: 12px; background: rgba(255, 255, 255, .96); box-shadow: 0 3px 10px rgba(0, 0, 0, .18); font-size: 12.5px; }
 [data-map] .mapkey { display: flex; }
 [data-map][data-view=region] .legend { display: none; }
-[data-map][data-view=region] .cam { bottom: 110px; }
 .mapkey b { font-weight: 900; }
 .mapkey i { display: inline-block; width: 12px; height: 12px; margin-right: 4px; border-radius: 3px; vertical-align: -2px; }
 .mapkey button { all: unset; cursor: pointer; font-weight: 900; color: var(--mute); padding: 0 2px; }
@@ -425,6 +426,6 @@ kbd { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 5px
   .trophies, .legend, .derby, .countdown, .stats, .subtitle { display: none !important; }
   .ranking { width: 220px; }
   .hall { width: min(340px, calc(100vw - 30px)); }
-  .cam { bottom: 10px; }
+  .corner { bottom: 10px; }
   .sheet { left: 10px; bottom: 10px; width: calc(100% - 20px); }
 }

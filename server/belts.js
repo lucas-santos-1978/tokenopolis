@@ -1,15 +1,16 @@
-// Belt program: an optional recognition program (blue, purple, brown, black) matched to the people
+// Belt program: an optional recognition program (white, blue, purple, brown, black) matched to the people
 // of the cities. Entries come from BELTS_FILE (default belts.json at the project root) by name
 // (as shown in the city) or by e-mail, or from the data source when it provides `belts()` (the
-// mock and demo sources do). Only the black belt shows on the map; the others appear in the Dojo
-// sheet of the city. The file is re-read when it changes (at most once a minute).
+// mock and demo sources do). Every belt counts for the city's Dojo and appears in its sheet; only the
+// black belt changes the person's building (a black pagoda). The file is re-read when it changes
+// (at most once a minute).
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { personKey } from './config.js';
 
-export const BELTS = ['blue', 'purple', 'brown', 'black'];
+export const BELTS = ['white', 'blue', 'purple', 'brown', 'black'];
 // Portuguese belt names are accepted in the file for convenience.
-const ALIASES = { azul: 'blue', roxa: 'purple', marrom: 'brown', preta: 'black' };
+const ALIASES = { branca: 'white', azul: 'blue', roxa: 'purple', marrom: 'brown', preta: 'black' };
 const norm = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
 export const beltName = (s) => { const b = norm(s); return BELTS.includes(b) ? b : ALIASES[b] ?? null; };
 
@@ -31,7 +32,7 @@ export function createBelts(config, source) {
       const raw = JSON.parse(readFileSync(file, 'utf8'));
       for (const e of Array.isArray(raw) ? raw : raw.belts ?? []) {
         const belt = beltName(e.belt);
-        if (!belt) continue; // white belt (or a typo) does not count
+        if (!belt) continue; // an unknown belt name (a typo) does not count
         const entry = { name: e.name ?? null, email: e.email ?? null, belt, since: e.since ?? null, used: false };
         entries.push(entry);
         if (e.email) byEmail.set(personKey(e.email), entry);

@@ -38,7 +38,7 @@ export default {
       neon: '🦉 Pink neon: works at night · 📡 used today',
       road: '🟡 Golden road: people in common',
       network: '🚩 Network (2 cities) · 👑 3+ · 🎩 mayor of the month',
-      pagoda: '🥋 Black pagoda: Dojo black belt · the city’s Dojo grows with them',
+      pagoda: '🥋 Black pagoda: Dojo black belt · the city’s Dojo grows with every belt',
       more: '❔ See all the meanings',
     },
     cam: {

@@ -86,16 +86,18 @@ export default {
     corp: { one: '{n} person from here also builds in other cities', other: '{n} people from here also build in other cities' },
   },
   dojo: {
+    members: { one: '{n} belt', other: '{n} belts' },
     blackBelts: { one: '{n} black belt', other: '{n} black belts' },
     next: {
-      one: ({ level }) => `1 black belt to go to become ${level.a}`,
-      other: ({ n, level }) => `${n} black belts to go to become ${level.a}`,
+      one: ({ level }) => `1 belt to go to become ${level.a}`,
+      other: ({ n, level }) => `${n} belts to go to become ${level.a}`,
     },
     top: 'the greatest temple there is',
     tap: 'tap to see the masters',
     masters: 'MASTERS',
+    noMasters: 'No black belt yet: the first one gets the black pagoda.',
     onTheWay: 'ON THE WAY',
-    note: 'Whoever reaches black belt gets a black pagoda instead of a building and makes the city’s Dojo grow. Only black belts show on the map: the other belts, only here.',
+    note: 'The city’s Dojo is born with the team’s first belt (white included) and grows with every one of them. Only the black belt changes the map: a black pagoda instead of the building. The other belts show here and on the 🥋 map.',
   },
 
   // the details card of a building
@@ -109,7 +111,7 @@ export default {
     now: '🏗️ building now',
     idle: '💤 idle now',
     new: '🎈 new this week',
-    blackBelt: ({ since }) => `🥋 Dojo black belt${since ? ` since ${since}` : ''}`,
+    belt: ({ belt, since }) => `🥋 Dojo ${belt.lower}${since ? ` since ${since}` : ''}`,
     dojoTitle: 'See the city’s Dojo',
     alsoIn: 'Also builds in {list}',
     timelineLoading: 'loading the timeline…',
@@ -169,7 +171,7 @@ export default {
   // labels in the 3D world
   float: { floors: { one: '+{n} floor', other: '+{n} floors' } },
   tip: {
-    dojo: { one: '{n} Dojo black belt · tap to see the masters', other: '{n} Dojo black belts · tap to see the masters' },
+    dojo: { one: '{n} belt in the Dojo · tap to see the masters', other: '{n} belts in the Dojo · tap to see the masters' },
     week: '+{n} this week',
   },
   sign: { route: '🚩 {n} in common' },

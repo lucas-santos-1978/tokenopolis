@@ -1,8 +1,9 @@
 {
-  "_comment": "Belt program. Copy to belts.json (set BELTS_FILE to use another path). Each entry has a name (as shown in the city) or an email, a belt (blue, purple, brown or black; white does not count) and, optionally, since (YYYY-MM-DD). Only black belts show on the map; the others appear in the Dojo sheet of the city.",
+  "_comment": "Belt program. Copy to belts.json (set BELTS_FILE to use another path). Each entry has a name (as shown in the city) or an email, a belt (white, blue, purple, brown or black) and, optionally, since (YYYY-MM-DD). Every belt counts for the city's Dojo and appears in its sheet; only black belts change the building on the map (a black pagoda).",
   "belts": [
     { "name": "Marina Albuquerque", "belt": "black", "since": "2025-08-01" },
     { "email": "otavio.brandao@example.com", "belt": "brown" },
-    { "email": "leticia.quaresma@example.com", "belt": "blue", "since": "2026-03-15" }
+    { "email": "leticia.quaresma@example.com", "belt": "blue", "since": "2026-03-15" },
+    { "email": "caio.sampaio@example.com", "belt": "white" }
   ]
 }

@@ -42,6 +42,7 @@ export default {
   },
 
   belt: {
+    white: { icon: '⚪', name: 'Faixa branca', a: 'uma faixa branca', lower: 'faixa branca', plural: 'faixas brancas', fem: true },
     blue: { icon: '🔵', name: 'Faixa azul', a: 'uma faixa azul', lower: 'faixa azul', plural: 'faixas azuis', fem: true },
     purple: { icon: '🟣', name: 'Faixa roxa', a: 'uma faixa roxa', lower: 'faixa roxa', plural: 'faixas roxas', fem: true },
     brown: { icon: '🟤', name: 'Faixa marrom', a: 'uma faixa marrom', lower: 'faixa marrom', plural: 'faixas marrons', fem: true },
@@ -106,7 +107,7 @@ export default {
     week: { name: 'Obras da semana', title: 'Obras da semana', desc: 'do frio (nada) ao quente (maior obra)', legend: ['nada', 'pouca', 'média', 'muita', 'as maiores'] },
     network: { name: 'Rede', title: 'Rede', desc: 'quem constrói em mais de uma cidade', legend: ['3 cidades ou mais', '2 cidades', '1 cidade'] },
     model: { name: 'Modelo', title: 'Modelo mais usado (7 dias)', desc: 'o modelo que cada um mais usou na semana', legend: ['Opus', 'Sonnet', 'Haiku', 'Fable', 'outros ou sem dado'] },
-    belts: { name: 'Dojo', title: 'Dojo', desc: 'quem já é faixa preta', legend: ['faixa preta', 'ainda não'] },
+    belts: { name: 'Dojo', title: 'Dojo', desc: 'a faixa de cada um no Dojo', legend: ['preta', 'marrom', 'roxa', 'azul', 'branca', 'sem faixa'] },
   },
   style: {
     brick: { name: 'Tijolo à vista', lower: 'tijolo à vista' },

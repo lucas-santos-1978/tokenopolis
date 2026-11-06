@@ -14,15 +14,16 @@ export const hash = (a, b, s = 0) => { let h = Math.imul(a, 374761393) + Math.im
 export const strHash = (s) => { let h = 7; for (const ch of String(s)) h = Math.imul(h ^ ch.charCodeAt(0), 2654435761); return h >>> 0; };
 // The facade family (palette and crown): house, building, tower or skyscraper (and above)
 export const tier = (f) => (f >= 450 ? 'skyscraper' : f >= 150 ? 'tower' : f >= 15 ? 'building' : 'house');
-// The city's Dojo: born with the first black belt and grows with them (lots per side = level)
+// The city's Dojo: born with the team's first belt (white included) and grows with every belt (lots
+// per side = level); only the black belt changes the person's building
 export const DOJO_LEVELS = [{ min: 1, key: 'dojo', icon: '🏯' }, { min: 3, key: 'temple', icon: '⛩️' }, { min: 7, key: 'greatTemple', icon: '🏯' }];
 export function dojoOf(c) {
-  const blacks = c.buildings.filter((b) => b.belt === 'black').length;
-  if (!blacks) return null;
+  const members = c.buildings.filter((b) => b.belt), count = members.length, blacks = members.filter((b) => b.belt === 'black').length;
+  if (!count) return null;
   let level = 0;
-  for (let i = 0; i < DOJO_LEVELS.length; i++) if (blacks >= DOJO_LEVELS[i].min) level = i + 1;
+  for (let i = 0; i < DOJO_LEVELS.length; i++) if (count >= DOJO_LEVELS[i].min) level = i + 1;
   const cur = DOJO_LEVELS[level - 1], next = DOJO_LEVELS[level];
-  return { blacks, level, key: cur.key, icon: cur.icon, next: next ? { key: next.key, missing: next.min - blacks } : null };
+  return { count, blacks, level, key: cur.key, icon: cur.icon, next: next ? { key: next.key, missing: next.min - count } : null };
 }
 // The building type (a BUILDING_TIERS key), which is also what the kit draws
 export const kind = (f) => { for (let i = BUILDING_TIERS.length - 1; i > 0; i--) if (f >= BUILDING_TIERS[i].min) return BUILDING_TIERS[i].key; return 'house'; };
@@ -106,7 +107,7 @@ export function buildWorld(d, { allMonuments = false } = {}) {
     c.monuments = monumentsOf(c, mx);
     const mayor = mayorOf(c), dojo = dojoOf(c);
     const placed = [
-      ...(dojo ? [{ key: 'dojo', icon: '🥋', size: dojo.level, level: dojo.level, levelKey: dojo.key, blacks: dojo.blacks }] : []), // first: it stays close to the city
+      ...(dojo ? [{ key: 'dojo', icon: '🥋', size: dojo.level, level: dojo.level, levelKey: dojo.key, count: dojo.count, blacks: dojo.blacks }] : []), // first: it stays close to the city
       ...c.monuments.filter((k) => k.ok || allMonuments),
       ...(mayor ? [{ key: 'mayor', icon: '🎩', size: 1, person: mayor }] : []),
     ];

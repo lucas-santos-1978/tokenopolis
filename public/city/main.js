@@ -256,7 +256,7 @@ function buildScene() {
   // the cities' signs and the little "N in common" plates on the golden roads
   for (const c of src.cities) {
     const tr = tierOf(c.floors), dj = dojoOf(c), wrap = document.createElement('div'); // the sign sits in a wrapper, to shrink from afar (--signk)
-    wrap.innerHTML = `<div class="sign" data-city="${esc(c.id)}">${esc(cityLabel(c))}<small>${tr.icon} ${cityTier(tr.key).name} · ${floorsText(c.floors)} · ${plural(c.people, 'count.building')}</small>${dj ? `<em>🥋 ${plural(dj.blacks, 'dojo.blackBelts')}</em>` : ''}</div>`;
+    wrap.innerHTML = `<div class="sign" data-city="${esc(c.id)}">${esc(cityLabel(c))}<small>${tr.icon} ${cityTier(tr.key).name} · ${floorsText(c.floors)} · ${plural(c.people, 'count.building')}</small>${dj ? `<em>🥋 ${plural(dj.count, 'dojo.members')}</em>` : ''}</div>`;
     const sign = new CSS2DObject(wrap); sign.position.set(wx(c.center[0] - 0.5), 5, wz(c.box.sy - 2.2)); cityGroup.add(sign);
   }
   for (const r of world.routes) {
@@ -500,10 +500,10 @@ function pickHover() {
   if (b === hovered) return;
   hovered = b; hoveredHit = h;
   if (!b) { tipEl.classList.add('off'); return; }
-  if (h.dojo) tipEl.innerHTML = `🥋 ${esc(t(`dojoLevel.${h.dojo.levelKey}`).name)}${view.kind === 'region' ? ` · ${esc(cityLabel(h.c))}` : ''}<small>${plural(h.dojo.blacks, 'tip.dojo')}</small>`;
+  if (h.dojo) tipEl.innerHTML = `🥋 ${esc(t(`dojoLevel.${h.dojo.levelKey}`).name)}${view.kind === 'region' ? ` · ${esc(cityLabel(h.c))}` : ''}<small>${plural(h.dojo.count, 'tip.dojo')}</small>`;
   else {
     const tr = tierOf(b.floors, BUILDING_TIERS);
-    tipEl.innerHTML = `${esc(displayName(b).full)}<small>${view.kind === 'region' ? `${esc(cityLabel(h.c))} · ` : ''}${b.belt === 'black' ? `🥋 ${t('belt.black').lower} · ` : ''}${tr.icon} ${buildingTier(tr.key).name} · ${floorsText(b.floors)}${b.week > 0 ? ` · <span class="up">${t('tip.week', { n: fmt.int(b.week) })}</span>` : ''}</small>`;
+    tipEl.innerHTML = `${esc(displayName(b).full)}<small>${view.kind === 'region' ? `${esc(cityLabel(h.c))} · ` : ''}${b.belt ? `🥋 ${t(`belt.${b.belt}`).lower} · ` : ''}${tr.icon} ${buildingTier(tr.key).name} · ${floorsText(b.floors)}${b.week > 0 ? ` · <span class="up">${t('tip.week', { n: fmt.int(b.week) })}</span>` : ''}</small>`;
   }
   tipEl.classList.remove('off');
   tip.position.set(h.x, h.h + 2, h.z);
