@@ -14,6 +14,8 @@ tool with another name; the open-source release renames it Tokenopolis.
   White belts count: the city's Dojo appears with the team's first belt and grows with every belt;
   the black pagoda stays for black belts only; the 🥋 map paints each building with its belt color.
 - The map key of the data maps no longer hides under the camera bar (both stack in the corner).
+- The mayor of the month got a rally in front of the statue (speech, crowd, confetti, a banner with
+  the name) instead of the official car; hovering any monument tells what it is and what earns it.
 - Privacy: unmatched belt entries and upstream error details no longer reach the browser; optional
   `ID_SALT` for person ids; the climb's fallback model comes from the bundled Rocketbox set.
 - Pages and modules renamed (`city.html`, `climb.html`); URL parameters, storage keys and the debug

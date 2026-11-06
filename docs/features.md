@@ -48,11 +48,11 @@ Weekly feats reset on Monday, so monuments appear during the week.
 
 **Life.** Cranes and scaffolding on buildings that grew this week, people on the sidewalks for open
 sessions, boats on the river, planes leaving the airport, a helicopter with a spotlight, a blimp
-towing the news, a mayor's car, and a monster (`?monster`, or the Konami code). Fireworks, confetti
+towing the news, the mayor's rally (a speech on a stage, a crowd and confetti), and a monster (`?monster`, or the Konami code). Fireworks, confetti
 and a countdown ring when a city reaches a milestone.
 
 **Panels.** Trophies, this week's builds, the weekly derby (two cities neck and neck), countdowns to
-the next milestones, the mayor of the month (most floors in the month, with a statue), advisors, the
+the next milestones, the mayor of the month (most floors last month, with a statue and a rally in front of it), advisors, the
 regional newspaper with classifieds, a live ticker of events, the legend, and the city hall sheet
 with everyone in the city. Panels hide with 👁️ or the `P` key (`?panels=0`).
 

@@ -208,6 +208,9 @@ body:has(#sheet:not([hidden])) .cam { display: none; }
 .sign em { display: block; margin-top: 2px; font-style: normal; font-size: 11px; letter-spacing: .3px; text-transform: none; color: var(--gold); font-weight: 800; }
 .sign:hover { background: rgba(60, 75, 90, .95); }
 [data-hidden~=names] .sign, [data-view=city] .sign { display: none; }
+.rally { padding: 3px 10px 4px; border-radius: 8px; background: rgba(38, 49, 59, .9); border: 2px solid var(--gold); color: #fff; font-size: 12px; font-weight: 900; white-space: nowrap; text-align: center; pointer-events: none; transform: scale(var(--signk, 1)); transform-origin: 50% 100%; }
+.rally small { display: block; font-size: 10px; font-weight: 700; color: var(--gold); }
+[data-hidden~=names] .rally, [data-timelapse] .rally { display: none; }
 .route { padding: 3px 9px; border-radius: 99px; background: rgba(255, 255, 255, .95); color: var(--ink); font-size: 12px; font-weight: 900; white-space: nowrap; pointer-events: none; box-shadow: 0 3px 10px rgba(0, 0, 0, .25); }
 .hovertip { padding: 6px 11px 7px; border-radius: 9px; background: rgba(38, 49, 59, .96); color: #fff; border: 2px solid #fff; font-size: 13.5px; font-weight: 900; white-space: nowrap; pointer-events: none; box-shadow: 0 4px 14px rgba(0, 0, 0, .4); margin-top: -22px; }
 .hovertip small { display: block; font-size: 11.5px; font-weight: 700; color: #c9d4de; }

@@ -174,6 +174,13 @@ export default {
 
   // etiquetas no mundo 3D
   float: { floors: { one: '+{n} andar', other: '+{n} andares' } },
+  // o palanque do prefeito (painel no palanque, letreiro em cima, dica do mouse)
+  rally: {
+    banner: 'Prefeito de {month}',
+    floors: '+{floors} em {lastMonth}',
+    label: 'prefeito de {month}',
+    tip: 'prefeito de {month} · +{floors} em {lastMonth} · toque para ver o prédio',
+  },
   tip: {
     dojo: { one: '{n} faixa no Dojo · toque para ver os mestres', other: '{n} faixas no Dojo · toque para ver os mestres' },
     week: '+{n} na semana',

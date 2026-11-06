@@ -10,6 +10,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { seed, tier, kind, L } from './world.js';
+import { t, displayName } from '../i18n/index.js';
+import { monthOf, floorsText } from './rules.js';
 
 const TILE_W = 4.8, TILE_H = 4; // one tile of the facade texture: 4 windows × 4 (visual) floors
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -65,6 +67,9 @@ const CLOUD = matte('#ffffff', { transparent: true, opacity: 0.9 });
 // night, red lanterns (not blinking) and the golden tip that glows
 const LACQUER = matte('#141418', { roughness: 0.38, metalness: 0.15, envMapIntensity: 0.6 }), TILES = matte('#2a2e36', { roughness: 0.7 });
 const VERMILION = matte('#b8322a', { roughness: 0.6 }), WOOD = matte('#2a211c'), DECK = matte('#6b4b2e'), STONE_D = matte('#9a948a');
+// the mayor's rally: stage, podium, cream stripes, speakers and bunting
+const STAGE = matte('#8a5a32'), PODIUM = matte('#5a3a20'), CREAM = matte('#e9e2c6'), SPEAKER = matte('#15181d', { roughness: 0.6 });
+const BUNTING = ['#e8463a', '#f2c14e', '#3d7bd9', '#7bc043'].map((h) => matte(h));
 const SAND = matte('#e8e0cc'), ROCK = matte('#4d5058'), SAKURA = matte('#f0a2c0', { roughness: 0.95, envMapIntensity: 0.2 }), TRUNK = matte('#5a4030');
 const POND = matte('#4b9ad6', { roughness: 0.15, metalness: 0.1 });
 const PAPER = nightly(reg(new THREE.MeshStandardMaterial({ color: '#d8c7a0', emissive: '#ffb45a', emissiveIntensity: 0, roughness: 0.9 })), 1.3);
@@ -381,7 +386,7 @@ export function makeKit(batch, hOf, wkOf, colorOf = null) {
     B(boxGeo(n * L * 0.92, 0.3, n * L * 0.92), STONE, x, 0, z);
     if (m.key === 'dojo') return dojoMon(m.level ?? n, n, x, z);
     if (m.key === 'obelisk') { B(boxGeo(4.4, 1.2, 4.4), STONE, x, 0.3, z); B(cylGeo(0.9, 1.5, 26, 4), matte('#ece6d6'), x, 1.5, z); B(coneGeo(1.1, 2.6, 4), GOLD_MAT, x, 27.5, z); B(sphGeo(0.5, 6), WARM_LIGHT, x, 30, z); }
-    else if (m.key === 'mayor') { B(boxGeo(3.4, 3, 3.4), matte('#e6e0d2'), x, 0.3, z); B(sphGeo(1.3, 10), BRONZE, x, 3.3, z, 0, [1, 0.6, 1]); B(sphGeo(0.9, 10), BRONZE, x, 4.6, z); B(cylGeo(1.1, 1.1, 0.2, 10), DARK, x, 5.3, z); B(cylGeo(0.65, 0.65, 1, 10), DARK, x, 5.5, z); }
+    else if (m.key === 'mayor') rally(m, x, z);
     else if (m.key === 'leadershipStatue') { B(boxGeo(3.6, 2.5, 3.6), matte('#e2dccd'), x, 0.3, z); B(cylGeo(0.9, 1.2, 5.5, 8), PATINA, x, 2.8, z); B(sphGeo(0.8, 10), PATINA, x, 9, z); const arm = cylGeo(0.25, 0.25, 4.5, 6); arm.rotateZ(-0.5); B(arm, PATINA, x + 0.8, 7.5, z); B(sphGeo(0.6, 8), WARM_LIGHT, x + 2.9, 11.7, z); }
     else if (m.key === 'tvTower') { B(cylGeo(1.4, 2, 2, 10), STONE, x, 0.3, z); B(cylGeo(0.5, 0.9, 40, 8), matte('#e9e6df'), x, 2.3, z); B(sphGeo(3, 14), SILVER, x, 33, z, 0, [1, 0.7, 1]); B(cylGeo(0.1, 0.2, 10, 5), SILVER, x, 42, z); B(sphGeo(0.5, 6), RED_LIGHT, x, 52.3, z); }
     else if (m.key === 'fountainSquare') { B(cylGeo(3.4, 3.6, 0.8, 20), matte('#bdb6a6'), x, 0.3, z); B(cylGeo(3, 3, 0.4, 20), matte('#5aa7e0', { roughness: 0.1, metalness: 0.2 }), x, 1, z); B(cylGeo(0.5, 0.7, 1.6, 10), matte('#bdb6a6'), x, 1.3, z); B(coneGeo(0.5, 2.6, 8), matte('#bfe6ff', { transparent: true, opacity: 0.8 }), x, 2.9, z); }
@@ -485,6 +490,40 @@ export function makeKit(batch, hOf, wkOf, colorOf = null) {
   function pond(x, z, rad) { B(cylGeo(rad, rad, 0.12, 24), POND, x, 0.3, z); B(NI(new THREE.TorusGeometry(rad * 0.6, 0.22, 6, 20, Math.PI)), VERMILION, x, 0.4, z); }
   function zen(x, z, w, d) { B(boxGeo(w, 0.12, d), SAND, x, 0.3, z); for (let i = 0; i < 4; i++) B(boxGeo(w - 1, 0.03, 0.08), matte('#cfc5ab'), x, 0.42, z - d / 2 + 0.8 + i * (d - 1.6) / 3); B(sphGeo(0.7, 8), ROCK, x - w * 0.25, 0.7, z + d * 0.1, 0, [1, 0.7, 1]); B(sphGeo(0.5, 8), ROCK, x + w * 0.2, 0.6, z - d * 0.15, 0, [1.2, 0.7, 1]); }
   function bellTower(x, z) { for (const [a, c2] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) B(boxGeo(0.3, 3.2, 0.3), VERMILION, x + a * 1.4, 0.3, z + c2 * 1.4); B(boxGeo(3.4, 0.3, 3.4), DECK, x, 0.3, z); B(eaveGeo(3.0, 3.0, 1.0, 1.4), TILES, x, 3.5, z); B(cylGeo(0.55, 0.6, 0.9, 10), GOLD_GLOW, x, 1.6, z); B(sphGeo(0.25, 8), GOLD_GLOW, x, 2.6, z); }
+  // ───────── the mayor's rally: the statue at the back of the lot and, in front of it, the stage ─────────
+  // The static part lives here (platform, striped skirt, steps, podium, microphone, banner with the
+  // name, poles with bunting, speakers, lamps); the mayor's figure, the crowd and the confetti are
+  // animated by life.js from the 'rally' mark.
+  function rally(m, x, z) {
+    const sz = z - 3.2;
+    B(boxGeo(3.4, 3, 3.4), matte('#e6e0d2'), x, 0.3, sz); B(sphGeo(1.3, 10), BRONZE, x, 3.3, sz, 0, [1, 0.6, 1]); B(sphGeo(0.9, 10), BRONZE, x, 4.6, sz); B(cylGeo(1.1, 1.1, 0.2, 10), DARK, x, 5.3, sz); B(cylGeo(0.65, 0.65, 1, 10), DARK, x, 5.5, sz);
+    const pz = z + 1.2, PW = 7, PD = 3.6, PH = 1.1, top = 0.3 + PH;
+    B(boxGeo(PW, PH, PD), STAGE, x, 0.3, pz);
+    for (let i = 0; i < 7; i++) B(boxGeo(PW / 7 - 0.08, PH - 0.1, 0.12), i % 2 ? VERMILION : CREAM, x - PW / 2 + PW / 14 + i * PW / 7, 0.3, pz + PD / 2 + 0.02);
+    B(boxGeo(1.2, 0.35, 1.0), PODIUM, x + PW / 2 + 0.6, 0.3, pz + 0.6); B(boxGeo(1.2, 0.7, 1.0), PODIUM, x + PW / 2 + 0.6, 0.3, pz - 0.4);
+    B(boxGeo(1.1, 1.25, 0.7), PODIUM, x, top, pz + 1.1); B(boxGeo(1.3, 0.1, 0.9), STAGE, x, top + 1.25, pz + 1.1);
+    B(cylGeo(0.03, 0.03, 0.7, 6), DARK, x + 0.3, top + 1.35, pz + 1.0); B(sphGeo(0.09, 6), DARK, x + 0.3, top + 2.1, pz + 1.0);
+    for (const sx of [-PW / 2 + 0.2, PW / 2 - 0.2]) B(cylGeo(0.06, 0.06, 4.2, 6), DARK, x + sx, top, pz - PD / 2 + 0.25);
+    for (let i = 0; i < 12; i++) { const fx = -PW / 2 + 0.5 + i * (PW - 1) / 11, sag = 0.35 * Math.sin((i / 11) * Math.PI); B(boxGeo(0.42, 0.42, 0.04).clone().rotateZ(Math.PI / 4), BUNTING[i % 4], x + fx, top + 4.0 - sag, pz - PD / 2 + 0.3); }
+    for (const sx of [-PW / 2 + 0.6, PW / 2 - 0.6]) { B(cylGeo(0.05, 0.05, 1.2, 6), DARK, x + sx, top, pz + 0.6); B(boxGeo(0.7, 0.9, 0.5), SPEAKER, x + sx, top + 1.2, pz + 0.6); }
+    for (const sx of [-4.6, 4.6]) { B(cylGeo(0.08, 0.08, 6.2, 6), DARK, x + sx, 0.3, pz + 3.9); B(sphGeo(0.25, 8), WARM_LIGHT, x + sx, 6.6, pz + 3.9); }
+    B(boxGeo(PW - 0.4, 2.6, 0.18), matte('#2b3542'), x, top + 0.1, pz - PD / 2 + 0.25);
+    B(NI(new THREE.PlaneGeometry(PW - 0.6, 2.4)), bannerMat(m), x, top + 0.2 + 1.2, pz - PD / 2 + 0.35);
+    marks.push({ kind: 'rally', x, y: top, z: pz, person: m.person, month: m.month, lastMonth: m.lastMonth });
+  }
+  // The banner's canvas: "MAYOR FOR NOVEMBER", the name and last month's floors (lit at night).
+  function bannerMat(m) {
+    const cv = document.createElement('canvas'); cv.width = 512; cv.height = 200; const c = cv.getContext('2d');
+    c.fillStyle = '#1d2630'; c.fillRect(0, 0, 512, 200); c.fillStyle = '#f2b705'; c.fillRect(0, 0, 512, 8); c.fillRect(0, 192, 512, 8);
+    c.textAlign = 'center';
+    const fit = (text, max, size) => { let s = size; c.font = `900 ${s}px Nunito, "Segoe UI", sans-serif`; while (c.measureText(text).width > max && s > 14) { s -= 2; c.font = `900 ${s}px Nunito, "Segoe UI", sans-serif`; } return text; };
+    c.fillStyle = '#f2b705'; c.fillText(fit(t('rally.banner', { month: monthOf(m.month, 'period.thisMonth') }).toUpperCase(), 470, 26), 256, 58);
+    c.fillStyle = '#ffffff'; c.fillText(fit(displayName(m.person).full, 470, 50), 256, 120);
+    c.fillStyle = '#cfd8e3'; c.fillText(fit(t('rally.floors', { floors: floorsText(m.person.lastMonth), lastMonth: monthOf(m.lastMonth, 'period.lastMonth') }), 470, 24), 256, 166);
+    const map = new THREE.CanvasTexture(cv); map.colorSpace = THREE.SRGBColorSpace; map.anisotropy = 4;
+    return nightly(reg(new THREE.MeshStandardMaterial({ map, emissiveMap: map, emissive: new THREE.Color('#ffffff'), emissiveIntensity: 0, roughness: 0.7 })), 1.4);
+  }
+
   // The city's Dojo: Dojo (1 black belt, 1 lot), Temple (3, 2×2) and Great Temple (7, 3×3). The
   // level comes from the count; n is how much fit in the field (the great temple fits where it can).
   function dojoMon(level, n, x, z) {

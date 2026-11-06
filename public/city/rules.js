@@ -78,8 +78,8 @@ export function monumentsOf(c, x) {
 }
 
 // ───────── mayor of the month ─────────
-// Whoever built the most last month governs the city this month (statue with the name and an
-// official car); the current month's race decides the next one.
+// Whoever built the most last month governs the city this month (a statue and, in front of it, a
+// rally where the mayor speaks); the current month's race decides the next one.
 const topBy = (list, key) => list.reduce((best, b) => (b[key] > 0 && (!best || b[key] > best[key]) ? b : best), null);
 export const mayorOf = (c) => topBy(c.buildings, 'lastMonth');
 export const raceOf = (c) => topBy(c.buildings, 'month');

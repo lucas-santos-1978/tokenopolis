@@ -1,4 +1,5 @@
-// Life in the city: people on the sidewalks (from the open sessions and whoever is building now),
+// Life in the city: people on the sidewalks (from the open sessions and whoever is building now), the
+// mayor's rally (speech, crowd and confetti on the stage of the mayor's lot),
 // boats on the river (they vanish under the bridges), planes taking off from the airport, the
 // local TV helicopter circling the tallest building in view (with a searchlight at night), the
 // airship with the news banner, the Cloud Tower's beacon, the Space Elevator's cabin, a plane
@@ -10,7 +11,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { t, plural, displayName } from '../i18n/index.js';
 import { L, hash, seed } from './world.js';
 import { matte, SILVER, DARK, WARM_LIGHT, RED_LIGHT, GOLD_MAT } from './buildings.js';
-import { floorsText } from './rules.js';
+import { floorsText, monthOf } from './rules.js';
 
 const NI = (g) => (g.index ? g.toNonIndexed() : g);
 const box = (w, h, d, mat, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); m.castShadow = true; return m; };
@@ -30,9 +31,10 @@ export function makeLife({ scene, world, data, wx, wz, marks, airports, size }) 
     for (let j = 0; j < m; j++) walkers.push({ ln: Ln, s: hash(i, j, 18), v: (1.2 + hash(i, j, 19) * 1.2) / ((Ln.b - Ln.a) * L), dir: hash(i, j, 20) < 0.5 ? 1 : -1, side: hash(i, j, 22) < 0.5 ? -0.42 : 0.42, col: WALK_COLORS[Math.floor(hash(i, j, 23) * 6)] });
   });
   walkers.length = Math.min(walkers.length, 320);
+  const peopleGeo = mergeGeometries([NI(new THREE.CylinderGeometry(0.32, 0.26, 1.3, 7).translate(0, 0.65, 0)), NI(new THREE.SphereGeometry(0.3, 8, 8).translate(0, 1.6, 0))], false);
   let people = null;
   if (walkers.length) {
-    const geo = mergeGeometries([NI(new THREE.CylinderGeometry(0.32, 0.26, 1.3, 7).translate(0, 0.65, 0)), NI(new THREE.SphereGeometry(0.3, 8, 8).translate(0, 1.6, 0))], false);
+    const geo = peopleGeo;
     people = new THREE.InstancedMesh(geo, matte('#ffffff', { roughness: 0.9 }), walkers.length);
     const col = new THREE.Color(); walkers.forEach((w, i) => people.setColorAt(i, col.set(w.col)));
     people.castShadow = true; group.add(people);
@@ -92,6 +94,36 @@ export function makeLife({ scene, world, data, wx, wz, marks, airports, size }) 
   });
   const cabins = marks.filter((m) => m.kind === 'cable').map((m) => { const g = new THREE.Group(); g.add(box(2.2, 3.2, 2.2, matte('#eef2f5')), box(1.6, 0.9, 2.3, matte('#3ef0ff'))); g.position.set(m.x, m.y, m.z); group.add(g); return { g, y0: m.y, seed: m.seed }; });
 
+  // ───────── the mayor's rally: the mayor speaking on the stage, the crowd in front and the confetti ─────────
+  const rallies = marks.filter((m) => m.kind === 'rally').map((m, i) => {
+    const g = new THREE.Group(); g.position.set(m.x, m.y, m.z); group.add(g);
+    const suit = matte('#2a3340'), skin = matte('#f1c9a5'), col = new THREE.Color();
+    const mayor = new THREE.Group(); mayor.position.set(0, 0, 0.35); mayor.scale.setScalar(1.35); g.add(mayor);
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.26, 1.3, 7), suit); trunk.position.y = 0.65; trunk.castShadow = true;
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 8), skin); head.position.y = 1.6; head.castShadow = true;
+    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.06, 10), DARK); brim.position.y = 1.82;
+    const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.42, 10), DARK); crown.position.y = 2.05;
+    const sash = new THREE.Mesh(new THREE.BoxGeometry(0.18, 1.0, 0.72), GOLD_MAT); sash.position.y = 0.85; sash.rotation.z = 0.6;
+    const arm = new THREE.Group(); arm.position.set(0.36, 1.2, 0);
+    const armM = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.9, 6), suit); armM.position.y = 0.45; armM.castShadow = true;
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.11, 6, 6), skin); hand.position.y = 0.95;
+    arm.add(armM, hand); mayor.add(trunk, head, brim, crown, sash, arm);
+    // the crowd stands on the ground in front of the stage, facing it
+    const n = 12, crowd = new THREE.InstancedMesh(peopleGeo, matte('#ffffff', { roughness: 0.9 }), n), seats = [];
+    for (let j = 0; j < n; j++) { seats.push({ x: -5 + hash(i, j, 41) * 10, z: 3.1 + hash(i, j, 42) * 2.4, ph: hash(i, j, 43) * 6.3, ry: Math.PI + (hash(i, j, 44) - 0.5) * 0.5 }); crowd.setColorAt(j, col.set(WALK_COLORS[Math.floor(hash(i, j, 45) * 6)])); }
+    crowd.castShadow = true; crowd.position.y = -m.y; g.add(crowd);
+    // confetti, in bursts of 6 s every 16 s
+    const nc = 36, conf = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.18, 0.18), new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }), nc), bits = [];
+    for (let j = 0; j < nc; j++) { bits.push({ x: -3.5 + hash(i, j, 46) * 7, z: 0.6 + hash(i, j, 47) * 4, d: hash(i, j, 48), r: hash(i, j, 49) * 6.3 }); conf.setColorAt(j, col.set(['#e8463a', '#f2c14e', '#3d7bd9', '#7bc043', '#f2f2f2'][j % 5])); }
+    conf.visible = false; g.add(conf);
+    // the label over the stage, like the city signs (it shrinks from afar with --signk)
+    const wrap = document.createElement('div'), el = document.createElement('div'), name = document.createElement('b'), sub = document.createElement('small');
+    el.className = 'rally'; name.textContent = `🎩 ${displayName(m.person).full}`; sub.textContent = t('rally.label', { month: monthOf(m.month, 'period.thisMonth') });
+    el.append(name, sub); wrap.append(el);
+    const lab = new CSS2DObject(wrap); lab.position.set(0, 7.2, 0); g.add(lab); labels.push(lab);
+    return { arm, mayor, crowd, seats, conf, bits, seed: i * 3.7 };
+  });
+
   // ───────── plane in the sky ─────────
   const skyPlane = planeOf(2.2); skyPlane.visible = false; group.add(skyPlane);
 
@@ -134,6 +166,20 @@ export function makeLife({ scene, world, data, wx, wz, marks, airports, size }) 
         people.setMatrixAt(i, _m.compose(_p, _q, _s));
       });
       people.instanceMatrix.needsUpdate = true;
+    }
+    // the mayor's rallies: the arm waves, the crowd bobs, the confetti falls now and then
+    for (const ra of rallies) {
+      ra.arm.rotation.z = -0.55 - 0.45 * Math.sin(sec * 3.2 + ra.seed);
+      ra.mayor.rotation.y = Math.sin(sec * 0.6 + ra.seed) * 0.35;
+      ra.seats.forEach((p, j) => { _p.set(p.x, Math.abs(Math.sin(sec * 3 + p.ph)) * 0.1, p.z); _q.setFromAxisAngle(_up, p.ry); ra.crowd.setMatrixAt(j, _m.compose(_p, _q, _s)); });
+      ra.crowd.instanceMatrix.needsUpdate = true;
+      const cyc = (sec + ra.seed) % 16;
+      ra.conf.visible = cyc < 6;
+      if (ra.conf.visible) {
+        const u = cyc / 6;
+        ra.bits.forEach((bt, j) => { const uu = (u + bt.d) % 1; _p.set(bt.x + Math.sin(sec * 2 + bt.r) * 0.4, 6.4 - uu * 6, bt.z); _q.setFromAxisAngle(_up, bt.r + sec * 2); ra.conf.setMatrixAt(j, _m.compose(_p, _q, _s)); });
+        ra.conf.instanceMatrix.needsUpdate = true;
+      }
     }
     // boats: they vanish under the bridges
     for (const bt of boats) {
@@ -194,7 +240,7 @@ export function makeLife({ scene, world, data, wx, wz, marks, airports, size }) 
     return { shake };
   }
   function setTarget(t) { heliTarget = t; }
-  function dispose() { scene.remove(group); bannerEl.remove(); group.traverse((m) => { if (m.isMesh) m.geometry.dispose(); }); }
+  function dispose() { scene.remove(group); bannerEl.remove(); for (const l of labels) l.element.remove(); group.traverse((m) => { if (m.isMesh) m.geometry.dispose(); }); }
   return { group, step, setTarget, setBlimpMsgs, summon, dispose, get monster() { return !!monster; } };
 }
 

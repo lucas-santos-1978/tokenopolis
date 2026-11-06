@@ -27,7 +27,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { skyColorsAt, zoneHour } from '../lib/sky.js';
 import { t, plural, fmt, cityLabel, displayName } from '../i18n/index.js';
-import { tierOf, BUILDING_TIERS, TEN_BI, advisors, context, mayorOf, floorsText, cityTier, buildingTier } from './rules.js';
+import { tierOf, BUILDING_TIERS, TEN_BI, advisors, context, floorsText, cityTier, buildingTier, monthOf } from './rules.js';
 import { L, seed, hash, kind, buildWorld, groundCanvas, dojoOf } from './world.js';
 import { makeKit, craneJib, Batcher, mats, lit, blinkMats, matte, setAnisotropy, SILVER, DARK, WARM_LIGHT, HOUSE_H, STYLE_PAL } from './buildings.js';
 import { initPanels, renderPanels, countdownKey, queueToast, liveEvents, hasToasts, keyOf, esc, staleText, setMe as panelsSetMe, renderFinder, finderKey, locatePerson, MAPKEYS, mapColorFor, renderMapKey, renderPaper } from './panels.js';
@@ -159,6 +159,8 @@ const bldGroup = new THREE.Group(); cityGroup.add(bldGroup); // only the buildin
 const hitGroup = new THREE.Group(); scene.add(hitGroup);
 const hitByKey = new Map(); // city|person → { x, z, h, b, c }
 const dojoHits = new Map(); // city → { x, z, h, w, dojo, c } of the city's Dojo
+const MON_H = { obelisk: 31, airport: 12, stadium: 14, ferrisWheel: 20, centralPark: 6, tvTower: 53, leadershipStatue: 12, fountainSquare: 5, mayor: 8 }; // hit box heights
+const MON_W = { obelisk: 5, tvTower: 6, leadershipStatue: 5 }; // the thin ones get a narrow hit box, so they do not hide what stands behind them
 let anims = [], cars = null, kit = null, groundTex = null, life = null, rockets = [];
 const fx = makeEffects(scene);
 const wx = (gx) => (gx + 0.5 - GW / 2) * L, wz = (gy) => (gy + 0.5 - GH / 2) * L;
@@ -234,11 +236,11 @@ function buildScene() {
     } else if (o.kind === 'mon') {
       const mx = x + (o.size - 1) * L / 2, mz = z + (o.size - 1) * L / 2;
       const out = kit.monument(o.m, o.size, mx, mz);
-      if (o.m.key === 'dojo') { // the city's Dojo can be touched too: the masters' card
-        const h = out?.h ?? 8, w = o.size * L, hit = new THREE.Mesh(new THREE.BoxGeometry(w * 0.95, h + 1, w * 0.95), DARK);
-        hit.position.set(mx, (h + 1) / 2, mz); hit.layers.set(1); hit.userData = { dojo: o.m, c: o.c, h, x: mx, z: mz, w };
-        hitGroup.add(hit); dojoHits.set(o.c.id, hit.userData);
-      }
+      // every monument can be hovered (its name and what earns it); the Dojo also opens the masters' card
+      const h = out?.h ?? MON_H[o.m.key] ?? 8, w = MON_W[o.m.key] ?? o.size * L * 0.95, hit = new THREE.Mesh(new THREE.BoxGeometry(w, h + 1, w), DARK);
+      hit.position.set(mx, (h + 1) / 2, mz); hit.layers.set(1);
+      hit.userData = o.m.key === 'dojo' ? { dojo: o.m, c: o.c, h, x: mx, z: mz, w } : { mon: o.m, c: o.c, h, x: mx, z: mz, w };
+      hitGroup.add(hit); if (o.m.key === 'dojo') dojoHits.set(o.c.id, hit.userData);
       if (o.m.key === 'airport') airports.push({ x0: mx - o.size * L * 0.5, x1: mx + o.size * L * 0.5, z: mz - 4 });
     } else if (o.kind === 'tree') trees.push({ x: x - L / 2 + o.u * L, z: z - L / 2 + o.v * L, s: o.s });
     else if (o.kind === 'lamp') lamps.push({ x: x + L * 0.36, z: z + L * 0.36 });
@@ -306,12 +308,6 @@ function makeCars() {
   for (const ln of world.lanes) {
     const [a, b] = laneAB(ln), len = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.max(1, Math.round(len / (ln.hwy ? 34 : 48)));
     for (let i = 0; i < n; i++) for (const dir of [1, -1]) list.push({ a, b, len, t: r(), v: (6 + r() * 5) / len, dir, col: ln.gold ? '#f2b705' : CAR_COLORS[Math.floor(r() * CAR_COLORS.length)] });
-  }
-  // the mayor's official car: black, driving around the mayor's city
-  for (const c of world.cities) {
-    if (!mayorOf(c)) continue;
-    const ln = world.lanes.find((x) => x.city === c && !x.hwy && x.b - x.a >= 3);
-    if (ln) { const [a, b] = laneAB(ln), len = Math.hypot(b[0] - a[0], b[1] - a[1]); list.push({ a, b, len, t: 0, v: 4.5 / len, dir: 1, col: '#1d2630', official: true }); }
   }
   if (!list.length) return null;
   const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(2.4, 1.1, 1.3), matte('#ffffff', { roughness: 0.4, metalness: 0.3, envMapIntensity: 0.8 }), list.length);
@@ -460,7 +456,7 @@ const selRing = new THREE.Mesh(new THREE.TorusGeometry(1, 0.12, 8, 40).rotateX(M
 selBeam.visible = selRing.visible = false; scene.add(selBeam, selRing);
 const placeHi = (g, h) => { const w = (h.w ?? L) * 1.02; g.position.set(h.x, 0, h.z); g.scale.set(w, h.h + 1, w); g.visible = true; };
 const selectedHit = () => (selected?.dojo ? dojoHits.get(selected.city) : selected && hitByKey.get(keyOf(selected.city, selected.person)));
-const isSelectedHit = (h) => !!selected && h.c.id === selected.city && (h.dojo ? !!selected.dojo : !selected.dojo && h.b.id === selected.person);
+const isSelectedHit = (h) => !!selected && h.c.id === selected.city && (h.dojo ? !!selected.dojo : h.mon ? false : !selected.dojo && h.b.id === selected.person);
 function stepHighlights(now) {
   const hh = !tl && hovered && hoveredHit;
   if (hh && !isSelectedHit(hoveredHit)) placeHi(hoverHi, hoveredHit); else hoverHi.visible = false;
@@ -491,17 +487,27 @@ renderer.domElement.addEventListener('pointerup', (e) => {
   closePopovers();
   if (!hit) { if (selected) select(null); return; }
   if (hit.dojo) { if (view.kind === 'city' && hit.c.id === view.id) selectDojo(hit.c.id); else goCity(hit.c.id, { dojo: true }); return; }
+  if (hit.mon) { // the rally opens the mayor's building; the other monuments only take you to their city
+    const person = hit.mon.key === 'mayor' ? hit.mon.person.id : null;
+    if (view.kind === 'city' && hit.c.id === view.id) { if (person) select(hit.c.id, person); } else goCity(hit.c.id, person);
+    return;
+  }
   if (view.kind === 'city' && hit.c.id === view.id) select(hit.c.id, hit.b.id); else goCity(hit.c.id, hit.b.id);
 });
 function pick() { ray.setFromCamera(ptr, camera); return ray.intersectObjects(hitGroup.children, false)[0]?.object.userData ?? null; }
 function pickHover() {
-  const h = ptr.x < -1 || tl ? null : pick(), b = h ? h.b ?? h.dojo : null;
+  const h = ptr.x < -1 || tl ? null : pick(), b = h ? h.b ?? h.dojo ?? h.mon : null;
   renderer.domElement.style.cursor = b ? 'pointer' : '';
   if (b === hovered) return;
   hovered = b; hoveredHit = h;
   if (!b) { tipEl.classList.add('off'); return; }
   if (h.dojo) tipEl.innerHTML = `🥋 ${esc(t(`dojoLevel.${h.dojo.levelKey}`).name)}${view.kind === 'region' ? ` · ${esc(cityLabel(h.c))}` : ''}<small>${plural(h.dojo.count, 'tip.dojo')}</small>`;
-  else {
+  else if (h.mon) { // a monument: its name and what earns it (the rally: the mayor and last month's floors)
+    const where = view.kind === 'region' ? `${esc(cityLabel(h.c))} · ` : '', m = h.mon;
+    tipEl.innerHTML = m.key === 'mayor'
+      ? `🎩 ${esc(displayName(m.person).full)}<small>${where}${esc(t('rally.tip', { month: monthOf(m.month, 'period.thisMonth'), floors: floorsText(m.person.lastMonth), lastMonth: monthOf(m.lastMonth, 'period.lastMonth') }))}</small>`
+      : `${m.icon} ${esc(t(`monument.${m.key}`).name)}<small>${where}${esc(t(`monument.${m.key}`).req)}</small>`;
+  } else {
     const tr = tierOf(b.floors, BUILDING_TIERS);
     tipEl.innerHTML = `${esc(displayName(b).full)}<small>${view.kind === 'region' ? `${esc(cityLabel(h.c))} · ` : ''}${b.belt ? `🥋 ${t(`belt.${b.belt}`).lower} · ` : ''}${tr.icon} ${buildingTier(tr.key).name} · ${floorsText(b.floors)}${b.week > 0 ? ` · <span class="up">${t('tip.week', { n: fmt.int(b.week) })}</span>` : ''}</small>`;
   }

@@ -109,7 +109,7 @@ export function buildWorld(d, { allMonuments = false } = {}) {
     const placed = [
       ...(dojo ? [{ key: 'dojo', icon: '🥋', size: dojo.level, level: dojo.level, levelKey: dojo.key, count: dojo.count, blacks: dojo.blacks }] : []), // first: it stays close to the city
       ...c.monuments.filter((k) => k.ok || allMonuments),
-      ...(mayor ? [{ key: 'mayor', icon: '🎩', size: 1, person: mayor }] : []),
+      ...(mayor ? [{ key: 'mayor', icon: '🎩', size: 1, person: mayor, month: d.month, lastMonth: d.lastMonth }] : []),
     ];
     for (const m of placed) {
       let best = null;

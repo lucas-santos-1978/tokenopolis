@@ -90,6 +90,7 @@ export default {
     centralPark: { name: 'Central Park', a: 'a central park', lower: 'central park', plural: 'central parks', req: 'reach 50 buildings' },
     tvTower: { name: 'TV Tower', a: 'a TV tower', lower: 'TV tower', plural: 'TV towers', req: 'have a skyscraper (450 floors)' },
     leadershipStatue: { name: 'Leadership Statue', a: 'a Leadership Statue', lower: 'leadership statue', plural: 'leadership statues', req: 'lead the week’s builds' },
+    mayor: { name: 'Mayor’s rally', a: 'a mayor’s rally', lower: 'mayor’s rally', plural: 'mayor’s rallies', req: 'whoever built the most in the city last month' },
     fountainSquare: { name: 'Fountain Square', a: 'a fountain square', lower: 'fountain square', plural: 'fountain squares', req: '3 newcomers in one week' },
   },
 

@@ -97,6 +97,7 @@ export default {
     centralPark: { name: 'Parque Central', a: 'um parque central', lower: 'parque central', plural: 'parques centrais', fem: false, req: 'chegar a 50 prédios' },
     tvTower: { name: 'Torre de TV', a: 'uma torre de TV', lower: 'torre de TV', plural: 'torres de TV', fem: true, req: 'ter um arranha-céu (450 andares)' },
     leadershipStatue: { name: 'Estátua da Liderança', a: 'uma Estátua da Liderança', lower: 'estátua da liderança', plural: 'estátuas da liderança', fem: true, req: 'liderar as obras da semana' },
+    mayor: { name: 'Palanque do prefeito', a: 'um palanque do prefeito', lower: 'palanque do prefeito', plural: 'palanques do prefeito', fem: false, req: 'quem mais construiu na cidade no mês passado' },
     fountainSquare: { name: 'Praça da Fonte', a: 'uma praça da fonte', lower: 'praça da fonte', plural: 'praças da fonte', fem: true, req: '3 estreias numa semana' },
   },
 

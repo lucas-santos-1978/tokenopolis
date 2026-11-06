@@ -170,6 +170,13 @@ export default {
 
   // labels in the 3D world
   float: { floors: { one: '+{n} floor', other: '+{n} floors' } },
+  // the mayor's rally (banner on the stage, label over it, hover tip)
+  rally: {
+    banner: 'Mayor for {month}',
+    floors: '+{floors} in {lastMonth}',
+    label: 'mayor for {month}',
+    tip: 'mayor for {month} · +{floors} in {lastMonth} · tap to see the building',
+  },
   tip: {
     dojo: { one: '{n} belt in the Dojo · tap to see the masters', other: '{n} belts in the Dojo · tap to see the masters' },
     week: '+{n} this week',
