@@ -69,6 +69,11 @@ the bottom (the touched building is framed above them), the camera bar keeps spi
 (drag to turn, pinch to zoom), and from afar only the city names show. Phones also get a lighter
 canvas (pixel ratio 1.25, a 2,048 shadow map).
 
+**Reduced motion.** A device that asks to reduce motion (iOS Reduce Motion, Android "Remove
+animations", which some battery savers switch on) keeps the slow everyday life (cars, people, cranes,
+flames and smoke, the Ferris wheel, boats, clouds) and drops the bursts: fireworks, sparkles, confetti,
+rockets, blinking lights and the monster.
+
 **Tools.** 🔍 find a building, 📍 "my building" (a pin that follows you between visits), 🗺️ data
 maps (`?map=now|week|network|model|belts`; ⚡ now, 📈 week, 🚩 network, 🧠 model, 🥋 belts), 📰 newspaper, 🎬 history (a time-lapse since day one,
 the timeline of a building, and a race of the cities week by week), ❔ help with a tab that builds

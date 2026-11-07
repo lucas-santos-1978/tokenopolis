@@ -41,6 +41,10 @@ const params = new URLSearchParams(location.search);
 const LOW_Q = params.get('quality') === 'low';
 const DEMO = params.has('demo'); // demo mode: the fictional region of the demo source (the API gets ?demo)
 const API_Q = DEMO ? '?demo' : '';
+// A device that asks to reduce motion (iOS Reduce Motion; Android "Remove animations", which some
+// battery savers turn on by themselves) keeps the city's slow everyday life: cars, people, cranes,
+// flames and smoke, the Ferris wheel, boats, clouds. It loses only the bursts (ANIM): fireworks,
+// sparkles, confetti, rockets, blinking lights, the monster and its shake.
 const ANIM = !matchMedia('(prefers-reduced-motion: reduce)').matches;
 const REFRESH_MS = 60_000, TOUR_MS = 24_000;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -708,17 +712,19 @@ function frame(now) {
   sun.target.position.copy(controls.target); sun.position.copy(controls.target).addScaledVector(sunDir, 900);
   document.documentElement.style.setProperty('--signk', clamp(420 / dist, 0.5, 1).toFixed(2));
   const night = 1 - dayF, sec = now / 1000;
+  // everyday life: always moving
+  stepCars(dt);
+  for (const a of anims) {
+    if (a.kind === 'cranes') stepCranes(a, dt);
+    else if (a.kind === 'wheel') { a.obj.rotation.z -= a.speed * dt; a.obj.children.forEach((c) => { if (c.userData.cabin) c.rotation.z = -a.obj.rotation.z; }); }
+  }
+  const blink = ANIM && Math.sin(now / 350) <= 0.2 ? 0.15 : 1; // reduced motion: the lights stay on, steady
+  for (const m of blinkMats) m.emissiveIntensity = (m.userData.base ?? 2.5) * Math.max(night, 0.12) * blink;
+  clouds.children.forEach((s) => { s.position.x += s.userData.v * dt; if (s.position.x > 1400) s.position.x = -1400; });
+  const lf = life?.step(dt, now, night, sec);
+  if (lf?.gone) queueToast({ icon: '🦖', title: t('toast.monsterGone.title'), text: t('toast.monsterGone.text'), ms: 5000, quiet: true });
+  // the bursts: only when the device does not ask to reduce motion
   if (ANIM) {
-    stepCars(dt);
-    for (const a of anims) {
-      if (a.kind === 'cranes') stepCranes(a, dt);
-      else if (a.kind === 'wheel') { a.obj.rotation.z -= a.speed * dt; a.obj.children.forEach((c) => { if (c.userData.cabin) c.rotation.z = -a.obj.rotation.z; }); }
-    }
-    const blink = Math.sin(now / 350) > 0.2 ? 1 : 0.15;
-    for (const m of blinkMats) m.emissiveIntensity = (m.userData.base ?? 2.5) * Math.max(night, 0.12) * blink;
-    clouds.children.forEach((s) => { s.position.x += s.userData.v * dt; if (s.position.x > 1400) s.position.x = -1400; });
-    const lf = life?.step(dt, now, night, sec);
-    if (lf?.gone) queueToast({ icon: '🦖', title: t('toast.monsterGone.title'), text: t('toast.monsterGone.text'), ms: 5000, quiet: true });
     if (lf?.shake) camera.position.add(new THREE.Vector3((Math.random() - 0.5) * 1.6, (Math.random() - 0.5) * 1.2, (Math.random() - 0.5) * 1.6));
     // background life: sparkles on whoever is building now; at night, fireworks over the leading city
     if (data && now >= ambientAt) {

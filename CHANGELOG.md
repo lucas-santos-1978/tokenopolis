@@ -5,6 +5,12 @@ tool with another name; the open-source release renames it Tokenopolis.
 
 ## Unreleased
 
+- A device that asks to reduce motion (common on phones, sometimes switched on by battery savers) no
+  longer freezes the city: cars, people, cranes, flames and smoke keep moving; only fireworks,
+  sparkles, confetti, rockets, blinking lights and the monster stay off.
+
+## v26 (2026-11-06)
+
 - Abandoned buildings: after more than 15 days without Claude a building catches fire (soot, flames
   on the roof and out of the windows, smoke), after more than 30 it is a pile of rubble; using Claude
   again puts it back up. `IDLE_FIRE_DAYS` / `IDLE_RUBBLE_DAYS` (0 turns a stage off), `?ruins=0`,
