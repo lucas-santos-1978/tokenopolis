@@ -3,7 +3,7 @@
 // and what changed between two readings (liveEvents).
 
 import { t, plural, fmt, cityLabel, displayName } from '../i18n/index.js';
-import { tierOf, BUILDING_TIERS, TEN_BI, monumentsOf, context, mayorOf, raceOf, derby, countdowns, paperHtml, cityTier, buildingTier, monumentText, monthOf, floorsText, htmlCity } from './rules.js';
+import { tierOf, BUILDING_TIERS, TEN_BI, monumentsOf, context, mayorOf, raceOf, derby, countdowns, paperHtml, cityTier, buildingTier, monumentText, monthOf, floorsText, htmlCity, ruinOf } from './rules.js';
 import { dojoOf } from './world.js';
 
 const $ = (s) => document.querySelector(s);
@@ -168,12 +168,15 @@ function renderSheet(c, selected) {
     b.model && t('sheet.badge.model', { model: t(`model.${b.model}`).name, pct: fmt.percent(b.modelShare) }),
     b.cities >= 3 ? t('sheet.badge.corp', { cities: plural(b.cities, 'count.city') }) : b.cities === 2 && t('sheet.badge.network', { cities: plural(2, 'count.city') }),
   ].filter(Boolean);
+  const ruin = ruinOf(b), state = ruin // on fire or rubble: how long without Claude, instead of "idle now"
+    ? `<span class="ruin ${ruin}" title="${esc(t('ruin.note'))}">${t(`ruin.${ruin}`, { days: plural(b.idle, 'count.day') })}</span>`
+    : b.now ? `<span>${t('sheet.now')}</span>` : `<span class="off">${t('sheet.idle')}</span>`;
   el.innerHTML = `
     <button class="close" type="button" data-close aria-label="${esc(t('html.close'))}">×</button>
     <div class="who"><b>${esc(name(b))}</b><span>${esc(t('sheet.ranks', { c, inCity: fmt.ordinal(inCity), inRegion: fmt.ordinal(inRegion) }))}</span></div>
     <div class="nums"><div><b>${fmt.int(b.floors)}</b><span>${plural(Math.round(b.floors), 'sheet.floors')}</span></div><div class="up"><b>+${fmt.int(b.week)}</b><span>${t('sheet.week')}</span></div><div><b>+${fmt.int(b.today)}</b><span>${t('sheet.today')}</span></div></div>
     <div class="ptier"><div class="row"><span>${tr.icon} ${buildingTier(tr.key).name}</span><small>${tr.next ? t('sheet.nextTier', { n: missing, floors: floorsText(missing), tier: buildingTier(tr.next.key) }) : t('sheet.topTier')}</small></div><i style="--p:${tr.progress.toFixed(3)}"></i></div>
-    <div class="chips">${b.now ? `<span>${t('sheet.now')}</span>` : `<span class="off">${t('sheet.idle')}</span>`}${b.isNew ? `<span>${t('sheet.new')}</span>` : ''}${b.belt ? `<span class="badge dojo" data-dojo="${esc(c.id)}" title="${esc(t('sheet.dojoTitle'))}">${t('sheet.belt', { belt: t(`belt.${b.belt}`), since: b.beltSince ? fmt.isoDate(b.beltSince) : '' })}</span>` : ''}${badges.map((x) => `<span class="badge">${esc(x)}</span>`).join('')}</div>
+    <div class="chips">${state}${b.isNew ? `<span>${t('sheet.new')}</span>` : ''}${b.belt ? `<span class="badge dojo" data-dojo="${esc(c.id)}" title="${esc(t('sheet.dojoTitle'))}">${t('sheet.belt', { belt: t(`belt.${b.belt}`), since: b.beltSince ? fmt.isoDate(b.beltSince) : '' })}</span>` : ''}${badges.map((x) => `<span class="badge">${esc(x)}</span>`).join('')}</div>
     ${others.length ? `<div class="corp">${b.cities >= 3 ? '👑' : '🚩'} ${t('sheet.alsoIn', { list: fmt.list(others.map((k) => `<button type="button" data-city="${esc(k.id)}" data-person="${esc(b.id)}">${esc(cityLabel(k))}</button>`)) })}</div>` : ''}
     <div class="timeline" id="timeline" data-key="${esc(keyOf(c.id, b.id))}"><small>${t('sheet.timelineLoading')}</small></div>
     <div class="actions"><button class="share" type="button" data-share="${esc(c.id)}|${esc(b.id)}">${t('sheet.share')}</button>
@@ -247,7 +250,7 @@ const GREY = '#9aa5b1';
 export const BELT_COLORS = { black: '#141418', brown: '#8b5a2b', purple: '#8e44ad', blue: '#2f7fe0', white: '#ffffff' };
 // The data maps (like SimCity's): icon and legend colors, in the order of the map.<key>.legend texts.
 export const MAPKEYS = {
-  now: { icon: '🔥', colors: ['#e8463a', '#f5a63c', GREY] },
+  now: { icon: '⚡', colors: ['#e8463a', '#f5a63c', GREY] },
   week: { icon: '📈', colors: HEAT },
   network: { icon: '🚩', colors: ['#e0a400', '#ffd76e', GREY] },
   model: { icon: '🧠', colors: [MODEL_COLORS.opus, MODEL_COLORS.sonnet, MODEL_COLORS.haiku, MODEL_COLORS.fable, GREY] },

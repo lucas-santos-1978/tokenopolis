@@ -181,6 +181,12 @@ export default {
     label: 'prefeito de {month}',
     tip: 'prefeito de {month} · +{floors} em {lastMonth} · toque para ver o prédio',
   },
+  // os prédios abandonados (b.idle dias sem Claude; os limites vêm do servidor)
+  ruin: {
+    fire: '🔥 pegando fogo · {days} sem Claude',
+    rubble: '🧱 escombros · {days} sem Claude',
+    note: 'Usar o Claude de novo reergue o prédio no mesmo dia',
+  },
   tip: {
     dojo: { one: '{n} faixa no Dojo · toque para ver os mestres', other: '{n} faixas no Dojo · toque para ver os mestres' },
     week: '+{n} na semana',
@@ -352,6 +358,7 @@ export default {
     names: 'Esconde as placas das cidades.',
     style: 'Força um estilo em todas as cidades, ignorando o marco de cada uma.',
     quality: 'Sem sombras, brilho nem antialiasing: para máquinas fracas e TVs antigas.',
+    ruins: 'Sem fogo e sem escombros: todos os prédios de pé, por mais tempo que estejam sem Claude.',
     lang: 'Abre nesse idioma (inglês ou português do Brasil), no lugar da escolha de quem abrir.',
     demo: 'Modo demonstração: uma região fictícia desenhada para mostrar tudo que o painel oferece (da Vila à Colônia em Marte, todos os prédios, monumentos e o Dojo nos três níveis). Nada ali é real.',
     monuments: 'Ergue todos os monumentos, conquistados ou não.',

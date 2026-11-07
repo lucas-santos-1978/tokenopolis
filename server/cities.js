@@ -130,6 +130,12 @@ export function createCities(config, source) {
     // Consecutive workdays with usage, up to today (today still without usage does not break the streak). Weekends
     // neither count nor break it.
     const weekday = (d) => { const dow = (d + 4) % 7; return dow !== 0 && dow !== 6; }; // day 0 of the epoch was a Thursday
+    // Days since the last day with usage (0 = used today): the abandoned buildings burn and fall.
+    function idleOf(days) {
+      let last = -Infinity;
+      for (const [d, v] of days) if (v > 0 && d <= todayIdx) last = Math.max(last, d);
+      return Number.isFinite(last) ? todayIdx - last : null;
+    }
     function streakOf(days) {
       let n = 0, d = todayIdx;
       if (!(days.get(d) > 0)) d--;
@@ -178,6 +184,7 @@ export function createCities(config, source) {
           month: round1(r.month / floorTokens),
           lastMonth: round1(r.lastMonth / floorTokens),
           streak: streakOf(r.days),
+          idle: idleOf(r.days),
           hours: isNow ? h.mask | (1 << new Date(now + off * HOUR).getUTCHours()) : h.mask,
           night: h.nights,
           ...modelOf(org, email),

@@ -34,18 +34,22 @@
       <span>🏢 <b id="stat-buildings">—</b></span>
       <span>📐 <b id="stat-floors">—</b></span>
     </span>
+    <!-- the tools, the climb and the language: in the bar on a wide screen, behind ☰ on a phone -->
+    <div id="menu" class="menu">
     <nav id="tools" class="tools" aria-label="Tools" data-i18n-aria="html.tools.aria">
-      <button type="button" data-tool="me" id="me-btn" title="Go to my building" data-i18n-title="html.tools.me" hidden>📍</button>
-      <button type="button" data-tool="find" title="Find a building" data-i18n-title="html.tools.find">🔍</button>
-      <button type="button" data-tool="maps" title="Data maps" data-i18n-title="html.tools.maps">🗺️</button>
-      <button type="button" data-tool="paper" title="The Daily Token" data-i18n-title="html.tools.paper">📰</button>
-      <button type="button" data-tool="history" title="Time-lapse and the city race" data-i18n-title="html.tools.history">🎬</button>
-      <button type="button" data-tool="sky" id="sky-btn" title="Time of day" data-i18n-title="html.tools.sky">🌗</button>
-      <button type="button" data-tool="panels" id="panels-btn" title="Panels and names (the P key hides them all)" data-i18n-title="html.tools.panels">👁️</button>
-      <button type="button" data-tool="help" title="How to read Tokenopolis (? key)" data-i18n-title="html.tools.help">❔</button>
+      <button type="button" data-tool="me" id="me-btn" title="Go to my building" aria-label="My building" data-i18n-title="html.tools.me" data-i18n-aria="html.tools.short.me" hidden>📍</button>
+      <button type="button" data-tool="find" title="Find a building" aria-label="Find" data-i18n-title="html.tools.find" data-i18n-aria="html.tools.short.find">🔍</button>
+      <button type="button" data-tool="maps" title="Data maps" aria-label="Maps" data-i18n-title="html.tools.maps" data-i18n-aria="html.tools.short.maps">🗺️</button>
+      <button type="button" data-tool="paper" title="The Daily Token" aria-label="Newspaper" data-i18n-title="html.tools.paper" data-i18n-aria="html.tools.short.paper">📰</button>
+      <button type="button" data-tool="history" title="Time-lapse and the city race" aria-label="Time-lapse" data-i18n-title="html.tools.history" data-i18n-aria="html.tools.short.history">🎬</button>
+      <button type="button" data-tool="sky" id="sky-btn" title="Time of day" aria-label="Time of day" data-i18n-title="html.tools.sky" data-i18n-aria="html.tools.short.sky">🌗</button>
+      <button type="button" data-tool="panels" id="panels-btn" title="Panels and names (the P key hides them all)" aria-label="Panels" data-i18n-title="html.tools.panels" data-i18n-aria="html.tools.short.panels">👁️</button>
+      <button type="button" data-tool="help" title="How to read Tokenopolis (? key)" aria-label="Help" data-i18n-title="html.tools.help" data-i18n-aria="html.tools.short.help">❔</button>
     </nav>
     <a class="switch" href="climb.html" title="Open the Token Climb" data-i18n="nav.climb.label" data-i18n-title="nav.climb.title">🏔️ Token Climb</a>
     <span class="lang" role="group" aria-label="Language" data-i18n-aria="switcher.aria">🌐<button type="button" data-lang="en" aria-pressed="true" title="English" data-i18n-title="switcher.en">EN</button><button type="button" data-lang="pt-BR" aria-pressed="false" title="Português (Brasil)" data-i18n-title="switcher.pt">PT</button></span>
+    </div>
+    <button id="menu-btn" class="menu-btn" type="button" data-menu aria-expanded="false" aria-controls="menu" aria-label="Menu" data-i18n-aria="html.header.menu">☰</button>
   </header>
 
   <!-- region view -->
@@ -74,6 +78,7 @@
       <li data-i18n="html.legend.road">🟡 Golden road: people in common</li>
       <li data-i18n="html.legend.network">🚩 Network (2 cities) · 👑 3+ · 🎩 mayor of the month</li>
       <li data-i18n="html.legend.pagoda">🥋 Black pagoda: Dojo black belt · the city’s Dojo grows with every belt</li>
+      <li data-i18n="html.legend.ruins">🔥 On fire: 15+ days without Claude · 🧱 rubble: 30+</li>
     </ul>
     <button type="button" class="more" data-tool="help" data-i18n="html.legend.more">❔ See all the meanings</button>
   </aside>
@@ -107,7 +112,7 @@
   <!-- popovers: maps, history, 👁️ panels, 🌗 time of day -->
   <div id="maps" class="popover tool-pop" role="menu" hidden>
     <button type="button" data-map-mode="default"><span>🏙️</span><div><b data-i18n="map.default.name">Normal</b><small data-i18n="map.default.desc">the city as it is</small></div></button>
-    <button type="button" data-map-mode="now"><span>🔥</span><div><b data-i18n="map.now.name">Now</b><small data-i18n="map.now.desc">who is building right now</small></div></button>
+    <button type="button" data-map-mode="now"><span>⚡</span><div><b data-i18n="map.now.name">Now</b><small data-i18n="map.now.desc">who is building right now</small></div></button>
     <button type="button" data-map-mode="week"><span>📈</span><div><b data-i18n="map.week.name">This week’s builds</b><small data-i18n="map.week.desc">from cold (nothing) to hot (biggest build)</small></div></button>
     <button type="button" data-map-mode="network"><span>🚩</span><div><b data-i18n="map.network.name">Network</b><small data-i18n="map.network.desc">who builds in more than one city</small></div></button>
     <button type="button" data-map-mode="model"><span>🧠</span><div><b data-i18n="map.model.name">Model</b><small data-i18n="map.model.desc">the model each person used most this week</small></div></button>

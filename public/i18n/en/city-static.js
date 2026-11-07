@@ -1,5 +1,5 @@
 // Static text of city.html (data-i18n* attributes). The "How to read" help pane is the partial
-// help-city.html. {appName}, {appNameUpper}, {zone}, {since} and {floor} are filled by index.js.
+// help-city.html. {appName}, {appNameUpper}, {zone}, {since}, {floor}, {idleFire} and {idleRubble} are filled by index.js.
 
 export default {
   html: {
@@ -7,9 +7,11 @@ export default {
       back: 'Back to the region',
       title: '{appNameUpper}',
       mockPill: '🧪 sample data',
+      menu: 'Menu',
     },
     tools: {
       aria: 'Tools',
+      short: { me: 'My building', find: 'Find', maps: 'Maps', paper: 'Newspaper', history: 'Time-lapse', sky: 'Time of day', panels: 'Panels', help: 'Help' }, // the labels of the ☰ menu on a phone
       me: 'Go to my building',
       find: 'Find a building',
       maps: 'Data maps',
@@ -39,6 +41,7 @@ export default {
       road: '🟡 Golden road: people in common',
       network: '🚩 Network (2 cities) · 👑 3+ · 🎩 mayor of the month',
       pagoda: '🥋 Black pagoda: Dojo black belt · the city’s Dojo grows with every belt',
+      ruins: '🔥 On fire: more than {idleFire} days without Claude · 🧱 rubble: more than {idleRubble}',
       more: '❔ See all the meanings',
     },
     cam: {

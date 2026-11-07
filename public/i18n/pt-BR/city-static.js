@@ -1,5 +1,5 @@
 // Texto estático de city.html (atributos data-i18n*). A aba "Como ler" da ajuda é o parcial
-// help-city.html. {appName}, {appNameUpper}, {zone}, {since} e {floor} vêm do index.js.
+// help-city.html. {appName}, {appNameUpper}, {zone}, {since}, {floor}, {idleFire} e {idleRubble} vêm do index.js.
 
 export default {
   html: {
@@ -7,9 +7,11 @@ export default {
       back: 'Voltar para a região',
       title: '{appNameUpper}',
       mockPill: '🧪 dados fictícios',
+      menu: 'Menu',
     },
     tools: {
       aria: 'Ferramentas',
+      short: { me: 'Meu prédio', find: 'Achar', maps: 'Mapas', paper: 'Jornal', history: 'Time-lapse', sky: 'Hora do dia', panels: 'Painéis', help: 'Ajuda' }, // os rótulos do menu ☰ no celular
       me: 'Ir até o meu prédio',
       find: 'Achar um prédio',
       maps: 'Mapas de dados',
@@ -39,6 +41,7 @@ export default {
       road: '🟡 Estrada dourada: pessoas em comum',
       network: '🚩 Rede (2 cidades) · 👑 3+ · 🎩 prefeito do mês',
       pagoda: '🥋 Pagode preto: faixa preta do Dojo · o Dojo da cidade cresce com todas as faixas',
+      ruins: '🔥 Pegando fogo: mais de {idleFire} dias sem Claude · 🧱 escombros: mais de {idleRubble}',
       more: '❔ Ver todos os significados',
     },
     cam: {

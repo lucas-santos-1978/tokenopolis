@@ -125,6 +125,7 @@ function configJson(stack) {
     start: config.cities.start,
     refreshSeconds: stack.game.refreshSeconds,
     features: { belts: stack.cities.beltsEnabled() },
+    idle: { fire: config.cities.idleFireDays, rubble: config.cities.idleRubbleDays }, // days without Claude: on fire, then rubble (0 = off)
   };
 }
 

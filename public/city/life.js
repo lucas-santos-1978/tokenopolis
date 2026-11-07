@@ -1,5 +1,6 @@
 // Life in the city: people on the sidewalks (from the open sessions and whoever is building now), the
-// mayor's rally (speech, crowd and confetti on the stage of the mayor's lot),
+// mayor's rally (speech, crowd and confetti on the stage of the mayor's lot), the fires of the
+// abandoned buildings (flames on the roof and out of the windows, a column of smoke),
 // boats on the river (they vanish under the bridges), planes taking off from the airport, the
 // local TV helicopter circling the tallest building in view (with a searchlight at night), the
 // airship with the news banner, the Cloud Tower's beacon, the Space Elevator's cabin, a plane
@@ -124,6 +125,88 @@ export function makeLife({ scene, world, data, wx, wz, marks, airports, size }) 
     return { arm, mayor, crowd, seats, conf, bits, seed: i * 3.7 };
   });
 
+  // ───────── the fires: more than idle.fire days without Claude ─────────
+  // Flames on the roof and licking up the facade, and a column of smoke. One instanced geometry per
+  // kind, animated in the vertex shader: one uniform per frame, however many buildings are burning.
+  const fireU = { uTime: { value: 0 }, uNight: { value: 0 }, uWind: { value: new THREE.Vector2(0.32, 0.14) } };
+  const fl = [], sm = []; // flames: x y z radius height phase · smoke: x y z size rise phase speed
+  marks.filter((m) => m.kind === 'fire').forEach((m, i) => {
+    const k = m.house ? 0.62 : Math.min(2.4, 1 + m.h / 80), kw = m.house ? 0.62 : Math.min(1.7, 0.95 + m.h / 150); // the fire's size (roof, windows)
+    for (let j = 0, n = m.house ? 5 : 10; j < n; j++) fl.push(m.x + (hash(i, j, 81) - 0.5) * m.w * 0.9, m.h - 0.2, m.z + (hash(i, j, 82) - 0.5) * m.d * 0.9, (0.9 + hash(i, j, 83) * 1.0) * k, (2.2 + hash(i, j, 84) * 3.2) * k, hash(i, j, 85) * 6.3);
+    // out of the windows: on the four sides, at random heights of the first block
+    const hw = (m.bw ?? m.w) / 2 + 0.3, hd = (m.bd ?? m.d) / 2 + 0.3;
+    for (let j = 0, n = m.house ? 2 : Math.min(8, 3 + Math.floor(m.h / 25)); j < n; j++) {
+      const side = (j + Math.floor(hash(i, 0, 86) * 4)) % 4, u = (hash(i, j, 87) - 0.5) * 1.4; // every side gets its share
+      const y = m.house ? 0.9 : m.by0 + (m.by1 - m.by0) * (0.12 + hash(i, j, 88) * 0.8);
+      const [dx, dz] = side === 0 ? [u * hw, hd] : side === 1 ? [hw, u * hd] : side === 2 ? [u * hw, -hd] : [-hw, u * hd];
+      // a tall tongue in the middle and two short ones beside it, along the wall
+      const ax = side % 2 ? 0 : 1, az = side % 2 ? 1 : 0, rw = (0.95 + hash(i, j, 89) * 0.45) * kw;
+      fl.push(m.x + dx, y, m.z + dz, rw, (2.6 + hash(i, j, 90) * 1.8) * kw, hash(i, j, 91) * 6.3);
+      for (const sgn of [-1, 1]) fl.push(m.x + dx + ax * sgn * rw * 0.95, y - 0.2, m.z + dz + az * sgn * rw * 0.95, rw * 0.7, (1.5 + hash(i, j, 98 + sgn) * 1.0) * kw, hash(i, j, 99 + sgn) * 6.3);
+    }
+    for (let j = 0, n = m.house ? 7 : 12; j < n; j++) sm.push(m.x + (hash(i, j, 92) - 0.5) * m.w * 0.5, m.h + 0.8, m.z + (hash(i, j, 93) - 0.5) * m.d * 0.5, (1.0 + hash(i, j, 94) * 0.8) * k, (16 + hash(i, j, 95) * 14) * k * (m.house ? 0.8 : 1), j / n + hash(i, j, 96) * 0.08, 0.075 + hash(i, j, 97) * 0.035);
+  });
+  const instanced = (base, list, stride, attrs) => {
+    const g = new THREE.InstancedBufferGeometry();
+    g.setIndex(base.index); g.setAttribute('position', base.getAttribute('position')); g.setAttribute('normal', base.getAttribute('normal'));
+    const buf = new THREE.InstancedInterleavedBuffer(new Float32Array(list), stride);
+    let off = 0; for (const [name, size] of attrs) { g.setAttribute(name, new THREE.InterleavedBufferAttribute(buf, size, off)); off += size; }
+    g.instanceCount = list.length / stride;
+    return g;
+  };
+  if (fl.length) {
+    const mat = new THREE.ShaderMaterial({
+      uniforms: fireU, transparent: true, depthWrite: false, side: THREE.DoubleSide, toneMapped: false,
+      vertexShader: `
+        attribute vec3 aPos; attribute vec2 aSize; attribute float aPhase;
+        uniform float uTime; varying float vY;
+        void main() {
+          vec3 p = position; vY = p.y;
+          float t = uTime * 7.0 + aPhase, f = 1.0 + 0.3 * sin(t) + 0.16 * sin(t * 1.7 + 1.3) + 0.1 * sin(t * 3.1);
+          p.xz *= (1.0 - 0.2 * sin(t * 1.3 + p.y * 5.0)) * aSize.x;
+          p.y *= aSize.y * f;
+          p.x += sin(t * 0.9 + vY * 2.5) * 0.22 * vY * aSize.x;
+          p.z += cos(t * 0.8 + vY * 2.0) * 0.22 * vY * aSize.x;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(aPos + p, 1.0);
+        }`,
+      fragmentShader: `
+        uniform float uNight; varying float vY;
+        void main() {
+          vec3 hot = vec3(1.0, 0.86, 0.32), mid = vec3(1.0, 0.24, 0.01), tip = vec3(0.55, 0.03, 0.0);
+          vec3 c = vY < 0.42 ? mix(hot, mid, vY / 0.42) : mix(mid, tip, (vY - 0.42) / 0.58);
+          gl_FragColor = vec4(c * (1.0 + uNight * 0.9), 0.95 * (1.0 - smoothstep(0.5, 1.0, vY)));
+          #include <colorspace_fragment>
+        }`,
+    });
+    const mesh = new THREE.Mesh(instanced(new THREE.CylinderGeometry(0, 1, 1, 7, 5, true).translate(0, 0.5, 0), fl, 6, [['aPos', 3], ['aSize', 2], ['aPhase', 1]]), mat);
+    mesh.frustumCulled = false; mesh.renderOrder = 2; group.add(mesh);
+  }
+  if (sm.length) {
+    const mat = new THREE.ShaderMaterial({
+      uniforms: fireU, transparent: true, depthWrite: false,
+      vertexShader: `
+        attribute vec3 aPos; attribute vec4 aSmoke; // size, rise, phase, speed
+        uniform float uTime; uniform vec2 uWind; varying float vU; varying vec3 vN;
+        void main() {
+          float u = fract(uTime * aSmoke.w + aSmoke.z); vU = u; vN = normal;
+          float rise = u * aSmoke.y, s = aSmoke.x * (0.55 + 2.6 * u);
+          vec3 c = aPos + vec3(uWind.x * rise, rise, uWind.y * rise);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(c + position * s, 1.0);
+        }`,
+      fragmentShader: `
+        uniform float uNight; varying float vU; varying vec3 vN;
+        void main() {
+          float light = 0.55 + 0.45 * max(dot(normalize(vN), normalize(vec3(0.4, 1.0, 0.3))), 0.0);
+          vec3 c = vec3(0.075, 0.07, 0.066) * light * (1.0 - uNight * 0.35);
+          c = mix(vec3(1.0, 0.28, 0.04) * (0.45 + uNight), c, smoothstep(0.0, 0.16, vU)); // lit by the flames at the base
+          gl_FragColor = vec4(c, 0.66 * smoothstep(0.0, 0.05, vU) * (1.0 - smoothstep(0.5, 1.0, vU)));
+          #include <colorspace_fragment>
+        }`,
+    });
+    const mesh = new THREE.Mesh(instanced(new THREE.IcosahedronGeometry(1, 1), sm, 7, [['aPos', 3], ['aSmoke', 4]]), mat);
+    mesh.frustumCulled = false; mesh.renderOrder = 3; group.add(mesh);
+  }
+
   // ───────── plane in the sky ─────────
   const skyPlane = planeOf(2.2); skyPlane.visible = false; group.add(skyPlane);
 
@@ -155,6 +238,7 @@ export function makeLife({ scene, world, data, wx, wz, marks, airports, size }) 
   const _p = new THREE.Vector3(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(1, 1, 1), _m = new THREE.Matrix4(), _up = new THREE.Vector3(0, 1, 0);
   let shake = 0;
   function step(dt, now, night, sec) {
+    fireU.uTime.value = sec % 2400; fireU.uNight.value = night; // the shader works in float32: a small clock, not the epoch
     // people
     if (people) {
       walkers.forEach((w, i) => {

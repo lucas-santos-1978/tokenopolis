@@ -44,8 +44,9 @@ names, avatars, photos), `belts.json` (the belt program). Examples ship next to 
 - **The city** (`/`): a 3D region where cities grow from a village to a Mars colony, buildings from a
   house to a space elevator, with monuments for weekly feats, a newspaper, countdowns, a mayor of the
   month, data maps (who is building now, this week's builds, the model each person uses, the belt
-  program), a time-lapse since day one and a race of the cities. A tour mode for TVs, a link builder
-  for every URL parameter, and a demo region to show it all at once.
+  program), a time-lapse since day one and a race of the cities. Buildings left alone catch fire
+  after 15 days without Claude and fall into rubble after 30. A tour mode for TVs, a phone layout, a
+  link builder for every URL parameter, and a demo region to show it all at once.
 - **The climb** (`/climb.html`): the daily stage on a rock wall. Everyone starts at base camp at
   midnight; the day's mark is the median of recent winners; records become plaques on the rock; the
   week's ranking crowns the champion, awards badges and fills a hall of fame. A shareable PNG card.

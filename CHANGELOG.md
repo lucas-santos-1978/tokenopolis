@@ -3,7 +3,18 @@
 Dates are the day each version went live on the author's panel. Earlier versions were an internal
 tool with another name; the open-source release renames it Tokenopolis.
 
-## Unreleased: Tokenopolis 1.0 (open source)
+## Unreleased
+
+- Abandoned buildings: after more than 15 days without Claude a building catches fire (soot, flames
+  on the roof and out of the windows, smoke), after more than 30 it is a pile of rubble; using Claude
+  again puts it back up. `IDLE_FIRE_DAYS` / `IDLE_RUBBLE_DAYS` (0 turns a stage off), `?ruins=0`,
+  `idle` on each building and in `/api/config`. The demo's stopped people now stopped 10 to 45 days ago.
+- The city on a phone: tools, climb link and language behind ☰, this week's builds folds into a chip,
+  City Hall and the building card are drawers at the bottom with the touched building framed above
+  them, only city names from afar, no hover tip on touch screens, a lighter canvas.
+- The "Now" data map uses ⚡ (🔥 now means a building on fire).
+
+## v25: Tokenopolis 1.0 (open source, 2026-11-06)
 
 - English by default, Brazilian Portuguese selectable in the panel (🌐 switcher, `?lang=`); every
   string lives in `public/i18n/` and the server sends only ids, numbers and dates.

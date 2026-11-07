@@ -44,7 +44,8 @@ cada ao lado.
   de casa a elevador espacial, com monumentos pelas conquistas da semana, jornal, contagens
   regressivas, prefeito do mês, mapas de dados (quem constrói agora, obras da semana, o modelo que
   cada um mais usa, o programa de faixas), time-lapse desde o primeiro dia e corrida das cidades.
-  Modo tour para TV, montador de links com todos os parâmetros e uma região de demonstração.
+  Prédio abandonado pega fogo depois de 15 dias sem Claude e vira escombros depois de 30. Modo tour
+  para TV, layout de celular, montador de links com todos os parâmetros e uma região de demonstração.
 - **A escalada** (`/climb.html`): a etapa do dia num paredão de rocha. Todo mundo sai do
   acampamento base à meia-noite; a marca do dia é a mediana dos últimos vencedores; os recordes
   viram placas na rocha; a classificação da semana dá o campeão, as badges e o hall da fama. Cartão

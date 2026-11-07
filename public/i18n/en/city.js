@@ -177,6 +177,12 @@ export default {
     label: 'mayor for {month}',
     tip: 'mayor for {month} · +{floors} in {lastMonth} · tap to see the building',
   },
+  // the abandoned buildings (b.idle days without Claude; the thresholds come from the server)
+  ruin: {
+    fire: '🔥 on fire · {days} without Claude',
+    rubble: '🧱 rubble · {days} without Claude',
+    note: 'Using Claude again puts the building back up the same day',
+  },
   tip: {
     dojo: { one: '{n} belt in the Dojo · tap to see the masters', other: '{n} belts in the Dojo · tap to see the masters' },
     week: '+{n} this week',
@@ -348,6 +354,7 @@ export default {
     names: 'Hides the city signs.',
     style: 'Forces a style on every city, ignoring each one’s milestone.',
     quality: 'No shadows, glow or antialiasing: for weak machines and old TVs.',
+    ruins: 'No fire and no rubble: every building standing, however long without Claude.',
     lang: 'Opens in that language (English or Brazilian Portuguese) instead of the viewer’s own choice.',
     demo: 'Demo mode: a fictional region designed to show everything the panel offers (from the Village to the Mars Colony, every building, monument and the Dojo at its three levels). Nothing there is real.',
     monuments: 'Raises every monument, earned or not.',

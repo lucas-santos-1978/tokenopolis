@@ -188,6 +188,10 @@ export const config = {
     floorTokens: Math.max(1, Number(env('CITY_FLOOR_TOKENS', 1e6)) || 1e6),
     minPeople: Math.max(1, Number(env('CITY_MIN_PEOPLE', 5)) || 5),
     names: parseCityNames(env('CITY_NAMES', '')),
+    // Abandoned buildings: after IDLE_FIRE_DAYS days without Claude the building catches fire, after
+    // IDLE_RUBBLE_DAYS it is a pile of rubble (0 turns each one off). Calendar days, weekends included.
+    idleFireDays: Math.max(0, Math.round(Number(env('IDLE_FIRE_DAYS', 15)))) || 0,
+    idleRubbleDays: Math.max(0, Math.round(Number(env('IDLE_RUBBLE_DAYS', 30)))) || 0,
   },
 
   // Belt program (an optional recognition program): a JSON file with names or e-mails and belts.

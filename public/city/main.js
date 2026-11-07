@@ -14,7 +14,7 @@
 // fixes the time; ?spin turns the camera; ?map=now|week|network|model|belts opens a data map;
 // ?monuments=all raises every monument; ?style= forces a style; ?giant=N gives N floors to the
 // tallest building; ?monster calls the monster; ?quality=low turns off shadows and glow; ?panels=0
-// and ?names=0 hide the panels and the signs.
+// and ?names=0 hide the panels and the signs; ?ruins=0 keeps the abandoned buildings standing.
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -27,7 +27,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { skyColorsAt, zoneHour } from '../lib/sky.js';
 import { t, plural, fmt, cityLabel, displayName } from '../i18n/index.js';
-import { tierOf, BUILDING_TIERS, TEN_BI, advisors, context, floorsText, cityTier, buildingTier, monthOf } from './rules.js';
+import { tierOf, BUILDING_TIERS, TEN_BI, advisors, context, floorsText, cityTier, buildingTier, monthOf, ruinOf } from './rules.js';
 import { L, seed, hash, kind, buildWorld, groundCanvas, dojoOf } from './world.js';
 import { makeKit, craneJib, Batcher, mats, lit, blinkMats, matte, setAnisotropy, SILVER, DARK, WARM_LIGHT, HOUSE_H, STYLE_PAL } from './buildings.js';
 import { initPanels, renderPanels, countdownKey, queueToast, liveEvents, hasToasts, keyOf, esc, staleText, setMe as panelsSetMe, renderFinder, finderKey, locatePerson, MAPKEYS, mapColorFor, renderMapKey, renderPaper } from './panels.js';
@@ -59,7 +59,10 @@ const wkOf = (b) => (scaled(b.floors) - scaled(Math.max(0, b.floors - b.week))) 
 // ───────── renderer, scene and camera ─────────
 const stage = $('#stage');
 const renderer = new THREE.WebGLRenderer({ antialias: !LOW_Q, preserveDrawingBuffer: params.has('debug') });
-renderer.setPixelRatio(Math.min(devicePixelRatio, LOW_Q ? 0.85 : 1.5));
+// a phone: a lighter canvas (pixel ratio and shadow map), the drawers' framing and the folded panels
+const PHONE = matchMedia('(pointer: coarse)').matches && Math.min(screen.width, screen.height) <= 820;
+const narrow = () => innerWidth <= 700;
+renderer.setPixelRatio(Math.min(devicePixelRatio, LOW_Q ? 0.85 : PHONE ? 1.25 : 1.5));
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = !LOW_Q;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -196,7 +199,7 @@ function buildScene() {
   world = buildWorld(src, { allMonuments: params.get('monuments') === 'all' });
   GW = world.GW; GH = world.GH; terrainSize = Math.max(GW, GH) * L;
   // a big scene (the dense ?demo region): a smaller shadow map, otherwise the shadow pass rules the frame
-  const want = LOW_Q ? 1024 : src.cities.reduce((a, c) => a + c.buildings.length, 0) > 1500 ? 2048 : 4096;
+  const want = LOW_Q ? 1024 : PHONE || src.cities.reduce((a, c) => a + c.buildings.length, 0) > 1500 ? 2048 : 4096;
   if (sun.shadow.mapSize.x !== want) { sun.shadow.mapSize.set(want, want); sun.shadow.map?.dispose(); sun.shadow.map = null; }
   if (STYLE_PAL[params.get('style')]) for (const c of src.cities) c.style = params.get('style');
   const grey = !!mapMode;
@@ -402,9 +405,19 @@ function updateHeli() {
 function updateRing() { const h = view.kind === 'region' && countdownKey() ? hitByKey.get(countdownKey()) : null; fx.setRing(h ? { x: h.x, z: h.z } : null); }
 // the flight to a building (finder, card, link): the camera comes close, with the building in the middle of the screen
 const fitBuilding = (h) => ({ target: new THREE.Vector3(h.x, Math.min(h.h * 0.45, 40), h.z), phi: 0.42, dist: 180 });
+// On a narrow screen City Hall and the card are drawers at the bottom: the picture's center goes up,
+// so the touched building (always flown to the middle) stays above them.
+function frameForDrawers() {
+  if (narrow() && (selected || view.kind === 'city')) camera.setViewOffset(innerWidth, innerHeight, 0, Math.round(innerHeight * 0.18), innerWidth, innerHeight);
+  else camera.clearViewOffset();
+}
+function setMenu(on) {
+  if (on) document.documentElement.dataset.menu = ''; else delete document.documentElement.dataset.menu;
+  $('#menu-btn').setAttribute('aria-expanded', String(on));
+}
 function setView(next, person = null) { // person: the person's id, or { dojo: true } for the city's Dojo
   view = next; selected = person?.dojo ? { city: next.id, dojo: true } : person ? { city: next.id, person } : null;
-  renderPanels(data, view, selected);
+  renderPanels(data, view, selected); $('#hall').classList.remove('open'); frameForDrawers();
   const h = person?.dojo ? dojoHits.get(next.id) : person && hitByKey.get(keyOf(next.id, person));
   if (h) flyTo(fitBuilding(h), 1500); else refit(1500);
   updateHeli(); updateRing();
@@ -412,7 +425,7 @@ function setView(next, person = null) { // person: the person's id, or { dojo: t
 // the card of the city's Dojo (masters and who is on the way), with the Dojo in the middle of the screen
 function selectDojo(cityId) {
   selected = { city: cityId, dojo: true };
-  renderPanels(data, view, selected);
+  renderPanels(data, view, selected); frameForDrawers();
   const h = dojoHits.get(cityId);
   if (h) { const v = currentView(); flyTo({ target: new THREE.Vector3(h.x, 6, h.z), phi: v.phi, dist: clamp(v.dist, 80, 240) }, 900); }
 }
@@ -423,7 +436,7 @@ function goPerson(cityId, personId) { goCity(cityId, personId); }
 // right), keeping the angle; from very far the camera comes a bit closer
 function select(cityId, personId) {
   selected = personId ? { city: cityId, person: personId } : null;
-  renderPanels(data, view, selected);
+  renderPanels(data, view, selected); frameForDrawers();
   const h = personId && hitByKey.get(keyOf(cityId, personId));
   if (h) { const v = currentView(); flyTo({ target: new THREE.Vector3(h.x, Math.min(h.h * 0.45, 40), h.z), phi: v.phi, dist: clamp(v.dist, 80, 240) }, 900); }
 }
@@ -508,8 +521,8 @@ function pickHover() {
       ? `🎩 ${esc(displayName(m.person).full)}<small>${where}${esc(t('rally.tip', { month: monthOf(m.month, 'period.thisMonth'), floors: floorsText(m.person.lastMonth), lastMonth: monthOf(m.lastMonth, 'period.lastMonth') }))}</small>`
       : `${m.icon} ${esc(t(`monument.${m.key}`).name)}<small>${where}${esc(t(`monument.${m.key}`).req)}</small>`;
   } else {
-    const tr = tierOf(b.floors, BUILDING_TIERS);
-    tipEl.innerHTML = `${esc(displayName(b).full)}<small>${view.kind === 'region' ? `${esc(cityLabel(h.c))} · ` : ''}${b.belt ? `🥋 ${t(`belt.${b.belt}`).lower} · ` : ''}${tr.icon} ${buildingTier(tr.key).name} · ${floorsText(b.floors)}${b.week > 0 ? ` · <span class="up">${t('tip.week', { n: fmt.int(b.week) })}</span>` : ''}</small>`;
+    const tr = tierOf(b.floors, BUILDING_TIERS), ruin = ruinOf(b);
+    tipEl.innerHTML = `${esc(displayName(b).full)}<small>${ruin ? `${t(`ruin.${ruin}`, { days: plural(b.idle, 'count.day') })} · ` : ''}${view.kind === 'region' ? `${esc(cityLabel(h.c))} · ` : ''}${b.belt ? `🥋 ${t(`belt.${b.belt}`).lower} · ` : ''}${tr.icon} ${buildingTier(tr.key).name} · ${floorsText(b.floors)}${b.week > 0 ? ` · <span class="up">${t('tip.week', { n: fmt.int(b.week) })}</span>` : ''}</small>`;
   }
   tipEl.classList.remove('off');
   tip.position.set(h.x, h.h + 2, h.z);
@@ -568,6 +581,7 @@ function closeModals() { closePopovers(); document.querySelectorAll('.modal').fo
 const anyModal = () => [...document.querySelectorAll('.modal')].some((el) => !el.hidden);
 function openModal(id) { closeModals(); $(`#${id}`).hidden = false; }
 function openTool(name, btn) {
+  setMenu(false);
   if (name === 'me') { const hit = me && locatePerson(me); if (hit) goPerson(hit.c.id, hit.b.id); return; }
   if (name === 'find') { openModal('finder'); $('#finder-q').value = ''; renderFinder(); $('#finder-q').focus(); return; }
   if (name === 'paper') { renderPaper(dayF < 0.5); openModal('newspaper'); return; }
@@ -586,7 +600,9 @@ function setMapMode(m) {
   if (data) { buildScene(); updateRing(); }
 }
 document.addEventListener('click', (e) => {
-  const el = e.target.closest('[data-hide-panel], [data-panel], [data-panels], [data-tool], [data-back], [data-close], [data-close-modal], [data-share], [data-me], [data-building], [data-dojo], [data-city], [data-dir], [data-map-mode], [data-film], [data-race], [data-tl-stop], #spin, #refit, [data-hour], .sign');
+  const el = e.target.closest('[data-menu], [data-hide-panel], [data-panel], [data-panels], [data-tool], [data-back], [data-close], [data-close-modal], [data-share], [data-me], [data-building], [data-dojo], [data-city], [data-dir], [data-map-mode], [data-film], [data-race], [data-tl-stop], #spin, #refit, [data-hour], .sign');
+  if (el?.hasAttribute('data-menu')) return setMenu(!('menu' in document.documentElement.dataset));
+  if (!e.target.closest('#menu')) setMenu(false);
   if (!el) { if (e.target.classList.contains('modal')) closeModals(); else if (!e.target.closest('.popover')) closePopovers(); return; }
   if (el.dataset.dojo) { const id = el.dataset.dojo; if (view.kind === 'city' && view.id === id) selectDojo(id); else goCity(id, { dojo: true }); return; }
   if (el.dataset.hidePanel) return setPanels([el.dataset.hidePanel], false);
@@ -632,10 +648,18 @@ document.addEventListener('keydown', (e) => {
   if (e.ctrlKey || e.metaKey || e.altKey || e.target.closest?.('input, textarea, select')) { if (e.key === 'Escape') closeModals(); return; }
   if (e.key === 'p' || e.key === 'P') toggleAllPanels();
   else if (e.key === '?') openTool('help');
-  else if (e.key === 'Escape') { if (anyModal()) closeModals(); else if (tl) stopFilm(); else { closePopovers(); if (selected) select(null); else if (view.kind === 'city') goRegion(); } }
+  else if (e.key === 'Escape') { setMenu(false); if (anyModal()) closeModals(); else if (tl) stopFilm(); else { closePopovers(); if (selected) select(null); else if (view.kind === 'city') goRegion(); } }
   else if (e.key === 'g' || e.key === 'G') { controls.autoRotate = !controls.autoRotate; $('#spin').setAttribute('aria-pressed', String(controls.autoRotate)); }
 });
-addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight); labels.setSize(innerWidth, innerHeight); });
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; frameForDrawers(); camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight); labels.setSize(innerWidth, innerHeight); });
+// the folded panels of a narrow screen: this week's builds opens on its title; City Hall opens on any
+// touch and folds again on its top (the buttons and names inside keep working as usual)
+$('#ranking h2').addEventListener('click', () => { if (narrow()) $('#ranking').classList.toggle('open'); });
+$('#hall').addEventListener('click', (e) => {
+  if (!narrow() || e.target.closest('button, a, [data-building], [data-dojo], [data-city]')) return;
+  const hall = $('#hall');
+  if (!hall.classList.contains('open') || e.target.closest('.head')) hall.classList.toggle('open');
+});
 
 // ───────── history: time-lapse and race ─────────
 async function startFilm() {

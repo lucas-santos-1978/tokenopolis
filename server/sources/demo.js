@@ -7,7 +7,7 @@
 //
 // Each person has a floor total (since CITIES_START) and a slice in this week, decided
 // here; the day-to-day comes from deterministic weights (active days, shape: flat, rising, with
-// marathons, stopped in September or debuting this week), normalized to match the totals. The
+// marathons, stopped 10 to 45 days ago or debuting this week), normalized to match the totals. The
 // hours of the day come from work blocks per profile (morning, early, afternoon, night, dawn, shift),
 // so "building now", the lit windows, the sessions and the climb's stage agree with each other.
 import { seasonAt, localDayIndex } from '../season.js';
@@ -281,7 +281,7 @@ export function createDemoSource(config) {
       const total = p.cities.reduce((a, [, f]) => a + f, 0), week = p.cities.reduce((a, [c]) => a + weekOf.get(`${p.email}|${c}`), 0);
       const shape = p.o.s ?? 'flat', active = p.o.a ?? 0.8;
       const first = shape === 'new' ? weekIdx + Math.floor(r() * Math.max(1, todayIdx - weekIdx + 1)) : shape === 'ramp' ? startIdx + 25 + Math.floor(r() * 40) : startIdx;
-      const cutoff = shape === 'stopped' ? startIdx + 45 + Math.floor(r() * 25) : Infinity; // stopped between mid-September and October
+      const cutoff = shape === 'stopped' ? todayIdx - 10 - Math.floor(r() * 36) : Infinity; // stopped 10 to 45 days ago: some idle, some on fire, some rubble
       const marathons = new Set(shape === 'burst' ? Array.from({ length: 4 }, () => startIdx + Math.floor(r() * (todayIdx - startIdx))) : []);
       const weights = new Map();
       for (let d = first; d <= todayIdx; d++) {

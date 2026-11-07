@@ -49,6 +49,8 @@ to `.env`; every value has a default. An empty value counts as "not set".
 | `CITIES_START` | 90 days ago | Local date (`YYYY-MM-DD`) from which floors accumulate. Set it to your rollout date and keep it: moving it changes every building |
 | `CITY_FLOOR_TOKENS` | `1000000` | Tokens per floor |
 | `CITY_MIN_PEOPLE` | `5` | Teams with fewer people are not cities (personal accounts) |
+| `IDLE_FIRE_DAYS` | `15` | After more than this many calendar days without Claude the building catches fire. `0` turns it off |
+| `IDLE_RUBBLE_DAYS` | `30` | After more than this many days it is a pile of rubble. `0` turns it off |
 | `CITY_NAMES` | | Display names per organization id, whole or prefix: `a1b2c3d4=Platform,e5f6a7b8=Data`. Unnamed teams show as "Team A1B2" |
 
 ## People, access and privacy

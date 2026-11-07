@@ -4,13 +4,26 @@
 // the month, the derby of the week, the milestone countdown, the advisors and the region's newspaper.
 // Every word comes from the dictionaries (i18n/<locale>/city.js and common.js).
 
-import { t, plural, fmt, cityLabel, displayName } from '../i18n/index.js';
+import { t, plural, fmt, cityLabel, displayName, config } from '../i18n/index.js';
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const DAY = 86_400_000;
 export const TEN_BI = 10000; // floors: 10 billion tokens
 // "1,234 floors" in the page's language, with the number as displayed
 export const floorsText = (n) => plural(Math.round(n), 'count.floor');
+
+// ───────── abandoned buildings ─────────
+// Days without Claude (b.idle, calendar days): more than idle.fire and the building is on fire, more
+// than idle.rubble and it is a pile of rubble. The server sets both (IDLE_FIRE_DAYS, IDLE_RUBBLE_DAYS;
+// 0 turns one off); ?ruins=0 turns both off. Using Claude again puts the building back the same day.
+const RUINS_OFF = new URLSearchParams(location.search).get('ruins') === '0';
+export function ruinOf(b) {
+  const idle = b?.idle, { fire = 15, rubble = 30 } = config.idle ?? {};
+  if (RUINS_OFF || !(idle > 0)) return null;
+  if (rubble > 0 && idle > rubble) return 'rubble';
+  if (fire > 0 && idle > fire) return 'fire';
+  return null;
+}
 
 // ───────── milestones ─────────
 // Like the population in SimCity: the city changes its title with the accumulated floors, and each

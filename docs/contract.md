@@ -43,11 +43,14 @@ from ids, indices, numbers and ISO dates (see `docs/i18n.md`).
   "floorTokens": 1000000,
   "start": 1754017200000,
   "refreshSeconds": 15,
-  "features": { "belts": true }
+  "features": { "belts": true },
+  "idle": { "fire": 15, "rubble": 30 }
 }
 ```
 `locale` is only the default for first-time visitors. `features.belts` is true when a belts file
-exists or the source provides belts (mock/demo).
+exists or the source provides belts (mock/demo). `idle` holds `IDLE_FIRE_DAYS` and `IDLE_RUBBLE_DAYS`: a
+building with more than `idle.fire` days without Claude is on fire, more than `idle.rubble` is rubble
+(`0` = that stage is off).
 
 ## `GET /api/state` (the climb)
 
@@ -72,7 +75,7 @@ Unchanged fields are not listed. Changes:
 | `week`, `month`, `lastMonth` | Period (**removed:** `name`) |
 | `today` | `{ day, start }` unchanged |
 | `cities[]` | City + `{ floors, week, people, builders, building, sessions, growth, buildings[] }` |
-| `cities[].buildings[]` | Person identity + `{ belt, beltSince, floors, week, today, month, lastMonth, streak, hours, night, model, modelShare, now, isNew, cities, others }`. `belt ∈ null \| "white" \| "blue" \| "purple" \| "brown" \| "black"` (was `dojo`), `beltSince` ISO day or null (was `dojoDesde`). `model ∈ "opus" \| "sonnet" \| "haiku" \| "fable" \| "other"` (was `outro`) |
+| `cities[].buildings[]` | Person identity + `{ belt, beltSince, floors, week, today, month, lastMonth, streak, idle, hours, night, model, modelShare, now, isNew, cities, others }`. `idle` = calendar days since the last day with usage (0 = today; null without usage in the window). `belt ∈ null \| "white" \| "blue" \| "purple" \| "brown" \| "black"` (was `dojo`), `beltSince` ISO day or null (was `dojoDesde`). `model ∈ "opus" \| "sonnet" \| "haiku" \| "fable" \| "other"` (was `outro`) |
 | `links[]` | `{ a, b, n }` unchanged |
 | `belts` | `{ total, unmatched }` — counts only (was `dojo: { total, semPredio: [...] }`, which leaked e-mails) |
 | `error` | see conventions |

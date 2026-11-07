@@ -31,6 +31,13 @@ tower (5,000) and the space elevator (10,000 floors = 10 billion tokens, with a 
 and a rocket on the day someone gets there). Roofs tell a story: helipad, garden, antenna, and an
 owl sign for night workers. Windows light up by the hours each person actually used.
 
+**Abandoned buildings.** After more than `IDLE_FIRE_DAYS` (15) calendar days without Claude the
+building catches fire: soot on the walls, flames on the roof and out of the windows, a column of
+smoke. After more than `IDLE_RUBBLE_DAYS` (30) it is a pile of rubble with a broken wall and twisted
+beams. Using Claude again puts it back up the same day. The card and the hover tip say how many days;
+`0` turns either stage off and `?ruins=0` hides both on one screen. Someone whose last use is older than
+`CITIES_START` has no tokens in the window and no building at all.
+
 **Monuments.** Rewards the city earns, placed on its plots in this order of priority:
 
 | Monument | Requirement |
@@ -56,8 +63,14 @@ the next milestones, the mayor of the month (most floors last month, with a stat
 regional newspaper with classifieds, a live ticker of events, the legend, and the city hall sheet
 with everyone in the city. Panels hide with 👁️ or the `P` key (`?panels=0`).
 
+**On a phone** (up to 700 px wide) the scene comes first: the tools, the climb link and the language
+move behind ☰, this week's builds folds into a chip, City Hall and the building card are drawers at
+the bottom (the touched building is framed above them), the camera bar keeps spin and reframe
+(drag to turn, pinch to zoom), and from afar only the city names show. Phones also get a lighter
+canvas (pixel ratio 1.25, a 2,048 shadow map).
+
 **Tools.** 🔍 find a building, 📍 "my building" (a pin that follows you between visits), 🗺️ data
-maps (`?map=now|week|network|model|belts`), 📰 newspaper, 🎬 history (a time-lapse since day one,
+maps (`?map=now|week|network|model|belts`; ⚡ now, 📈 week, 🚩 network, 🧠 model, 🥋 belts), 📰 newspaper, 🎬 history (a time-lapse since day one,
 the timeline of a building, and a race of the cities week by week), ❔ help with a tab that builds
 URLs for every parameter and preset (TV, TV at night, clean, reset).
 
@@ -68,7 +81,7 @@ The Dojo sheet lists the masters and, only there, who is on the way (white, blue
 The `belts` map paints each building with its belt color and the rest grey.
 
 **URL parameters.** `city`, `person`, `hour` (0–24, fixes the sun), `map`, `style`
-(`brick|concrete|glass|deco|neon`), `panels=0`, `names=0`, `quality=low`, `monuments=all`,
+(`brick|concrete|glass|deco|neon`), `panels=0`, `names=0`, `quality=low`, `ruins=0`, `monuments=all`,
 `monster`, `spin`, `tour` (flies from region to city to city, for TVs), `cam=angle,tilt,distance`,
 `giant=N` (test tall buildings), `demo`, `lang`, `debug`. The help modal documents all of them.
 

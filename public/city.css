@@ -32,6 +32,8 @@ body { font-family: Nunito, "Segoe UI", system-ui, sans-serif; color: var(--ink)
 .lang button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
 .back { all: unset; cursor: pointer; font-size: 30px; line-height: 1; font-weight: 700; color: #c8d4df; padding: 0 6px 4px 0; }
 .tools { display: flex; gap: 6px; }
+.menu { display: contents; } /* on a phone it becomes the ☰ drawer */
+.menu-btn { display: none; }
 .tools button {
   all: unset; cursor: pointer; display: flex; align-items: center; gap: 4px; padding: 6px 10px; border-radius: 8px;
   background: var(--slate-2); color: #fff; font-weight: 800; font-size: 15px; white-space: nowrap;
@@ -164,6 +166,8 @@ body { font-family: Nunito, "Segoe UI", system-ui, sans-serif; color: var(--ink)
 .sheet .chips span.badge { background: #eef4ff; }
 .sheet .chips span.dojo { background: #1f1f24; color: #f2c14e; cursor: pointer; }
 .sheet .chips span.dojo:hover { background: #2a2a31; }
+.sheet .chips span.ruin { background: #fde4dc; color: #a3361f; }
+.sheet .chips span.ruin.rubble { background: #e6e2dc; color: #4b4743; }
 .sheet .corp { margin-top: 10px; font-size: 13.5px; font-weight: 700; color: #8a6500; }
 .sheet .corp button { all: unset; cursor: pointer; font-weight: 900; text-decoration: underline; text-decoration-color: rgba(138, 101, 0, .4); text-underline-offset: 3px; }
 /* the city Dojo card: masters and who is on the way */
@@ -431,4 +435,55 @@ kbd { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 5px
   .hall { width: min(340px, calc(100vw - 30px)); }
   .corner { bottom: 10px; }
   .sheet { left: 10px; bottom: 10px; width: calc(100% - 20px); }
+}
+
+/* ───────── phones: the scene first; the tools behind ☰, City Hall and the card as drawers at the bottom ───────── */
+@media (hover: none) { .hovertip { display: none; } } /* a touch has no hover: the card says it all */
+@media (max-width: 700px) {
+  .topbar { padding: 0 10px; gap: 8px; }
+  .logo { font-size: 20px; }
+  .title { flex: 1; min-width: 0; font-size: 17px; overflow: hidden; text-overflow: ellipsis; }
+  #mode-pill { display: none !important; } /* the title says enough; a stale reading still shows its pill */
+  .pill.warn { max-width: 34vw; overflow: hidden; text-overflow: ellipsis; }
+  .menu-btn { all: unset; cursor: pointer; display: grid; place-items: center; width: 40px; height: 34px; border-radius: 9px; background: var(--slate-2); color: #fff; font-size: 19px; }
+  [data-menu] .menu-btn { background: var(--gold); color: var(--ink); }
+  .menu { display: none; }
+  [data-menu] .menu { position: fixed; top: 60px; left: 8px; right: 8px; z-index: 17; display: grid; gap: 10px; padding: 12px; border-radius: 14px; background: var(--slate); box-shadow: 0 12px 30px rgba(0, 0, 0, .4); }
+  .menu .tools { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .menu .tools button { flex-direction: column; justify-content: center; gap: 4px; min-height: 62px; padding: 8px 4px; font-size: 22px; text-align: center; white-space: normal; }
+  .menu .tools button::after { content: attr(aria-label); font-size: 11.5px; font-weight: 800; line-height: 1.15; }
+  .menu .switch { padding: 11px; font-size: 15px; text-align: center; }
+  .menu .lang { justify-content: center; gap: 6px; font-size: 18px; }
+  .menu .lang button { padding: 7px 16px; font-size: 14px; }
+  .tool-pop, .panels, .sky { top: 60px; left: 8px; right: 8px; width: auto; max-height: calc(100vh - 120px); overflow: auto; }
+
+  /* region: this week's builds folds into a chip (tap to open); the camera keeps only spin and reframe */
+  .ranking { top: 62px; right: 8px; width: min(320px, calc(100vw - 16px)); padding: 9px 12px 8px; box-sizing: border-box; }
+  .ranking h2 { margin: 0; cursor: pointer; gap: 8px; }
+  .ranking h2::after { content: '▾'; font-size: 12px; }
+  .ranking.open h2 { margin-bottom: 8px; }
+  .ranking.open h2::after { content: '▴'; }
+  .ranking:not(.open) { width: auto; }
+  .ranking:not(.open) ol, .ranking:not(.open) h2 small, .ranking .panel-x { display: none; }
+  [data-map] .ranking { display: none; }
+  body:has(.ranking.open) .corner { display: none; } /* the open list takes the top */
+  .corner, [data-view=city] .corner, [data-hidden~=legend] .corner, [data-map] .corner, [data-hidden~=news] .corner { top: 62px; bottom: auto; left: 8px; }
+  .cam button[data-dir] { display: none; }
+  .mapkey { max-width: calc(100vw - 16px); box-sizing: border-box; }
+
+  /* City Hall: a drawer at the bottom, folded (tap to open, tap the top to fold) */
+  .hall, [data-hidden~=news] .hall { top: auto; left: 0; right: 0; bottom: 36px; width: auto; max-height: 128px; overflow: hidden; border-radius: 16px 16px 0 0; transition: max-height .25s ease; }
+  [data-hidden~=news] .hall { bottom: 0; }
+  .hall.open { max-height: 62vh; overflow: hidden auto; }
+  .hall::before { content: ''; display: block; width: 42px; height: 4px; margin: 7px auto -3px; border-radius: 2px; background: #6a7b8b; }
+  .hall:not(.open)::after { content: ''; position: sticky; bottom: 0; display: block; height: 30px; margin-top: -30px; background: linear-gradient(transparent, var(--slate)); pointer-events: none; }
+  body:has(#sheet:not([hidden])) .hall { display: none; }
+
+  /* the building's card: also a drawer, above the news */
+  .sheet, [data-hidden~=news] .sheet { left: 6px; right: 6px; width: auto; bottom: 42px; max-height: 58vh; overflow: auto; padding: 14px 14px 16px; border-radius: 16px; }
+  [data-hidden~=news] .sheet { bottom: 6px; }
+  .sheet .who b { font-size: 19px; }
+
+  /* from afar on a small screen: only the cities' names */
+  [data-view=region] .rally, [data-view=region] .route, [data-view=region] .sign small, [data-view=region] .sign em { display: none; }
 }

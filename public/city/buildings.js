@@ -5,13 +5,15 @@
 // Variety per person: a fixed draw from the id (seed) picks the footprint (square, slab, L-shaped or
 // on a podium), the setback, the window tile, the crown and the rooftop details. The rooftop tells
 // the story: yellow top for this week's floors, a crane for whoever is building now, newcomer
-// balloons, helipad, garden, antenna, the night owl's neon sign and the network's flag.
+// balloons, helipad, garden, antenna, the night owl's neon sign and the network's flag. Whoever stops
+// using Claude sees the building burn (soot on the walls; flames and smoke come from life.js) and
+// then fall into a pile of rubble (ruinOf in rules.js).
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { seed, tier, kind, L } from './world.js';
 import { t, displayName } from '../i18n/index.js';
-import { monthOf, floorsText } from './rules.js';
+import { monthOf, floorsText, ruinOf } from './rules.js';
 
 const TILE_W = 4.8, TILE_H = 4; // one tile of the facade texture: 4 windows × 4 (visual) floors
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -162,6 +164,7 @@ function pagodaSide() {
 
 // ───────── geometries (all non-indexed, to merge) ─────────
 const NI = (g) => (g.index ? g.toNonIndexed() : g);
+const pickR = (r, a) => a[Math.floor(r() * a.length)];
 function slice(g, ranges) {
   const out = new THREE.BufferGeometry();
   for (const name of ['position', 'normal', 'uv']) {
@@ -260,15 +263,20 @@ export function makeKit(batch, hOf, wkOf, colorOf = null) {
 
   function tower(b, c, x, z) {
     const r = seed(b.id + c.id), pick = (a) => a[Math.floor(r() * a.length)];
-    const f = b.floors, t = tier(f), k = kind(f), st = c.style, h = hOf(b);
+    const f = b.floors, t = tier(f), k = kind(f), st = c.style, h = hOf(b), ruin = ruinOf(b), fire = ruin === 'fire' && !colorOf;
+    if (ruin === 'rubble') return rubble(b, x, z, colorOf ? colorOf(b) : pick(STYLE_PAL[st][t]), false, r);
     // Dojo black belt: a black pagoda (the giants keep their shape, with the palette and a pagoda on the podium)
     const dojo = b.belt === 'black' && !colorOf, giant = k === 'supertower' || k === 'cloudTower' || k === 'orbitalTower' || k === 'spaceElevator';
-    const hex = colorOf ? colorOf(b) : pick(STYLE_PAL[st][t]);
+    const hex = colorOf ? colorOf(b) : fire ? shade(pick(STYLE_PAL[st][t]), 0.5) : pick(STYLE_PAL[st][t]); // on fire: soot
     const glass = st === 'glass' || st === 'neon' || (st === 'concrete' && t !== 'building' && r() < 0.6);
     const side = colorOf ? matte(hex) : dojo ? facadeMat('pagoda', 0, false, '#ffffff') : facadeMat(st, Math.floor(r() * 3), glass, hex), roof = dojo ? LACQUER : matte(shade(hex, 0.72));
     const mask = b.hours || 0;
-    cur = { hours: [mask & 255, (mask >> 8) & 255, (mask >> 16) & 255, b.now ? 1 : b.today > 0 ? 0.6 : 0.15], H: h };
-    if (dojo && !giant) { const out = pagodaTower(b, x, z, h, side, r); cur = null; return out; }
+    cur = { hours: [mask & 255, (mask >> 8) & 255, (mask >> 16) & 255, fire ? 0 : b.now ? 1 : b.today > 0 ? 0.6 : 0.15], H: h };
+    if (dojo && !giant) {
+      const out = pagodaTower(b, x, z, h, side, r); cur = null;
+      if (fire) marks.push({ kind: 'fire', x, z, h: out.h, w: L * 0.45, d: L * 0.45, bw: L * 0.74, bd: L * 0.74, by0: 1, by1: out.h * 0.7 });
+      return out;
+    }
     // footprint: setback from the lot and shape (square, rectangular slab, L-shaped or on a podium)
     const inset = 0.1 + r() * 0.08; let w = L * (1 - 2 * inset), d = w;
     const shape = dojo ? 'square' : pick(k === 'building' ? ['square', 'slab', 'L', 'square', 'slab'] : k === 'tower' ? ['square', 'slab', 'podium', 'square'] : ['square', 'podium', 'square']);
@@ -277,7 +285,7 @@ export function makeKit(batch, hOf, wkOf, colorOf = null) {
     let y = 0, topW = w, topD = d;
     if (shape === 'podium') { const ph = Math.min(h * 0.14, 6); bx(L * 0.84, ph, L * 0.84, side, roof, x, 0, z); y = ph; w *= 0.7; d *= 0.7; }
     if (dojo) { const ph = Math.min(h * 0.2, 18); pagodaBody(x, z, ph, side, { tiers: 3, sorin: false, w0: L * 0.8 }); y = ph; w *= 0.68; d *= 0.68; }
-    const ins0 = secs[0][0];
+    const ins0 = secs[0][0], body = { bw: w, bd: d, by0: y, by1: Math.max(y + 1, h * secs[0][1]) }; // the first block: where the windows burn
     for (const [ins, frac] of secs) {
       const s = 1 - (ins - ins0) * 2.2, y1 = Math.max(y + 1, h * frac), sw = w * s, sd = d * s;
       bx(sw, y1 - y, sd, side, roof, x, y, z);
@@ -293,6 +301,7 @@ export function makeKit(batch, hOf, wkOf, colorOf = null) {
     roofBits(b, h, topW, topD, r, x, z);
     if (k === 'cloudTower') marks.push({ kind: 'beacon', x, y: h + 4.5, z });
     if (k === 'spaceElevator') marks.push({ kind: 'cable', x, y: h + 3, z, seed: r() * 6 });
+    if (fire) marks.push({ kind: 'fire', x, z, h, w: topW, d: topD, ...body });
     cur = null;
     return { h };
   }
@@ -356,9 +365,15 @@ export function makeKit(batch, hOf, wkOf, colorOf = null) {
   // village and solar panels in the megalopolis; a door and windows on each block.
   function house(b, c, x, z) {
     const r = seed(b.id + c.id), pick = (a) => a[Math.floor(r() * a.length)];
-    if (b.belt === 'black' && !colorOf) return woodHouse(b, x, z, r); // black belt: a dark wooden house
+    const ruin = ruinOf(b), fire = ruin === 'fire' && !colorOf, soot = (hex) => (fire ? shade(hex, 0.5) : hex);
+    if (ruin === 'rubble') return rubble(b, x, z, colorOf ? colorOf(b) : pick(PAL.house), true, r);
+    if (b.belt === 'black' && !colorOf) { // black belt: a dark wooden house
+      const out = woodHouse(b, x, z, r);
+      if (fire) marks.push({ kind: 'fire', x, z, h: 4.6, w: 5, d: 4.4, house: true });
+      return out;
+    }
     const k = kind(b.floors), st = c.style, hh = HOUSE_H[k];
-    const wall = matte(colorOf ? colorOf(b) : pick(PAL.house)), roofM = colorOf ? matte(shade(colorOf(b), 0.8)) : matte(st === 'brick' ? pick(PAL.tile) : st === 'neon' ? pick(PAL.solar) : pick(PAL.roof), st === 'neon' ? { roughness: 0.3, metalness: 0.4 } : {});
+    const wall = matte(colorOf ? colorOf(b) : soot(pick(PAL.house))), roofM = colorOf ? matte(shade(colorOf(b), 0.8)) : matte(soot(st === 'brick' ? pick(PAL.tile) : st === 'neon' ? pick(PAL.solar) : pick(PAL.roof)), st === 'neon' ? { roughness: 0.3, metalness: 0.4 } : {});
     const door = matte('#7a5235');
     const units = k === 'condo' ? [[-2.3, 0.4, 3.4, 4.4], [2.3, 0.4, 3.4, 4.4]] : k === 'poolHouse' ? [[-0.9, -1.4, 5.2, 4.8]] : [[0, 0, 6, 5]];
     const walls = hh - 1.6;
@@ -377,7 +392,50 @@ export function makeKit(batch, hOf, wkOf, colorOf = null) {
     if (b.now) crane(x - 2, hh, z + 2, r);
     if (b.isNew) balloons(x, hh, z);
     if (b.cities > 1) flag(x + 1.3, hh - 0.5, z + 1.3, b.cities >= 3);
+    if (fire) marks.push({ kind: 'fire', x, z, h: hh, w: 5, d: 4, house: true });
     return { h: hh };
+  }
+
+  // Rubble: more than idle.rubble days without Claude. A scorched slab, a heap of concrete and
+  // facade chunks, a broken wall with empty windows (the buildings) or the fallen roof (the houses)
+  // and twisted beams. Low, so it leaves the skyline, but still a lot you can touch.
+  function rubble(b, x, z, hex, isHouse, r) {
+    const flat = !!colorOf; // the data maps: the person's color, no soot
+    const ash = matte(flat ? shade(hex, 0.85) : '#4b4743'), conc = matte(flat ? hex : '#8f897f'), concD = matte(flat ? shade(hex, 0.9) : '#6c675f'), black = matte(flat ? shade(hex, 0.7) : '#2f2c2a');
+    const wallM = matte(flat ? hex : shade(hex, 0.62)), rust = matte(flat ? shade(hex, 0.75) : '#70452f');
+    const big = isHouse ? 0.7 : clamp(0.95 + b.floors / 1500, 0.95, 1.45); // a bigger building leaves a bigger heap
+    const R = 3.4 * big, H = (isHouse ? 1.2 : 2.2) * big, cx = x + (r() - 0.5) * 1.2, cz = z + 0.6 + (r() - 0.5) * 1.2;
+    B(boxGeo(L * 0.88, 0.22, L * 0.88), ash, x, 0, z);
+    const lump = NI(new THREE.DodecahedronGeometry(1, 0));
+    for (let i = 0, n = isHouse ? 4 : 7; i < n; i++) { // the heap: broken lumps, half buried
+      const a = r() * Math.PI * 2, d = i ? r() * R * 0.6 : 0, s = R * (i ? 0.3 + r() * 0.25 : 0.55);
+      B(lump, r() < 0.5 ? conc : concD, cx + Math.cos(a) * d, 0, cz + Math.sin(a) * d, r() * 3, [s, s * (H / R) * 1.5, s * (0.8 + r() * 0.4)]);
+    }
+    const pieces = [conc, concD, wallM, black, wallM, conc];
+    for (let i = 0, n = isHouse ? 14 : 28; i < n; i++) {
+      const a = r() * Math.PI * 2, d = Math.sqrt(r()) * R * 1.15, s = (0.3 + r() * 0.65) * big;
+      const g = boxGeo(s * (1 + r()), s * (0.35 + r() * 0.5), s * (0.8 + r()));
+      g.rotateX((r() - 0.5) * 1.3); g.rotateZ((r() - 0.5) * 1.3);
+      B(g, pieces[Math.floor(r() * pieces.length)], cx + Math.cos(a) * d, Math.max(0, H * (1 - (d / R) ** 2)) - s * 0.3, cz + Math.sin(a) * d, r() * Math.PI);
+    }
+    let top = H;
+    if (isHouse) { // the roof on the ground, tilted, and what is left of two walls
+      const roof = NI(gableGeo(5.4, 4.2, 1.5)); roof.rotateZ(0.32);
+      B(roof, matte(flat ? shade(hex, 0.8) : shade(pickR(r, PAL.roof), 0.7)), x - 0.4, 0.2, z - 0.3, (r() - 0.5) * 0.8);
+      B(boxGeo(3.6, 1.2 + r() * 0.8, 0.4), wallM, x - 1.4, 0, z - 2.4); B(boxGeo(0.4, 0.9 + r() * 0.7, 2.6), wallM, x - 3.1, 0, z - 1.1);
+    } else { // a piece of facade still standing at the back, with a broken top and empty windows
+      const ww = 4.4 + r() * 2, wh = Math.min(9, 3.4 + b.floors / 90), ry = (r() - 0.5) * 0.5, px = x - 1 + (r() - 0.5), pz = z - 2.7;
+      const along = (u) => [px + Math.cos(ry) * u, pz - Math.sin(ry) * u];
+      B(boxGeo(ww, wh, 0.6), wallM, px, 0, pz, ry);
+      for (let i = -1; i <= 1; i++) { const [ax, az] = along((i * ww) / 3); B(boxGeo((ww / 3) * 0.98, 0.5 + r() * 1.9, 0.6), wallM, ax, wh, az, ry); }
+      for (let row = 0; row < Math.floor((wh - 0.6) / 2.3); row++) for (let col = -1; col <= 1; col++) { const [ax, az] = along((col * ww) / 3.2); B(boxGeo(0.9, 1.1, 0.7), black, ax, 0.8 + row * 2.3, az, ry); }
+      top = Math.max(H, wh + 1);
+    }
+    for (let i = 0, n = isHouse ? 2 : 4; i < n; i++) { // twisted beams
+      const g = boxGeo(0.22, (2.2 + r() * 2.4) * big, 0.22); g.rotateX((r() - 0.5) * 1.5); g.rotateZ((r() - 0.5) * 1.5);
+      B(g, rust, cx + (r() - 0.5) * R, H * 0.35, cz + (r() - 0.5) * R);
+    }
+    return { h: top };
   }
 
   // ───────── monuments (the city's rewards) ─────────
