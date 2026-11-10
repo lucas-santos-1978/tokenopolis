@@ -18,7 +18,7 @@ export const URL_DOC = [
   { title: t('urldoc.group.tv'), rows: [row('tour', 'tour'), row('spin', 'spin'), row('hour', 'hour=14.5')] },
   { title: t('urldoc.group.visual'), rows: [
     row('map', `map=${Object.keys(MAPKEYS).join('|')}`), row('panels', 'panels=0'), row('names', 'names=0'),
-    row('style', `style=${Object.keys(STYLE_ICONS).join('|')}`), row('quality', 'quality=low'), row('parts', 'parts=0'), row('ruins', 'ruins=0'), row('lang', `lang=${LANGS.join('|')}`),
+    row('style', `style=${Object.keys(STYLE_ICONS).join('|')}`), row('quality', 'quality=low'), row('parts', 'parts=0|1'), row('ruins', 'ruins=0'), row('lang', `lang=${LANGS.join('|')}`),
   ] },
   { title: t('urldoc.group.tests'), rows: [row('demo', 'demo'), row('monuments', 'monuments=all'), row('giant', 'giant=N'), row('mega', 'mega=<floors>'), row('monster', 'monster'), row('debug', 'debug')] },
 ];

@@ -3,6 +3,12 @@
 Dates are the day each version went live on the author's panel. Earlier versions were an internal
 tool with another name; the open-source release renames it Tokenopolis.
 
+## v31 (2026-11-10)
+
+- The page times its first seconds and, under 38 frames a second, merges the region into one piece by
+  itself (the per-city pieces cost draw calls a weak machine or a TV may not have). `?parts=1` keeps
+  one piece per city whatever the speed.
+
 ## v30 (2026-11-10)
 
 - The address follows the screen: the city, the building (or the Dojo, `dojo`, or a headquarters,

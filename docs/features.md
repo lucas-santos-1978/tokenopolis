@@ -199,8 +199,9 @@ jersey).
 A reading that changes nothing visible redraws nothing. In a region of up to 24 cities each city is a
 piece of the scene of its own (the Corporate District is another), so a new floor redraws only its
 city; the land (ground, water, trees, lamps, cars) is redrawn only when the map's layout changes. The
-price is more draw calls per frame: `?parts=0` makes the region one piece again (a weak machine or a
-TV), as a region of more than 24 cities always is. The height scale moves in steps of 2%, so one more
+price is more draw calls per frame, so the page times its first seconds and, under 38 frames a second,
+merges the region into one piece by itself (a weak machine, a TV). `?parts=0` asks for one piece,
+`?parts=1` keeps one per city whatever the speed; a region of more than 24 cities is always one piece. The height scale moves in steps of 2%, so one more
 floor on the tallest building does not change every height.
 
 ## Demo mode

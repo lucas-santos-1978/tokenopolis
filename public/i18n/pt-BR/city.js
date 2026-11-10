@@ -443,7 +443,7 @@ export default {
     style: 'Força um estilo em todas as cidades, ignorando o marco de cada uma.',
     quality: 'Sem sombras, brilho nem antialiasing: para máquinas fracas e TVs antigas.',
     ruins: 'Sem fogo e sem escombros: todos os prédios de pé, por mais tempo que estejam sem Claude.',
-    parts: 'A região inteira numa peça só, em vez de uma por cidade: menos chamadas de desenho por quadro (máquina fraca, TV), mas cada andar novo redesenha tudo.',
+    parts: 'parts=0: a região inteira numa peça só, em vez de uma por cidade (menos chamadas de desenho por quadro, mas cada andar novo redesenha tudo). A página faz isso sozinha numa máquina lenta; parts=1 mantém uma peça por cidade.',
     lang: 'Abre nesse idioma (inglês ou português do Brasil), no lugar da escolha de quem abrir.',
     demo: 'Modo demonstração: uma região fictícia desenhada para mostrar tudo que o painel oferece (da Vila à Colônia em Marte, todos os prédios, monumentos e o Dojo nos três níveis). Nada ali é real.',
     monuments: 'Ergue todos os monumentos, conquistados ou não.',

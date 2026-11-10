@@ -276,7 +276,23 @@ function clearScene(full = true) {
   anims = [];
 }
 // ───────── the parts of the scene: one per city ─────────
-const PER_CITY_MAX = params.get('parts') === '0' ? 0 : 24; // ?parts=0: one part for the whole region (fewer draw calls per frame, a full redraw on every change)
+const PER_CITY_MAX = 24;
+// One piece for the whole region instead of one per city: fewer draw calls per frame, a full redraw on
+// every change. Asked for with ?parts=0, or chosen by the page itself when the machine cannot keep up
+// with the pieces (a weak video card, a TV): the first seconds are timed, and under 38 frames a second
+// the region is merged into one piece (?parts=1 keeps the pieces whatever the speed).
+let onePiece = params.get('parts') === '0';
+const paceCheck = { on: params.get('parts') == null, from: 0, frames: 0 };
+function watchPace(now) {
+  if (!paceCheck.on || onePiece || !data || tl || document.hidden || parts.size < 2) { paceCheck.from = 0; return; }
+  if (!paceCheck.from) { paceCheck.from = now + 3000; paceCheck.frames = 0; return; } // the first seconds (loading, the first flight) do not count
+  if (now < paceCheck.from) return;
+  paceCheck.frames++;
+  if (now - paceCheck.from < 6000) return;
+  const fps = paceCheck.frames / ((now - paceCheck.from) / 1000);
+  paceCheck.on = false; // one measure per visit
+  if (fps < 38) { onePiece = true; console.info(`[city] ${fps.toFixed(0)} frames a second with one piece per city: the region is now one piece`); buildScene(); }
+}
 const parts = new Map(); // city id (or '~district', or '~all') → { sig, group, hits, entries, kit, airports, maxH }
 let craneMeshes = [];
 // what a building's drawing depends on (the same fields decide whether a reading redraws anything)
@@ -386,7 +402,7 @@ function buildScene() {
   // cities each city is a part of its own (the Corporate District is another): a reading that changes one
   // city redraws that city only, and the others stay as they are. A bigger region is one single part,
   // to keep the draw calls down.
-  const colorOf = grey ? mapColorFor(mapMode, world.maxWeek) : null, perCity = src.cities.length <= PER_CITY_MAX;
+  const colorOf = grey ? mapColorFor(mapMode, world.maxWeek) : null, perCity = !onePiece && src.cities.length <= PER_CITY_MAX;
   const groups = new Map(), trees = [], lamps = [];
   for (const o of world.objs) {
     if (o.kind === 'tree') trees.push({ x: wx(o.gx) - L / 2 + o.u * L, z: wz(o.gy) - L / 2 + o.v * L, s: o.s });
@@ -1235,6 +1251,7 @@ function frame(now) {
   sun.target.position.copy(controls.target); sun.position.copy(controls.target).addScaledVector(sunDir, 900);
   document.documentElement.style.setProperty('--signk', (clamp(420 / dist, 0.62, 1) * (1 + (textZoom - 1) * 0.6)).toFixed(2)); // from afar the signs shrink, but stay readable
   if (now - clutterAt > 350) { clutterAt = now; declutter(); }
+  watchPace(now);
   const night = 1 - dayF, sec = now / 1000;
   rippleMat.map.offset.set((sec * 0.011) % 1, (sec * 0.007) % 1);
   // everyday life: always moving
@@ -1395,4 +1412,4 @@ applyHour(hour);
 load().then(() => { const el = $('#loading'); el.style.opacity = 0; setTimeout(() => el.remove(), 700); requestAnimationFrame(frame); })
   .catch(() => { $('#loading').remove(); requestAnimationFrame(frame); });
 setInterval(() => { if (pending && !tl) { const p = pending; pending = null; dataAt = 0; load().catch(() => {}); return; } load().catch(() => {}); }, REFRESH_MS);
-window.city = { scene, camera, controls, renderer, applyHour, goCity, goPerson, goRegion, select, selectDojo, selectHq, goDistrict, fitDistrict, flyTo, fitCity, fitRegion, reload: load, rebuild: buildScene, setMapMode, startFilm, stopFilm, summonMonster, celebrate, fx, hi: { hoverHi, selHi, selBeam, selRing, selFrame }, get life() { return life; }, get lastBuild() { return lastBuild; }, get data() { return data; }, get world() { return world; }, get view() { return view; }, get selected() { return selected; } };
+window.city = { scene, camera, controls, renderer, applyHour, goCity, goPerson, goRegion, select, selectDojo, selectHq, goDistrict, fitDistrict, flyTo, fitCity, fitRegion, reload: load, rebuild: buildScene, setMapMode, startFilm, stopFilm, summonMonster, celebrate, fx, hi: { hoverHi, selHi, selBeam, selRing, selFrame }, get life() { return life; }, get lastBuild() { return lastBuild; }, get onePiece() { return onePiece; }, set onePiece(v) { onePiece = !!v; }, get data() { return data; }, get world() { return world; }, get view() { return view; }, get selected() { return selected; } };

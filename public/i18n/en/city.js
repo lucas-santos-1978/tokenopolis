@@ -439,7 +439,7 @@ export default {
     style: 'Forces a style on every city, ignoring each one’s milestone.',
     quality: 'No shadows, glow or antialiasing: for weak machines and old TVs.',
     ruins: 'No fire and no rubble: every building standing, however long without Claude.',
-    parts: 'The whole region as one piece instead of one per city: fewer draw calls per frame (a weak machine, a TV), but every new floor redraws everything.',
+    parts: 'parts=0: the whole region as one piece instead of one per city (fewer draw calls per frame, but every new floor redraws everything). The page does it by itself on a slow machine; parts=1 keeps one piece per city.',
     lang: 'Opens in that language (English or Brazilian Portuguese) instead of the viewer’s own choice.',
     demo: 'Demo mode: a fictional region designed to show everything the panel offers (from the Village to the Mars Colony, every building, monument and the Dojo at its three levels). Nothing there is real.',
     monuments: 'Raises every monument, earned or not.',
