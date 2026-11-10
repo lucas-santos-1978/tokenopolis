@@ -102,6 +102,7 @@ export default {
     network: { name: 'Network', title: 'Network', desc: 'who builds in more than one city', legend: ['💎 Mega Builder', '3 cities or more', '2 cities', '1 city'] },
     model: { name: 'Model', title: 'Most used model (7 days)', desc: 'the model each person used most this week', legend: ['Opus', 'Sonnet', 'Haiku', 'Fable', 'other or no data'] },
     belts: { name: 'Dojo', title: 'Dojo', desc: 'everyone’s belt in the Dojo', legend: ['black', 'brown', 'purple', 'blue', 'white', 'no belt'] },
+    health: { name: 'Health', title: 'Health: days without Claude', desc: 'how long since each building was used', legend: ['used today', 'stopped for a few days', 'close to catching fire', 'on fire', 'rubble'] },
   },
   style: {
     brick: { name: 'Exposed brick', lower: 'exposed brick' },
@@ -109,6 +110,9 @@ export default {
     glass: { name: 'Blue glass', lower: 'blue glass' },
     deco: { name: 'Art deco', lower: 'art deco' },
     neon: { name: 'Futuristic neon', lower: 'futuristic neon' },
+    global: { name: 'White stone and sea glass', lower: 'white stone and sea glass' },
+    future: { name: 'Chrome and violet', lower: 'chrome and violet' },
+    mars: { name: 'Martian terracotta', lower: 'Martian terracotta' },
   },
 
   mountain: { name: 'Context Peak' },

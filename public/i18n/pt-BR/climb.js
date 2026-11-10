@@ -38,10 +38,13 @@ export default {
     summitIn: 'cume a {tokens}',
   },
 
+  person: { notOnWall: '{name} não está na parede hoje', unknown: 'Essa pessoa não está no ranking desta temporada' },
   // Etiquetas dos escaladores e plaquinhas do ranking
   tag: {
     card: '📸 Cartão',
     cardTitle: 'Cartão para compartilhar no Teams/Slack (tecla C)',
+    city: '🏙️ Prédio',
+    cityTitle: 'Ver o prédio desta pessoa na cidade',
     zzz: 'z z z',
     resting: 'parado',
     todayState: '{tokens} hoje · {state}',

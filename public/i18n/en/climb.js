@@ -38,10 +38,13 @@ export default {
     summitIn: '{tokens} to the summit',
   },
 
+  person: { notOnWall: '{name} is not on the wall today', unknown: 'That person is not in this season’s ranking' },
   // Climber tags and ranking plates
   tag: {
     card: '📸 Card',
     cardTitle: 'Card to share on Teams/Slack (C key)',
+    city: '🏙️ Building',
+    cityTitle: 'See this person’s building in the city',
     zzz: 'z z z',
     resting: 'resting',
     todayState: '{tokens} today · {state}',

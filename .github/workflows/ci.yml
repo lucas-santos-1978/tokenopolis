@@ -17,6 +17,8 @@ jobs:
         run: |
           set -e
           for f in $(git ls-files '*.js' '*.mjs' '*.cjs'); do node --check "$f"; done
+      - name: Tests (the two languages have the same keys; the city's rules)
+        run: node --test
       - name: Boot with generated data and hit the API
         env:
           PORT: "3999"

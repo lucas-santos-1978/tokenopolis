@@ -9,7 +9,6 @@ issue if you want to pick one up or argue for another.
   with the clock, the overtakes and the sky changing. Needs hourly usage since midnight. (M)
 - **Weekly recap** on Sunday night: champion, biggest single-day climb, the night owl, the most
   consistent, the biggest mover. (M–L)
-- **Building card**: a ready-made image of a person's building, pin and city to paste in chat. (M)
 
 ## Epic moments on screen
 
@@ -24,22 +23,15 @@ issue if you want to pick one up or argue for another.
 
 ## For the office TV
 
-- **Cinematic TV mode**: drone shots, close-ups of whoever is climbing, letterbox bars and optional
+- **Cinematic TV mode** (the tour already has a caption): drone shots, close-ups of whoever is climbing, letterbox bars and optional
   sounds (wind, carabiners, a crowd on overtakes). `?tour` is the base. (M)
 - **Seasonal themes**: Halloween (pumpkins at the camps, bats, fog), snow for the holidays. (S)
 - **Optional sounds** in the city (off by default): traffic, a chime on a new floor, fireworks, the
   monster's roar. (M)
-- **Region mission**: a collective weekly goal with a bar at the top and fireworks when met. (S)
 
 ## The city
 
-- **Mobile layouts** for the 3D city (portrait with a scrolling page and pins, landscape). (M)
 - **Ready-made CC0 kits** (Kenney's city kits) instead of generated pieces, as an option. (M)
-- **Breathing room for small buildings**: with a linear scale, 15- to 100-floor buildings become
-  identical boxes next to a 2,000-floor tower; a gentler curve at the base without changing the
-  ranking rule. (S)
-- **Redraw per city** instead of the whole region when a reading changes, and fewer draw calls
-  (merge similar materials, instance Ferris-wheel cabins). (M)
 - **A 3D sign at the Dojo entrance** with the city name and the belt count. (S)
 
 ## Small things

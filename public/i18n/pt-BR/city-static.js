@@ -11,13 +11,14 @@ export default {
     },
     tools: {
       aria: 'Ferramentas',
-      short: { me: 'Meu prédio', find: 'Achar', maps: 'Mapas', paper: 'Jornal', history: 'Time-lapse', sky: 'Hora do dia', panels: 'Painéis', help: 'Ajuda' }, // os rótulos do menu ☰ no celular
+      short: { me: 'Meu prédio', find: 'Achar', maps: 'Mapas', paper: 'Jornal', history: 'Time-lapse', sky: 'Hora do dia', bell: 'Avisos', panels: 'Painéis', help: 'Ajuda' }, // os rótulos do menu ☰ no celular
       me: 'Ir até o meu prédio',
       find: 'Achar um prédio',
       maps: 'Mapas de dados',
       paper: 'O Diário dos Tokens',
       history: 'Time-lapse e corrida das cidades, {since}',
       sky: 'Hora do dia (automática pela hora de {zone})',
+      bell: 'Avisos e o diário da semana',
       panels: 'Painéis e nomes (tecla P esconde todos)',
       help: 'Como ler {appName} (tecla ?)',
     },
@@ -25,6 +26,8 @@ export default {
       hide: 'Esconder as obras da semana',
       hideTitle: 'Esconder as obras da semana (o 👁️ traz de volta)',
       heading: 'OBRAS DA SEMANA <small>andares subidos</small>',
+      csv: '⬇️ Planilha (CSV)',
+      csvTitle: 'Todos os prédios da região numa planilha',
     },
     legend: {
       hide: 'Esconder a legenda',
@@ -57,6 +60,13 @@ export default {
     ticker: 'NOTÍCIAS',
     timelapseStop: '■ Parar',
     sheet: 'Ficha do prédio',
+    card: { aria: 'Cartão do prédio', download: '⬇️ Baixar PNG', copy: '📋 Copiar imagem' },
+    welcome: {
+      title: '👋 Ache o seu prédio',
+      text: 'Busque o seu nome, abra o seu prédio e marque “Este é o meu prédio”. Ele ganha um pino, e a cidade avisa quando ele crescer.',
+      find: '🔍 Buscar meu nome',
+      later: 'Agora não',
+    },
     films: {
       timelapse: 'Time-lapse',
       timelapseDesc: '{appName} surgindo, {since}',
@@ -76,6 +86,7 @@ export default {
       onMap: 'NO MAPA',
       names: 'Nomes das cidades', namesDesc: 'as placas sobre cada cidade',
       showAll: 'Mostrar todos',
+      text: 'Tamanho do texto',
       hideAll: 'Esconder todos',
     },
     sky: {

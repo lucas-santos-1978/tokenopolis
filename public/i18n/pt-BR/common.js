@@ -109,6 +109,7 @@ export default {
     network: { name: 'Rede', title: 'Rede', desc: 'quem constrói em mais de uma cidade', legend: ['💎 Mega Builder', '3 cidades ou mais', '2 cidades', '1 cidade'] },
     model: { name: 'Modelo', title: 'Modelo mais usado (7 dias)', desc: 'o modelo que cada um mais usou na semana', legend: ['Opus', 'Sonnet', 'Haiku', 'Fable', 'outros ou sem dado'] },
     belts: { name: 'Dojo', title: 'Dojo', desc: 'a faixa de cada um no Dojo', legend: ['preta', 'marrom', 'roxa', 'azul', 'branca', 'sem faixa'] },
+    health: { name: 'Saúde', title: 'Saúde: dias sem Claude', desc: 'há quanto tempo cada prédio não é usado', legend: ['usou hoje', 'parado há poucos dias', 'perto de pegar fogo', 'pegando fogo', 'escombros'] },
   },
   style: {
     brick: { name: 'Tijolo à vista', lower: 'tijolo à vista' },
@@ -116,6 +117,9 @@ export default {
     glass: { name: 'Vidro azul', lower: 'vidro azul' },
     deco: { name: 'Art déco', lower: 'art déco' },
     neon: { name: 'Futurista com neon', lower: 'futurista com neon' },
+    global: { name: 'Pedra branca e vidro verde-mar', lower: 'pedra branca e vidro verde-mar' },
+    future: { name: 'Cromado e violeta', lower: 'cromado e violeta' },
+    mars: { name: 'Terracota marciana', lower: 'terracota marciana' },
   },
 
   mountain: { name: 'Pico do Contexto' },

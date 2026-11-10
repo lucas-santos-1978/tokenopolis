@@ -4,7 +4,7 @@
 
 import * as THREE from 'three';
 import { t, plural, fmt, config, displayName } from '../i18n/index.js';
-import { tierOf, cityTier, floorsText } from './rules.js';
+import { tierOf, cityTier, floorsText, BUILDING_TIERS } from './rules.js';
 import { STYLE_PAL, PAL } from './buildings.js';
 import { esc, keyOf } from './panels.js';
 
@@ -28,6 +28,41 @@ const dayIso = (h, i) => (isoFmt ??= new Intl.DateTimeFormat('en-CA', { timeZone
 const dayShort = (h, i) => fmt.date(dayMs(h, i), 'short'); // "Oct 21" / "21 out"
 const weekday0 = (h) => new Date(`${dayIso(h, 0)}T12:00:00Z`).getUTCDay(); // the record's first day, Sunday = 0
 
+// The week's diary: what happened since Monday, worked out from the record (nothing is stored, so it is
+// there for whoever was not watching): who moved up a type of building, newcomers, buildings that
+// caught fire, cities that changed title or passed another. Newest first. Needs loadHistory().
+export function weekDiary(data) {
+  if (!hist || !data) return [];
+  const n = hist.days, w0 = Math.max(0, Math.round((data.week.start - hist.start) / DAY_MS)), fire = config.idle?.fire ?? 0, out = [], totals = [];
+  for (const hc of hist.cities) {
+    const c = data.cities.find((x) => x.id === hc.id);
+    if (!c) continue;
+    const byId = new Map(c.buildings.map((b) => [b.id, b])), cityCum = new Array(n).fill(0);
+    for (const p of hc.people) {
+      const b = byId.get(p.id);
+      let cum = 0, first = -1, last = -1;
+      for (let i = 0; i < n; i++) {
+        const before = cum;
+        cum += p.d[i] / 10; cityCum[i] += cum;
+        if (p.d[i] > 0) { if (first < 0) first = i; last = i; }
+        if (b && i >= w0 && before > 0 && cum >= 15) { // a new type of building (from the building up: the houses change too often)
+          const t0 = tierOf(before, BUILDING_TIERS), t1 = tierOf(cum, BUILDING_TIERS);
+          if (t1.key !== t0.key) out.push({ day: i, icon: t1.icon, kind: 'tier', b, c, tier: t1.key });
+        }
+      }
+      if (b && first >= w0) out.push({ day: first, icon: '🎈', kind: 'new', b, c });
+      const burn = last + fire + 1; // the day the fire starts, if nothing was built since
+      if (b && fire > 0 && last >= 0 && burn >= w0 && burn < n) out.push({ day: burn, icon: '🔥', kind: 'fire', b, c });
+    }
+    for (let i = Math.max(1, w0); i < n; i++) { const t0 = tierOf(cityCum[i - 1]), t1 = tierOf(cityCum[i]); if (t0.key !== t1.key) out.push({ day: i, icon: t1.icon, kind: 'cityTier', c, tier: t1.key }); }
+    totals.push({ c, cum: cityCum });
+  }
+  for (let i = Math.max(1, w0); i < n; i++) for (const a of totals) for (const b of totals) {
+    if (a !== b && a.cum[i - 1] < b.cum[i - 1] && a.cum[i] > b.cum[i]) out.push({ day: i, icon: '🏁', kind: 'overtake', c: a.c, other: b.c });
+  }
+  return out.sort((x, y) => y.day - x.day).slice(0, 80).map((e) => ({ ...e, when: fmt.dayShort(dayIso(hist, e.day)) }));
+}
+
 // The details card's timeline: floors accumulated day by day, the best day and the best week;
 // hovering (or touching) shows the day.
 export function renderTimeline(c, b) {
@@ -43,6 +78,11 @@ export function renderTimeline(c, b) {
   const [bw, bwv] = [...weeks].reduce((m, x) => (x[1] > m[1] ? x : m), [0, -1]), bwStart = Math.max(0, bw * 7 - ((dow0 + 6) % 7));
   const bwEnd = Math.min(d.length - 1, bw * 7 - ((dow0 + 6) % 7) + 6);
   const Wd = 320, Hd = 64, max = Math.max(1, cum.at(-1)), n = d.length;
+  // the card's race: last week against this one (the week of the record's last day)
+  const wNow = Math.floor((n - 1 + ((dow0 + 6) % 7)) / 7), last = $('#race-last');
+  if (last) { last.hidden = false; last.textContent = `📅 ${t('around.lastWeek', { last: fmt.int(weeks.get(wNow - 1) ?? 0), now: fmt.int(weeks.get(wNow) ?? 0) })}`; }
+  const daysEl = $('#race-days'), span = Math.min(30, n), active = d.slice(-span).filter((v) => v > 0).length; // the days with any floor, of the last 30
+  if (daysEl) { daysEl.hidden = false; daysEl.textContent = `🗓️ ${t('around.activeDays', { n: fmt.int(active), span: fmt.int(span) })}`; }
   const X = (i) => (n === 1 ? Wd / 2 : (i / (n - 1)) * Wd), Y = (v) => Hd - 4 - (v / max) * (Hd - 10);
   const line = cum.map((v, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join('');
   el.innerHTML = `

@@ -10,13 +10,13 @@ The climber models in `public/models/rocketbox/*.glb` are converted from the
 The full license text and the list of changes made to the models (metre units, Mixamo bone
 names, smaller embedded textures) are in `public/models/rocketbox/LICENSE.md`.
 
-## three.js (loaded from a CDN)
+## three.js (bundled)
 
-The 3D pages load [three.js](https://threejs.org) r160 and its example modules (OrbitControls,
-GLTFLoader, CSS2DRenderer, RoomEnvironment, EffectComposer, RenderPass, UnrealBloomPass, OutputPass,
-BufferGeometryUtils, SkeletonUtils, SimplexNoise) from jsDelivr at runtime. three.js is
-Copyright © 2010-2026 three.js authors, MIT License. Nothing from three.js is redistributed in
-this repository.
+The 3D pages use [three.js](https://threejs.org) r160 and some of its example modules (OrbitControls,
+CSS2DRenderer, RoomEnvironment, GLTFLoader, EffectComposer and its passes, BufferGeometryUtils,
+SkeletonUtils, SimplexNoise). They are served from `public/vendor/three/`, unmodified, so the panel
+works on a network that blocks outside sites. three.js is Copyright © 2010-2023 three.js authors,
+MIT License; the license text is in `public/vendor/three/LICENSE`.
 
 ## Google Fonts (loaded from a CDN)
 

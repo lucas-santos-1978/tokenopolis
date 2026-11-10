@@ -86,6 +86,7 @@ export function createCities(config, source) {
     const week = seasonAt(now, { ...opts, length: 'week' });
     const month = seasonAt(now, { ...opts, length: 'month' });
     const lastMonth = seasonAt(month.start - 1, { ...opts, length: 'month' });
+    const lastWeek = seasonAt(week.start - 1, { ...opts, length: 'week' });
     const [past, current, recent, hours, open, used] = await Promise.all([
       closedDays(today, now),
       source.orgDaily(Math.max(start, today.start), now),
@@ -105,11 +106,12 @@ export function createCities(config, source) {
         for (const [email, days] of people) {
           if (!inTeam(email)) continue;
           const byPerson = orgs.get(org) ?? orgs.set(org, new Map()).get(org);
-          const r = byPerson.get(email) ?? { total: 0, week: 0, today: 0, month: 0, lastMonth: 0, first: Infinity, days: new Map() };
+          const r = byPerson.get(email) ?? { total: 0, week: 0, lastWeek: 0, today: 0, month: 0, lastMonth: 0, first: Infinity, days: new Map() };
           for (const [ts, v] of days) {
             if (ts < start) continue;
             r.total += v;
             if (ts >= week.start) r.week += v;
+            else if (ts >= lastWeek.start) r.lastWeek += v;
             if (ts >= today.start) r.today += v;
             if (ts >= month.start) r.month += v;
             else if (ts >= lastMonth.start) r.lastMonth += v;
@@ -136,6 +138,23 @@ export function createCities(config, source) {
       for (const [d, v] of days) if (v > 0 && d <= todayIdx) last = Math.max(last, d);
       return Number.isFinite(last) ? todayIdx - last : null;
     }
+    // The comeback: used today after more than the fire's days stopped. How many days the building had
+    // been stopped (0 otherwise); it holds for the whole day.
+    function backOf(days) {
+      const fire = config.cities.idleFireDays;
+      if (!(fire > 0) || !(days.get(todayIdx) > 0)) return 0;
+      let last = -Infinity;
+      for (const [d, v] of days) if (v > 0 && d < todayIdx) last = Math.max(last, d);
+      const stopped = Number.isFinite(last) ? todayIdx - last - 1 : 0;
+      return stopped > fire ? stopped : 0;
+    }
+    // A personal record: today is already the person's best day in the window (among at least a week of days with usage).
+    function recordOf(days) {
+      const today = days.get(todayIdx) ?? 0;
+      let best = 0, n = 0;
+      for (const [d, v] of days) if (d < todayIdx && v > 0) { best = Math.max(best, v); n++; }
+      return n >= 7 && today > best;
+    }
     function streakOf(days) {
       let n = 0, d = todayIdx;
       if (!(days.get(d) > 0)) d--;
@@ -149,14 +168,16 @@ export function createCities(config, source) {
     // Today's hours with usage (bit = hour in the configured time zone) and how many of the last 7 days had night usage (22h to 5h).
     function hoursOf(org, email) {
       let mask = 0;
-      const nights = new Set();
+      const nights = new Set(), clock = new Array(24).fill(0), seen = new Set();
       for (const [ts, v] of hours.get(org)?.get(email) ?? []) {
         if (!(v > 0)) continue;
         const local = ts + off * HOUR, h = new Date(local).getUTCHours();
         if (ts >= today.start) mask |= 1 << h;
+        const dayHour = `${Math.floor(local / DAY)}|${h}`; // the clock: on how many of the last 7 days each hour was used
+        if (!seen.has(dayHour)) { seen.add(dayHour); clock[h]++; }
         if (NIGHT_HOUR(h)) nights.add(Math.floor((local - (h < 6 ? DAY : 0)) / DAY)); // the small hours belong to the previous night
       }
-      return { mask, nights: nights.size };
+      return { mask, nights: nights.size, clock: seen.size ? clock.join('') : null };
     }
 
     // The model family the person uses most in this city and its share (null without data).
@@ -165,8 +186,10 @@ export function createCities(config, source) {
       for (const [m, v] of used.get(org)?.get(email) ?? []) byFamily.set(family(m), (byFamily.get(family(m)) ?? 0) + v);
       const total = [...byFamily.values()].reduce((a, v) => a + v, 0);
       if (!(total > 0)) return { model: null, modelShare: 0 };
-      const [top, v] = [...byFamily].sort((a, b) => b[1] - a[1])[0];
-      return { model: top, modelShare: Math.round((v / total) * 100) / 100 };
+      const sorted = [...byFamily].sort((a, b) => b[1] - a[1]), [top, v] = sorted[0];
+      // models: every family's share of the 7 days, biggest first (only when there is more than one)
+      const mix = sorted.map(([m, x]) => [m, Math.round((x / total) * 100) / 100]).filter(([, s]) => s >= 0.01);
+      return { model: top, modelShare: Math.round((v / total) * 100) / 100, ...(mix.length > 1 ? { models: mix } : {}) };
     }
 
     const cities = kept.map(([org, people]) => {
@@ -185,8 +208,11 @@ export function createCities(config, source) {
           lastMonth: round1(r.lastMonth / floorTokens),
           streak: streakOf(r.days),
           idle: idleOf(r.days),
+          ...(backOf(r.days) ? { back: backOf(r.days) } : {}),
+          ...(recordOf(r.days) ? { record: true } : {}),
           hours: isNow ? h.mask | (1 << new Date(now + off * HOUR).getUTCHours()) : h.mask,
           night: h.nights,
+          ...(h.clock ? { clock: h.clock } : {}),
           ...modelOf(org, email),
           now: isNow,
           isNew: r.first >= week.start,
@@ -241,11 +267,19 @@ export function createCities(config, source) {
     }
     const links = [...pairs].map(([key, n]) => { const [a, b] = key.split('|'); return { a, b, n }; }).sort((x, y) => y.n - x.n);
 
+    // The region's mission: this week's floors against last week's plus MISSION_GROWTH % (the cities on
+    // the map only; nothing to beat in a region's first week).
+    let lastWeekTokens = 0;
+    for (const [, people] of kept) for (const r of people.values()) lastWeekTokens += r.lastWeek;
+    const growth = config.cities.missionGrowth, lastWeekFloors = lastWeekTokens / floorTokens;
+    const mission = growth > 0 && lastWeekFloors >= 1 ? { target: Math.ceil(lastWeekFloors * (1 + growth / 100)), lastWeek: round1(lastWeekFloors), growth } : null;
+
     return {
       mode: source.mode,
       generatedAt: now,
       start,
       floorTokens,
+      mission,
       week,
       month,
       lastMonth,

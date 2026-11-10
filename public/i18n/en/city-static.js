@@ -11,13 +11,14 @@ export default {
     },
     tools: {
       aria: 'Tools',
-      short: { me: 'My building', find: 'Find', maps: 'Maps', paper: 'Newspaper', history: 'Time-lapse', sky: 'Time of day', panels: 'Panels', help: 'Help' }, // the labels of the ☰ menu on a phone
+      short: { me: 'My building', find: 'Find', maps: 'Maps', paper: 'Newspaper', history: 'Time-lapse', sky: 'Time of day', bell: 'Notices', panels: 'Panels', help: 'Help' }, // the labels of the ☰ menu on a phone
       me: 'Go to my building',
       find: 'Find a building',
       maps: 'Data maps',
       paper: 'The Daily Token',
       history: 'Time-lapse and the city race, {since}',
       sky: 'Time of day (automatic, by the time in {zone})',
+      bell: 'Notices and the week’s diary',
       panels: 'Panels and names (the P key hides them all)',
       help: 'How to read {appName} (? key)',
     },
@@ -25,6 +26,8 @@ export default {
       hide: 'Hide this week’s builds',
       hideTitle: 'Hide this week’s builds (the 👁️ brings it back)',
       heading: 'THIS WEEK’S BUILDS <small>floors added</small>',
+      csv: '⬇️ Spreadsheet (CSV)',
+      csvTitle: 'Every building of the region as a spreadsheet',
     },
     legend: {
       hide: 'Hide the legend',
@@ -57,6 +60,13 @@ export default {
     ticker: 'NEWS',
     timelapseStop: '■ Stop',
     sheet: 'Building details',
+    card: { aria: 'Building card', download: '⬇️ Download PNG', copy: '📋 Copy image' },
+    welcome: {
+      title: '👋 Find your building',
+      text: 'Search your name, open your building and mark “This is my building”. It gets a pin, and the city tells you when it grows.',
+      find: '🔍 Search my name',
+      later: 'Not now',
+    },
     films: {
       timelapse: 'Time-lapse',
       timelapseDesc: '{appName} rising, {since}',
@@ -76,6 +86,7 @@ export default {
       onMap: 'ON THE MAP',
       names: 'City names', namesDesc: 'the signs over each city',
       showAll: 'Show all',
+      text: 'Text size',
       hideAll: 'Hide all',
     },
     sky: {

@@ -15,6 +15,7 @@
   "scripts": {
     "start": "node server/index.js",
     "start:proxy": "node --use-system-ca server/index.js",
-    "mock": "node server/index.js --mock"
+    "mock": "node server/index.js --mock",
+    "test": "node --test"
   }
 }

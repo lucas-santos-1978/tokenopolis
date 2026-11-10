@@ -7,7 +7,7 @@ import { MAPKEYS, queueToast } from './panels.js';
 import { CITY_TIERS, cityTier } from './rules.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const STYLE_ICONS = { brick: '🧱', concrete: '🏢', glass: '🪟', deco: '🎩', neon: '🌃' };
+const STYLE_ICONS = { brick: '🧱', concrete: '🏢', glass: '🪟', deco: '🎩', neon: '🌃', global: '🌐', future: '🛸', mars: '🪐' };
 const LANGS = ['en', 'pt-BR'];
 const langOf = (v) => (!v ? '' : /^pt/i.test(v) ? 'pt-BR' : 'en');
 
@@ -18,7 +18,7 @@ export const URL_DOC = [
   { title: t('urldoc.group.tv'), rows: [row('tour', 'tour'), row('spin', 'spin'), row('hour', 'hour=14.5')] },
   { title: t('urldoc.group.visual'), rows: [
     row('map', `map=${Object.keys(MAPKEYS).join('|')}`), row('panels', 'panels=0'), row('names', 'names=0'),
-    row('style', `style=${Object.keys(STYLE_ICONS).join('|')}`), row('quality', 'quality=low'), row('ruins', 'ruins=0'), row('lang', `lang=${LANGS.join('|')}`),
+    row('style', `style=${Object.keys(STYLE_ICONS).join('|')}`), row('quality', 'quality=low'), row('parts', 'parts=0'), row('ruins', 'ruins=0'), row('lang', `lang=${LANGS.join('|')}`),
   ] },
   { title: t('urldoc.group.tests'), rows: [row('demo', 'demo'), row('monuments', 'monuments=all'), row('giant', 'giant=N'), row('mega', 'mega=<floors>'), row('monster', 'monster'), row('debug', 'debug')] },
 ];

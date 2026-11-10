@@ -14,8 +14,8 @@
   <script type="importmap">
     {
       "imports": {
-        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        "three": "./vendor/three/build/three.module.js",
+        "three/addons/": "./vendor/three/examples/jsm/"
       }
     }
   </script>
@@ -44,6 +44,7 @@
       <button type="button" data-tool="paper" title="The Daily Token" aria-label="Newspaper" data-i18n-title="html.tools.paper" data-i18n-aria="html.tools.short.paper">📰</button>
       <button type="button" data-tool="history" title="Time-lapse and the city race" aria-label="Time-lapse" data-i18n-title="html.tools.history" data-i18n-aria="html.tools.short.history">🎬</button>
       <button type="button" data-tool="sky" id="sky-btn" title="Time of day" aria-label="Time of day" data-i18n-title="html.tools.sky" data-i18n-aria="html.tools.short.sky">🌗</button>
+      <button type="button" data-tool="bell" id="bell-btn" title="Notices and the week’s diary" aria-label="Notices" data-i18n-title="html.tools.bell" data-i18n-aria="html.tools.short.bell">🔔</button>
       <button type="button" data-tool="panels" id="panels-btn" title="Panels and names (the P key hides them all)" aria-label="Panels" data-i18n-title="html.tools.panels" data-i18n-aria="html.tools.short.panels">👁️</button>
       <button type="button" data-tool="help" title="How to read Tokenopolis (? key)" aria-label="Help" data-i18n-title="html.tools.help" data-i18n-aria="html.tools.short.help">❔</button>
     </nav>
@@ -60,6 +61,7 @@
     <button type="button" class="panel-x" data-hide-panel="ranking" aria-label="Hide this week’s builds" title="Hide this week’s builds (the 👁️ brings it back)" data-i18n-aria="html.ranking.hide" data-i18n-title="html.ranking.hideTitle">×</button>
     <h2 data-i18n-html="html.ranking.heading">THIS WEEK’S BUILDS <small>floors added</small></h2>
     <ol id="ranking-list"></ol>
+    <div id="mission" class="mission" hidden></div>
   </aside>
   <aside id="mega" class="card mega empty"></aside>
   </div>
@@ -108,10 +110,17 @@
     <span class="ticker-label" data-i18n="html.ticker">NEWS</span>
     <div class="ticker-track"><div id="news" class="ticker-items"></div></div>
   </footer>
+  <div id="tour-cap" class="tour-cap" hidden><b></b><span></span></div>
   <div id="tl-bar" class="tl-bar" hidden><span class="tl-date"></span><i class="tl-prog"></i><span class="tl-sub"></span><button type="button" data-tl-stop data-i18n="html.timelapseStop">■ Stop</button></div>
 
   <div id="sheet" class="sheet" role="dialog" aria-label="Building details" data-i18n-aria="html.sheet" hidden></div>
   <div id="toasts" class="toasts" aria-live="polite"></div>
+  <!-- first visit: an invitation to find and mark one's own building -->
+  <div id="welcome" class="welcome" role="dialog" aria-labelledby="welcome-h" hidden>
+    <b id="welcome-h" data-i18n="html.welcome.title">👋 Find your building</b>
+    <p data-i18n="html.welcome.text">Search your name, open your building and mark “This is my building”. It gets a pin, and the city tells you when it grows.</p>
+    <div><button type="button" class="primary" data-welcome="find" data-i18n="html.welcome.find">🔍 Search my name</button><button type="button" data-welcome="later" data-i18n="html.welcome.later">Not now</button></div>
+  </div>
   <div id="error" class="error" hidden></div>
 
   <!-- popovers: maps, history, 👁️ panels, 🌗 time of day -->
@@ -121,6 +130,7 @@
     <button type="button" data-map-mode="week"><span>📈</span><div><b data-i18n="map.week.name">This week’s builds</b><small data-i18n="map.week.desc">from cold (nothing) to hot (biggest build)</small></div></button>
     <button type="button" data-map-mode="network"><span>🚩</span><div><b data-i18n="map.network.name">Network</b><small data-i18n="map.network.desc">who builds in more than one city</small></div></button>
     <button type="button" data-map-mode="model"><span>🧠</span><div><b data-i18n="map.model.name">Model</b><small data-i18n="map.model.desc">the model each person used most this week</small></div></button>
+    <button type="button" data-map-mode="health"><span>🚒</span><div><b data-i18n="map.health.name">Health</b><small data-i18n="map.health.desc">how long since each building was used</small></div></button>
     <button type="button" data-map-mode="belts"><span>🥋</span><div><b data-i18n="map.belts.name">Dojo</b><small data-i18n="map.belts.desc">everyone’s belt in the Dojo</small></div></button>
   </div>
   <div id="films" class="popover tool-pop" role="menu" hidden>
@@ -139,8 +149,10 @@
     <button type="button" role="menuitemcheckbox" data-panel="news" aria-checked="true"><span>📰</span><div><b data-i18n="html.panels.news">News ticker</b><small data-i18n="html.panels.newsDesc">the footer</small></div><i class="tg"></i></button>
     <h4 data-i18n="html.panels.onMap">ON THE MAP</h4>
     <button type="button" role="menuitemcheckbox" data-panel="names" aria-checked="true"><span>🪧</span><div><b data-i18n="html.panels.names">City names</b><small data-i18n="html.panels.namesDesc">the signs over each city</small></div><i class="tg"></i></button>
+    <div class="textsize" role="group" aria-label="Text size" data-i18n-aria="html.panels.text"><span data-i18n="html.panels.text">Text size</span><button type="button" data-text="1" aria-pressed="true">A</button><button type="button" data-text="1.15" aria-pressed="false">A+</button><button type="button" data-text="1.3" aria-pressed="false">A++</button></div>
     <footer><button type="button" data-panels="show" data-i18n="html.panels.showAll">Show all</button><button type="button" class="primary" data-panels="hide" data-i18n="html.panels.hideAll">Hide all</button></footer>
   </div>
+  <div id="bell" class="popover bell tool-pop" hidden></div>
   <div id="sky" class="popover sky tool-pop" hidden>
     <h4 data-i18n="html.sky.heading">TIME OF DAY</h4>
     <div class="row"><input type="range" id="hour" min="0" max="24" step="0.25" aria-label="Time of day" data-i18n-aria="html.sky.slider" /><output id="hour-out">—</output></div>
@@ -167,6 +179,13 @@
       <div class="race-week"><b id="race-label">—</b><span id="race-news"></span></div>
       <div id="race-bars" class="race-bars"></div>
       <footer><button type="button" data-race="replay" data-i18n="html.race.replay">↺ Watch again</button></footer>
+    </div>
+  </div>
+  <div id="cardbox" class="modal" hidden>
+    <div class="cardbox" role="dialog" aria-label="Building card" data-i18n-aria="html.card.aria">
+      <button class="close" type="button" data-close-modal aria-label="Close" data-i18n-aria="html.close">×</button>
+      <img id="card-img" alt="" />
+      <footer><a id="card-dl" class="primary" download data-i18n="html.card.download">⬇️ Download PNG</a><button type="button" id="card-copy" data-card-copy data-i18n="html.card.copy">📋 Copy image</button></footer>
     </div>
   </div>
   <div id="help" class="modal" hidden>

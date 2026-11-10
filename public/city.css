@@ -149,6 +149,7 @@ body { font-family: Nunito, "Segoe UI", system-ui, sans-serif; color: var(--ink)
 .sheet { /* in the left corner, so it does not cover the touched building (it goes to the middle of the screen) */
   position: fixed; left: 20px; bottom: 54px; width: min(calc(100% - 40px), 440px); z-index: 8;
   padding: 16px 18px 18px; background: #fff; color: var(--ink); border-radius: 16px; box-shadow: 0 8px 24px rgba(0, 0, 0, .25);
+  max-height: calc(100vh - 128px); box-sizing: border-box; overflow: hidden auto; scrollbar-width: thin; /* a short window: the card scrolls instead of going under the bar */
 }
 [data-hidden~=news] .sheet { bottom: 20px; }
 .sheet .close { all: unset; cursor: pointer; position: absolute; right: 12px; top: 10px; width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; background: #eef1f4; font-size: 20px; color: #55626e; }
@@ -299,7 +300,16 @@ kbd { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 5px
 .ticker-label { margin: 0 14px; padding: 3px 12px; border-radius: 4px; background: var(--green); color: var(--ink); font-size: 12px; font-weight: 900; }
 .ticker-track { flex: 1; overflow: hidden; white-space: nowrap; }
 .ticker-items { display: inline-block; padding-left: 100%; color: #e6edf3; font-size: 14px; animation: ticker var(--ticker-s, 60s) linear infinite; }
-.ticker-items span { margin-right: 46px; }
+.ticker-items span, .ticker-items button { margin-right: 46px; }
+.ticker-items button { all: unset; cursor: pointer; margin-right: 46px; }
+.ticker-items button:hover { text-decoration: underline; color: #fff; }
+/* 🔔 the notices of this visit and the week's diary */
+.popover.bell { width: 360px; max-height: calc(100vh - 130px); overflow: hidden auto; scrollbar-width: thin; }
+.popover.bell h4 { margin: 8px 10px 4px; font-size: 11px; font-weight: 900; color: var(--mute); letter-spacing: .5px; }
+.popover.bell p { margin: 2px 10px 8px; font-size: 13px; color: var(--mute); }
+.popover.bell button { grid-template-columns: 26px 1fr auto; padding: 6px 10px; }
+.popover.bell button[disabled] { cursor: default; }
+.popover.bell button em { font-style: normal; font-size: 11.5px; color: var(--mute); white-space: nowrap; }
 @keyframes ticker { to { transform: translateX(-100%); } }
 @media (prefers-reduced-motion: reduce) { .ticker-items { animation: none; padding-left: 0; } }
 [data-hidden~=news] .ticker { display: none !important; }
@@ -433,6 +443,45 @@ kbd { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 5px
 /* details card: timeline and "my building" */
 .sheet .share.mine { background: #e8463a; }
 .sheet .share.mine.on { background: var(--green-ink); }
+.sheet a.share { text-decoration: none; background: #e8eef3; color: var(--ink); }
+[data-invite] .sheet .share.mine:not(.on) { animation: invite 1.4s ease-in-out infinite; } /* after the first-visit invitation: this is the button to press */
+@keyframes invite { 50% { box-shadow: 0 0 0 6px rgba(232, 70, 58, .28); } }
+/* the race around the building: the week, who is just above, last week, the fire */
+.sheet .race { margin-top: 10px; padding: 8px 12px 9px; border-radius: 10px; background: #f3f6f8; }
+.sheet .race.mine { background: #fff5d6; }
+.sheet .race h3 { margin: 0 0 4px; }
+.sheet .race ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; font-size: 13px; }
+.sheet .race b { cursor: pointer; text-decoration: underline; text-decoration-color: rgba(29, 38, 48, .3); text-underline-offset: 3px; }
+.sheet .race .warn { color: #b3321f; font-weight: 800; }
+/* the person's habits on the card: the hours of the day they build and the models they use */
+.sheet .habits { margin-top: 10px; }
+.sheet .clock { display: grid; grid-template-columns: repeat(24, 1fr); gap: 2px; align-items: end; height: 34px; }
+.sheet .clock i { display: block; height: calc(3px + var(--v) * 31px); border-radius: 2px 2px 0 0; background: #2a78d6; opacity: calc(.35 + var(--v) * .65); }
+.sheet .clock-axis { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--mute); }
+.sheet .mix { display: flex; height: 10px; border-radius: 5px; overflow: hidden; gap: 2px; }
+.sheet .mix-key { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; font-size: 12px; color: #44525f; }
+.sheet .mix-key i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 4px; }
+/* City Hall with everyone: filter and sort */
+.hall .more { all: unset; cursor: pointer; display: block; margin: 6px 0 2px; font-size: 13px; font-weight: 900; color: #8fc8ff; }
+.hall .more:hover { text-decoration: underline; }
+.hall .hall-tools { display: grid; gap: 6px; margin-bottom: 6px; }
+.hall .hall-tools input { all: unset; box-sizing: border-box; width: 100%; padding: 7px 10px; border-radius: 8px; background: rgba(255, 255, 255, .1); color: #fff; font-size: 14px; }
+.hall .hall-tools input::placeholder { color: #9fb0bf; }
+.hall .hall-tools input:focus { box-shadow: 0 0 0 2px var(--gold); }
+.hall .sorts { display: flex; gap: 4px; }
+.hall .sorts button { all: unset; cursor: pointer; flex: 1; text-align: center; padding: 5px 4px; border-radius: 7px; background: rgba(255, 255, 255, .08); color: #c8d4df; font-size: 12px; font-weight: 800; }
+.hall .sorts button[aria-pressed="true"] { background: var(--gold); color: var(--ink); }
+.hall .tall.all li { grid-template-columns: 28px 1fr 70px 52px; }
+.hall .tall.all .bar { max-width: 70px; }
+.hall .tall li.me .who { color: #ffd36b; }
+.hall .tall .none { display: block; height: auto; padding: 6px 0; color: #9fb0bf; font-size: 13px; }
+/* first visit: the invitation to find one's building */
+.welcome { position: fixed; left: 50%; bottom: 112px; transform: translateX(-50%); z-index: 12; width: min(420px, calc(100vw - 24px)); box-sizing: border-box; padding: 14px 16px; border-radius: 14px; background: #fff; color: var(--ink); box-shadow: 0 12px 34px rgba(0, 0, 0, .32); border-top: 4px solid var(--gold); }
+.welcome b { font-size: 17px; }
+.welcome p { margin: 4px 0 10px; font-size: 13.5px; color: #44525f; }
+.welcome div { display: flex; gap: 8px; }
+.welcome button { all: unset; cursor: pointer; padding: 8px 14px; border-radius: 10px; background: #e8eef3; font-size: 13.5px; font-weight: 800; }
+.welcome button.primary { background: var(--slate); color: #fff; }
 .sheet .timeline { margin-top: 10px; padding: 8px 10px 6px; border-radius: 12px; background: #f6f8fa; }
 .sheet .timeline > small { font-size: 12px; color: var(--mute); }
 .sheet .tl-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 12.5px; }
@@ -460,9 +509,9 @@ kbd { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 5px
 
 /* The bar never runs off the right edge (it used to cut the language and the climb link on a laptop):
    it sheds the counts, then the date (a short "3 min ago" takes its place), then the tools go behind ☰. */
-@media (max-width: 1480px) { .stats span:nth-child(n+2) { display: none; } }
-@media (max-width: 1180px) { .stats { display: none; } .age { display: inline; } }
-@media (max-width: 1100px) {
+@media (max-width: 1530px) { .stats span:nth-child(n+2) { display: none; } }
+@media (max-width: 1230px) { .stats { display: none; } .age { display: inline; } }
+@media (max-width: 1150px) {
   .menu-btn { all: unset; flex: none; cursor: pointer; display: grid; place-items: center; width: 40px; height: 34px; border-radius: 9px; background: var(--slate-2); color: #fff; font-size: 19px; }
   [data-menu] .menu-btn { background: var(--gold); color: var(--ink); }
   .menu { display: none; }
@@ -477,7 +526,7 @@ kbd { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 5px
 
 /* narrow screens: only the scene, the bar and the card */
 @media (max-width: 900px) {
-  .trophies, .mega, .legend, .derby, .countdown, .stats, .subtitle { display: none !important; }
+  .trophies, .legend, .derby, .countdown, .stats, .subtitle { display: none !important; }
   .rcol { width: 220px; }
   .hall { width: min(340px, calc(100vw - 30px)); }
   .corner { left: 20px; bottom: 46px; } /* above the news ticker (the legend that used to stand at its left is hidden here) */
@@ -488,6 +537,17 @@ kbd { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 5px
 @media (min-width: 701px) and (max-width: 900px) {
   .ranking li { grid-template-columns: 22px 1fr auto; }
   .ranking .bar { display: none; }
+  /* this week's builds and the Mega Builders fold into chips, as on a phone (a click on the title opens them) */
+  .rcol { width: 260px; justify-items: end; }
+  .ranking, .rcol .mega:not(.empty) { width: 100%; padding: 9px 12px 8px; box-sizing: border-box; }
+  .ranking h2, .mega h2 { margin: 0; cursor: pointer; gap: 8px; }
+  .ranking h2::after, .mega h2::after { content: '▾'; font-size: 12px; }
+  .ranking.open h2, .mega.open h2 { margin-bottom: 8px; }
+  .ranking.open h2::after, .mega.open h2::after { content: '▴'; }
+  .ranking:not(.open), .rcol .mega:not(.open) { width: auto; }
+  .ranking:not(.open) ol, .ranking:not(.open) h2 small, .ranking:not(.open) .mission, .ranking .panel-x { display: none; }
+  .mega:not(.open) ol, .mega:not(.open) .foot, .mega:not(.open) h2 small, .mega .panel-x { display: none; }
+  [data-map] .ranking, [data-map] .rcol .mega { display: none !important; }
 }
 
 /* ───────── phones: the scene first; the tools behind ☰, City Hall and the card as drawers at the bottom ───────── */
@@ -509,7 +569,7 @@ kbd { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 5px
   .ranking.open h2 { margin-bottom: 8px; }
   .ranking.open h2::after { content: '▴'; }
   .ranking:not(.open) { width: auto; }
-  .ranking:not(.open) ol, .ranking:not(.open) h2 small, .ranking .panel-x { display: none; }
+  .ranking:not(.open) ol, .ranking:not(.open) h2 small, .ranking:not(.open) .mission, .ranking:not(.open) .csv, .ranking .panel-x { display: none; }
   [data-map] .ranking { display: none; }
   body:has(.ranking.open) .corner { display: none; } /* the open list takes the top */
   /* the Mega Builders: a chip under this week's builds, opened the same way */
@@ -542,3 +602,78 @@ kbd { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 5px
   /* from afar on a small screen: only the cities' names */
   [data-view=region] .rally, [data-view=region] .route, [data-view=region] .sign small, [data-view=region] .sign em { display: none; }
 }
+
+/* the region's mission, under the week's ranking */
+.mission { margin-top: 6px; padding-top: 6px; border-top: 1px solid #edf0f3; }
+.mission h3 { margin: 0 0 3px; font-size: 11px; font-weight: 900; color: var(--mute); letter-spacing: .5px; }
+.mission .row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 13.5px; }
+.mission .row small { font-size: 12px; font-weight: 800; color: var(--mute); white-space: nowrap; }
+.mission i { display: block; height: 6px; margin-top: 4px; border-radius: 4px; background: linear-gradient(90deg, var(--green) calc(var(--p) * 100%), #e6ebef 0); }
+.mission.met i { background: var(--gold); }
+.mission.met .row small { color: var(--gold-ink); }
+/* the TV tour's caption: what is on screen, readable from across the room */
+.tour-cap { position: fixed; left: 50%; bottom: 56px; transform: translateX(-50%); z-index: 6; max-width: calc(100vw - 40px); padding: 12px 26px 14px; border-radius: 16px; background: rgba(38, 49, 59, .92); color: #fff; text-align: center; box-shadow: 0 8px 26px rgba(0, 0, 0, .35); border-bottom: 4px solid var(--gold); }
+.tour-cap b { display: block; font-size: clamp(24px, 2.6vw, 44px); font-weight: 900; line-height: 1.15; }
+.tour-cap span { display: block; font-size: clamp(14px, 1.3vw, 22px); color: #d5dee6; }
+html:not([data-tour]) .tour-cap { display: none; }
+[data-hidden~=news] .tour-cap { bottom: 22px; }
+/* the building's card: the image and what to do with it */
+.cardbox { position: relative; display: grid; gap: 12px; justify-items: center; padding: 16px; background: #fff; border-radius: 18px; box-shadow: 0 24px 60px rgba(0, 0, 0, .4); }
+.cardbox img { display: block; height: min(72vh, 675px); aspect-ratio: 4 / 5; border-radius: 12px; background: #1b242d; }
+.cardbox footer { display: flex; gap: 8px; }
+.cardbox footer a, .cardbox footer button { all: unset; cursor: pointer; padding: 9px 16px; border-radius: 10px; background: #e8eef3; color: var(--ink); font-size: 14px; font-weight: 800; }
+.cardbox footer .primary { background: var(--slate); color: #fff; }
+.cardbox .close { all: unset; cursor: pointer; position: absolute; top: 8px; right: 8px; width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; background: rgba(27, 36, 45, .7); color: #fff; font-size: 20px; }
+.sheet .share.card, .sheet .share.roof { background: #e8eef3; color: var(--ink); }
+[data-roof] .sheet .share.roof { background: var(--gold); }
+.mapkey em { font-style: normal; font-weight: 900; margin-left: 2px; }
+.ranking .csv { all: unset; cursor: pointer; font-size: 11.5px; font-weight: 800; color: #2b6cb0; white-space: nowrap; }
+.mission .row span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ranking .csv:hover { text-decoration: underline; }
+.hall .sorts .csv { flex: 0 0 auto; padding: 5px 9px; }
+/* keyboard: a visible focus ring everywhere (most buttons reset every style, the outline included) */
+:is(button, a, input, summary, [tabindex]):focus-visible { outline: 2px solid var(--gold) !important; outline-offset: 2px; }
+.hall :is(button, a, input, [tabindex]):focus-visible, .topbar :is(button, a):focus-visible { outline-color: #fff !important; }
+/* signs that would overlap: the one behind fades (main.js declutter) */
+.sign, .route, .rally { transition: opacity .25s; }
+.clash { opacity: 0 !important; pointer-events: none !important; }
+/* text size (A, A+, A++): the panels grow from their own corner; not on a phone, where they are drawers */
+.textsize { display: flex; align-items: center; gap: 6px; padding: 8px 10px 4px; font-size: 13px; font-weight: 800; }
+.textsize span { flex: 1; }
+.popover .textsize button { all: unset; cursor: pointer; width: auto; padding: 5px 11px; border-radius: 8px; background: #eef2f5; font-weight: 900; font-size: 13px; }
+.popover .textsize button[aria-pressed="true"] { background: var(--gold); }
+@media (min-width: 701px) {
+  .rcol, .trophies, .legend, .derby, .countdown, .hall, .sheet, .toasts, .popover, .mapkey, .welcome { zoom: var(--ui-zoom, 1); }
+  .corner { left: calc(330px * var(--ui-zoom, 1)); }
+  [data-view=city] .corner, [data-hidden~=legend] .corner, [data-map] .corner { left: 20px; }
+}
+@media (min-width: 701px) and (max-width: 900px) { .corner { left: 20px; } }
+/* a laptop or a small window (901 to 1300px): the right column folds into chips too (a click on a title opens
+   or closes it), so the scene keeps its room; this week's builds start open */
+@media (min-width: 901px) and (max-width: 1300px) {
+  .rcol { justify-items: end; }
+  .ranking, .rcol .mega:not(.empty) { width: 100%; box-sizing: border-box; }
+  .ranking h2, .mega h2 { cursor: pointer; gap: 8px; }
+  .ranking h2::after, .mega h2::after { content: '▾'; font-size: 12px; }
+  .ranking.open h2::after, .mega.open h2::after { content: '▴'; }
+  .ranking:not(.open), .rcol .mega:not(.open) { width: auto; padding: 9px 12px 8px; }
+  .ranking:not(.open) h2, .mega:not(.open) h2 { margin: 0; }
+  .ranking:not(.open) ol, .ranking:not(.open) h2 small, .ranking:not(.open) .mission, .ranking:not(.open) .panel-x { display: none; }
+  .mega:not(.open) ol, .mega:not(.open) .foot, .mega:not(.open) h2 small, .mega:not(.open) .panel-x { display: none; }
+}
+/* phone: rows a finger can hit */
+@media (max-width: 700px) {
+  .ranking li { height: 36px; }
+  .hall .tall li { height: 38px; }
+  .hall .works li { height: 34px; align-items: center; }
+  .sheet .works li, .sheet .race li { padding: 7px 0; }
+  .popover button { padding: 11px 10px; }
+  .finder li { padding: 11px 10px; }
+  .hall .sorts button { padding: 9px 4px; }
+  .sheet .share { padding: 11px 14px; }
+}
+/* the right column stops above the bottom-right panels (panels.js fitColumn): the Mega Builders list scrolls */
+.rcol { grid-template-rows: auto minmax(0, 1fr); }
+.rcol .mega { min-height: 0; overflow: hidden auto; scrollbar-width: thin; }
+.trophies { overflow: hidden auto; scrollbar-width: none; }
+@media (max-width: 1300px) { .rcol .mega:not(.empty):not(.open) { min-height: 36px; overflow: hidden; } }

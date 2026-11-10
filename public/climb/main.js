@@ -101,6 +101,11 @@ async function fetchJSON(url, ms) {
 const stage = $('#stage');
 // Quality: ?quality=low (TV, kiosk, weak machine) turns the shadows off and lowers the resolution.
 const LOW_Q = PARAMS.get('quality') === 'low';
+// The bridge with the city: ?person=<id> opens on that climber (the city's card links here), each tag
+// links back to the person's building, and the "me" marked in the city (city.me) is marked here too.
+const ME = (() => { try { return localStorage.getItem('city.me'); } catch { return null; } })();
+let wantPerson = PARAMS.get('person');
+const cityUrlOf = (id) => `city.html?person=${encodeURIComponent(id)}${PARAMS.has('demo') ? '&demo' : ''}${PARAMS.get('lang') ? `&lang=${encodeURIComponent(PARAMS.get('lang'))}` : ''}`;
 const renderer = new THREE.WebGLRenderer({ antialias: !LOW_Q, preserveDrawingBuffer: DEBUG }); // debug: captures show the last frame
 // Resolution: at most 1.25× (at 2× an integrated GPU does not get past ~10 frames/s) and it drops by itself
 // if frames get slow (adaptResolution).
@@ -1178,7 +1183,7 @@ function createActor(c, tpl) {
     e.className = cls;
     return e;
   };
-  const tagParts = { rank: el('rank'), name: el('name'), ctok: el('ctok'), tok: el('tok', 'small'), gap: el('gap', 'small'), sum: el('sum', 'small') };
+  const tagParts = { rank: el('rank'), name: el('name'), ctok: el('ctok'), tok: el('tok', 'small'), gap: el('gap', 'small'), sum: el('sum', 'small'), bdg: el('bdg', 'small') };
   const t1 = el('t1', 'div');
   t1.append(tagParts.rank, tagParts.name, tagParts.ctok);
   // "📸 Card": only on the tag of whoever was clicked (class .sel, layoutMarks). The pointerdown does
@@ -1189,7 +1194,14 @@ function createActor(c, tpl) {
   cardBtn.title = tr('tag.cardTitle');
   cardBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
   cardBtn.addEventListener('click', () => openCard(c.id));
-  tag.append(t1, tagParts.tok, tagParts.gap, tagParts.sum, cardBtn);
+  // "🏙️ Building": the same person in the city (their tallest building), next to the card button
+  const cityLink = el('tag-card tag-city', 'a');
+  cityLink.href = cityUrlOf(c.id);
+  cityLink.textContent = tr('tag.city');
+  cityLink.title = tr('tag.cityTitle');
+  cityLink.addEventListener('pointerdown', (e) => e.stopPropagation());
+  if (c.id === ME) tag.classList.add('me'); // whoever marked "this is my building" in the city
+  tag.append(t1, tagParts.tok, tagParts.gap, tagParts.sum, tagParts.bdg, cardBtn, cityLink);
   tagWrap.append(line, tag);
   const plate = el('plate', 'div');
   plate.style.display = 'none';
@@ -2931,6 +2943,11 @@ function fillTag(a, c, above) {
   t.gap.hidden = !gap;
   t.sum.textContent = sum ? tr(stg ? 'tag.pastMark' : 'tag.pastSummit', { flag, tokens: fmt.tokens(c.tokens - S) }) : '';
   t.sum.hidden = !sum;
+  // the season's badges (the server works them out; hovering tells each one's name and rule)
+  const bd = (state.climbers?.find((x) => x.id === c.id)?.badges ?? []).map((k) => tr(`badge.${k}`)).filter((b) => b?.icon);
+  t.bdg.textContent = bd.map((b) => b.icon).join(' ');
+  t.bdg.title = bd.map((b) => `${b.icon} ${b.name}: ${b.desc}`).join('\n');
+  t.bdg.hidden = !bd.length;
   a.tie = !!above && c.tokens > 0 && above.tokens - c.tokens < TIE;
   a.plate.textContent = c.rank;
   a.plate.dataset.id = c.id;
@@ -5184,6 +5201,7 @@ function renderBoard(top) {
       const li = document.createElement('li');
       const name = nameOf(c);
       li.dataset.id = c.id;
+      if (c.id === ME) li.classList.add('me');
       li.style.setProperty('--c', rankColor(c.rank));
       const cell = (cls, text) => {
         const s = document.createElement('span');
@@ -6085,6 +6103,14 @@ function setState(data) {
   $('#error').hidden = !state.error;
   $('#error').textContent = state.error ? `⚠️ ${errorText(state.error)} · ${state.generatedAt ? tr('error.lastReading', { time: readingTime(state.generatedAt) }) : tr('error.stale')}` : '';
   showAge();
+  if (wantPerson) { // the link's person, once: on the wall, the camera goes to them; otherwise a line says why not
+    const id = wantPerson, who = state.climbers?.find((c) => c.id === id);
+    wantPerson = null;
+    // the climber is drawn a moment after the first reading (the models load): the focus waits for them
+    const go = (tries) => { if (actors.has(id)) setFocus(id); else if (tries > 0) setTimeout(go, 500, tries - 1); };
+    if (wallList().some((c) => c.id === id)) setTimeout(go, 800, 40);
+    else { const n = $('#note'); n.hidden = false; n.textContent = `🧗 ${who ? tr('person.notOnWall', { name: nameOf(who) }) : tr('person.unknown')}`; setTimeout(() => { n.hidden = true; }, 12_000); }
+  }
 }
 // How old the reading is ("Data: 3 min ago"), counting on between readings.
 function showAge() {

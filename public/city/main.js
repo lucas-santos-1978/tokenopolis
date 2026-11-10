@@ -33,11 +33,13 @@ import { t, plural, fmt, cityLabel, displayName, config } from '../i18n/index.js
 import { tierOf, BUILDING_TIERS, TEN_BI, advisors, context, floorsText, cityTier, buildingTier, monthOf, ruinOf } from './rules.js';
 import { L, seed, hash, kind, buildWorld, groundCanvas, dojoOf, megaLinks } from './world.js';
 import { makeKit, craneJib, Batcher, mats, lit, blinkMats, matte, setAnisotropy, sweepSigns, SILVER, DARK, WARM_LIGHT, HOUSE_H, STYLE_PAL } from './buildings.js';
-import { initPanels, renderPanels, countdownKey, queueToast, liveEvents, hasToasts, keyOf, esc, staleText, renderAge, setMe as panelsSetMe, renderFinder, finderKey, locatePerson, MAPKEYS, mapColorFor, renderMapKey, renderPaper } from './panels.js';
+import { initPanels, renderPanels, countdownKey, queueToast, liveEvents, hasToasts, keyOf, esc, staleText, renderAge, missionOf, renderBell, setMe as panelsSetMe, renderFinder, finderKey, locatePerson, MAPKEYS, mapColorFor, renderMapKey, renderPaper } from './panels.js';
 import { makeLife, blimpLines } from './life.js';
 import { makeEffects, launchRocket } from './effects.js';
-import { loadHistory, renderTimeline, startTimelapse, openRace, playRace } from './history.js';
+import { loadHistory, renderTimeline, startTimelapse, openRace, playRace, weekDiary } from './history.js';
 import { initLinks } from './links.js';
+import { drawBuildingCard } from './card.js';
+import { canCopyImages } from '../lib/clipboard.js';
 
 const $ = (s) => document.querySelector(s);
 const params = new URLSearchParams(location.search);
@@ -60,9 +62,16 @@ const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t
 const SQUEEZE = 0.5;
 let CLOUD = Infinity, FLOOR = 0.5;
 const scaled = (f) => (f <= CLOUD ? f : CLOUD + SQUEEZE * CLOUD * Math.log1p((f - CLOUD) / CLOUD));
-const hOfFloors = (f) => (f < 15 ? HOUSE_H[kind(f)] : Math.max(4.2, scaled(f) * FLOOR));
+// Breathing room at the base: next to a giant, a purely linear scale flattens every building from 15
+// to a few dozen floors into the same low box, shorter than a townhouse. A rise that grows with the
+// logarithm of the floors up to the skyscraper line and stays the same above it keeps the order (more
+// floors is always taller) and lets the small ones be told apart.
+const RISE0 = 5, RISE = 7, RISE_TOP = 450;
+const rise = (f) => RISE0 + RISE * Math.min(1, Math.log(f / 15) / Math.log(RISE_TOP / 15));
+const hOfFloors = (f) => (f < 15 ? HOUSE_H[kind(f)] : rise(f) + scaled(f) * FLOOR);
 const heightOf = (b) => hOfFloors(b.floors);
-const wkOf = (b) => (scaled(b.floors) - scaled(Math.max(0, b.floors - b.week))) * FLOOR;
+// this week's floors at the top (the yellow scaffold): the same scale, so it is what the building grew
+const wkOf = (b) => (b.floors < 15 ? (scaled(b.floors) - scaled(Math.max(0, b.floors - b.week))) * FLOOR : Math.max(0, hOfFloors(b.floors) - hOfFloors(Math.max(15, b.floors - b.week))));
 // The Corporate District's scale: MEGA_R floors in the cities make one in the headquarters (the same
 // FLOOR and squeeze, without the houses' minimum), so a campus grows ten times slower than the buildings
 const MEGA_R = 10;
@@ -121,10 +130,12 @@ scene.add(hemi);
 // sky: a dome with the hour's gradient (the colors of lib/sky.js), stars at night, clouds and hills
 const skyMat = new THREE.ShaderMaterial({
   side: THREE.BackSide, depthWrite: false, fog: false,
-  uniforms: { top: { value: new THREE.Color('#2a63c9') }, mid: { value: new THREE.Color('#5591e3') }, hor: { value: new THREE.Color('#cfe6ff') }, low: { value: new THREE.Color('#9fb6cc') } },
+  uniforms: { top: { value: new THREE.Color('#2a63c9') }, mid: { value: new THREE.Color('#5591e3') }, hor: { value: new THREE.Color('#cfe6ff') }, low: { value: new THREE.Color('#9fb6cc') },
+    orb: { value: new THREE.Vector3(0, 1, 0) }, glow: { value: new THREE.Color('#fff2df') }, glowK: { value: 0 } }, // the sky brightens toward the sun (faintly toward the moon)
   vertexShader: 'varying vec3 vPos; void main(){ vPos = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-  fragmentShader: `uniform vec3 top; uniform vec3 mid; uniform vec3 hor; uniform vec3 low; varying vec3 vPos;
-    void main(){ float t = normalize(vPos).y; vec3 c = t < 0.0 ? mix(hor, low, clamp(-t * 6.0, 0.0, 1.0)) : (t < 0.16 ? mix(hor, mid, t / 0.16) : mix(mid, top, (t - 0.16) / 0.84));
+  fragmentShader: `uniform vec3 top; uniform vec3 mid; uniform vec3 hor; uniform vec3 low; uniform vec3 orb; uniform vec3 glow; uniform float glowK; varying vec3 vPos;
+    void main(){ float t = normalize(vPos).y; float d = max(dot(normalize(vPos), orb), 0.0); vec3 c = t < 0.0 ? mix(hor, low, clamp(-t * 6.0, 0.0, 1.0)) : (t < 0.16 ? mix(hor, mid, t / 0.16) : mix(mid, top, (t - 0.16) / 0.84));
+      c += glow * (pow(d, 5.0) * 0.38 + pow(d, 48.0) * 0.5) * glowK;
       gl_FragColor = vec4(c, 1.0);
       #include <tonemapping_fragment>
       #include <colorspace_fragment>
@@ -138,6 +149,19 @@ const stars = (() => {
   const p = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xffffff, size: 2.2, sizeAttenuation: false, transparent: true, opacity: 0, depthWrite: false, fog: false }));
   scene.add(p); return p;
 })();
+// The sun and the moon: a disc with a halo on the dome, where the light comes from. Below the horizon
+// they are gone; buildings and hills pass in front of them.
+function orbSprite(core, halo, size) {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 256; const x = cv.getContext('2d');
+  const gr = x.createRadialGradient(128, 128, 0, 128, 128, 128);
+  gr.addColorStop(0, core); gr.addColorStop(0.2, core); gr.addColorStop(0.26, halo); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  x.fillStyle = gr; x.fillRect(0, 0, 256, 256);
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, fog: false, toneMapped: false }));
+  s.scale.set(size, size, 1); s.renderOrder = -1; scene.add(s); return s;
+}
+const sunDisc = orbSprite('rgba(255,250,232,1)', 'rgba(255,226,160,.42)', 620), moonDisc = orbSprite('rgba(236,241,255,1)', 'rgba(190,205,255,.26)', 380);
+const moonDir = new THREE.Vector3(0, 1, 0);
 const clouds = (() => {
   const cv = document.createElement('canvas'); cv.width = cv.height = 128; const x = cv.getContext('2d');
   const gr = x.createRadialGradient(64, 64, 10, 64, 64, 64); gr.addColorStop(0, 'rgba(255,255,255,.95)'); gr.addColorStop(0.6, 'rgba(255,255,255,.5)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
@@ -151,19 +175,42 @@ const clouds = (() => {
   }
   scene.add(g); return g;
 })();
-let hills = null;
+let hills = null, hillsSize = 0, fieldMat = null;
+// The land beyond the map: a patchwork of fields and pasture up to the hills, instead of one flat green.
+function fieldsMaterial() {
+  if (fieldMat) return fieldMat;
+  const cv = document.createElement('canvas'); cv.width = cv.height = 512; const x = cv.getContext('2d'), r = seed('fields');
+  x.fillStyle = '#7fb95a'; x.fillRect(0, 0, 512, 512);
+  const tones = ['#86c05f', '#79b356', '#8cc566', '#a9c66a', '#c9c873', '#74ad5a', '#93c770'];
+  for (let gy = 0; gy < 8; gy++) for (let gx = 0; gx < 8; gx++) { // 8×8 plots, some joined, each with its tone and its furrows
+    if (r() < 0.28) continue;
+    const w = r() < 0.25 ? 2 : 1, h = r() < 0.25 ? 2 : 1, px = gx * 64, py = gy * 64;
+    x.fillStyle = tones[Math.floor(r() * tones.length)]; x.globalAlpha = 0.55; x.fillRect(px + 2, py + 2, w * 64 - 4, h * 64 - 4);
+    x.globalAlpha = 0.12; x.fillStyle = '#2f5a2a';
+    const vert = r() < 0.5; for (let k = 6; k < 64 * (vert ? w : h) - 4; k += 7) { if (vert) x.fillRect(px + k, py + 3, 1.5, h * 64 - 6); else x.fillRect(px + 3, py + k, w * 64 - 6, 1.5); }
+    x.globalAlpha = 1;
+  }
+  const tex = new THREE.CanvasTexture(cv); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(22, 22); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  fieldMat = new THREE.MeshStandardMaterial({ map: tex, roughness: 1, metalness: 0, envMapIntensity: 0.2 });
+  mats.add(fieldMat); // it darkens with the hour like every other material
+  return fieldMat;
+}
 function makeHills(size) {
   if (hills) scene.remove(hills);
-  const r = seed('hills'), g = new THREE.Group(), mat = matte('#6f9a8a', { flatShading: true }), R0 = Math.max(1700, size * 1.15);
-  for (let i = 0; i < 48; i++) {
-    const a = (i / 48) * Math.PI * 2 + r() * 0.12, dist = R0 + r() * R0 * 0.5, h = 70 + r() * 180, w = 280 + r() * 420;
-    const m = new THREE.Mesh(new THREE.ConeGeometry(w, h, 7), mat); m.position.set(Math.cos(a) * dist, h / 2 - 1, Math.sin(a) * dist); m.rotation.y = r() * 6; g.add(m);
+  // Two rings of low, rounded hills: green ones near, bluish ones behind them (the haze of the distance).
+  const r = seed('hills'), g = new THREE.Group(), R0 = Math.max(1700, size * 1.15), dome = new THREE.SphereGeometry(1, 9, 5, 0, Math.PI * 2, 0, Math.PI / 2);
+  for (const [n, mat, far, tall] of [[40, matte('#6c9c6e', { flatShading: true }), 1, 1], [34, matte('#7d9cab', { flatShading: true }), 1.65, 1.7]]) {
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2 + r() * 0.16, dist = (R0 + r() * R0 * 0.35) * far, h = (50 + r() * 130) * tall, w = (320 + r() * 460) * far;
+      const m = new THREE.Mesh(dome, mat); m.scale.set(w, h, w * (0.7 + r() * 0.5)); m.position.set(Math.cos(a) * dist, -2, Math.sin(a) * dist); m.rotation.y = r() * 6; g.add(m);
+    }
   }
-  scene.add(g); hills = g;
+  scene.add(g); hills = g; hillsSize = size;
 }
 
 // glow (bloom) at night: windows, neon and lamps get a halo
-const composer = new EffectComposer(renderer);
+const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(innerWidth, innerHeight, { type: THREE.HalfFloatType, samples: PHONE ? 0 : 4 })); // multisampled: without it the night's edges turn jagged
+composer.setPixelRatio(renderer.getPixelRatio()); composer.setSize(innerWidth, innerHeight);
 composer.addPass(new RenderPass(scene, camera));
 const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.55, 0.6, 0.92);
 composer.addPass(bloom);
@@ -178,6 +225,17 @@ let mapMode = MAPKEYS[params.get('map')] ? params.get('map') : null; // SimCity-
 let tl = null; // time-lapse running
 const cityGroup = new THREE.Group(); scene.add(cityGroup);
 const bldGroup = new THREE.Group(); cityGroup.add(bldGroup); // only the buildings (the time-lapse hides them)
+// The land: the ground's texture, the water, the bridges, the trees, the lamps and the cars. A new floor
+// changes none of it, so it is rebuilt only when the map's layout does (landKeyOf); the buildings, the
+// hit boxes and the signs are rebuilt on every reading that changes the drawing.
+const landGroup = new THREE.Group(); cityGroup.add(landGroup);
+let landKey = '', lastBuild = { ms: 0, full: true };
+function landKeyOf(w, grey) {
+  let s = `${w.GW}x${w.GH}|${grey ? mapMode : ''}|${params.get('style') ?? ''}|`, n = 0;
+  for (const [k, t] of w.tiles) s += `${k}${t.t[0]}${t.t.length}${t.bridge ? 'b' : ''}${t.alt ?? ''}${w.onRoute.has(k) ? 'g' : ''};`;
+  for (const o of w.objs) if (o.kind === 'tree' || o.kind === 'lamp') n++;
+  return `${s}${n}|${w.lanes.length}`;
+}
 const hitGroup = new THREE.Group(); scene.add(hitGroup);
 const hitByKey = new Map(); // city|person → { x, z, h, b, c }
 const dojoHits = new Map(); // city → { x, z, h, w, dojo, c } of the city's Dojo
@@ -204,31 +262,107 @@ const hiddenPanels = (() => {
 })();
 
 // ───────── the scene from the data ─────────
-function clearScene() {
-  // bldGroup is the scene's grandchild: cityGroup.clear() only detaches it, so it must be emptied too
-  // (otherwise the cranes and meshes of the previous reading pile up under the new ones, every minute)
-  for (const g of [cityGroup, hitGroup]) { g.traverse((m) => { if (m.isMesh) m.geometry.dispose(); }); g.clear(); }
-  bldGroup.clear(); cityGroup.add(bldGroup);
-  groundTex?.dispose(); groundTex = null;
+function clearScene(full = true) {
+  const drop = (o) => o.traverse((m) => { if (m.isMesh) m.geometry.dispose(); });
+  // the buildings, the signs and the hit boxes go every time (bldGroup is emptied too: otherwise the
+  // cranes and meshes of the previous reading pile up under the new ones, every minute)
+  // the signs and labels go every time; the parts of the scene (one per city) are dropped one by one, when
+  // they change (buildScene); the cranes' jibs are one mesh for the whole region, made again every time
+  for (const ch of [...cityGroup.children]) if (ch !== landGroup && ch !== bldGroup) { drop(ch); cityGroup.remove(ch); }
+  for (const m of craneMeshes) bldGroup.remove(m);
+  craneMeshes = [];
+  if (full) { for (const k of [...parts.keys()]) dropPart(k); drop(landGroup); landGroup.clear(); groundTex?.dispose(); groundTex = null; cars = null; }
   life?.dispose(); life = null;
-  hitByKey.clear(); dojoHits.clear(); hqHits.clear(); anims = []; cars = null;
+  anims = [];
+}
+// ───────── the parts of the scene: one per city ─────────
+const PER_CITY_MAX = params.get('parts') === '0' ? 0 : 24; // ?parts=0: one part for the whole region (fewer draw calls per frame, a full redraw on every change)
+const parts = new Map(); // city id (or '~district', or '~all') → { sig, group, hits, entries, kit, airports, maxH }
+let craneMeshes = [];
+// what a building's drawing depends on (the same fields decide whether a reading redraws anything)
+const bSig = (b) => `${b.id}|${Math.floor(b.floors)}|${Math.round(b.week)}|${+b.now}|${+b.isNew}|${b.heli}|${b.streak}|${+(b.today > 0)}|${b.night}|${b.cities}|${b.hours}|${b.belt}|${b.back ?? 0}|${+!!b.record}|${+!!b.beltUp}|${+!!b.mega}|${ruinOf(b) ?? ''}`;
+const flat = (v) => (v && typeof v === 'object' ? (v.id ?? v.key ?? '') + (Array.isArray(v) ? v.length : '') + (v.lastMonth ?? '') + (v.floors ? Math.floor(v.floors) : '') : v);
+function partSig(o) {
+  const at = `${o.gx},${o.gy}`;
+  if (o.kind === 'bld') return `${at}|${o.c.style}|${bSig(o.b)}`;
+  if (o.kind === 'mon') return `m${at}|${o.size}|${o.c.style}|${Object.values(o.m).map(flat).join(',')}`;
+  if (o.kind === 'hq' || o.kind === 'found') return `${o.kind}${at}|${o.rank}|${bSig(o.p)}|${o.p.parts.map((x) => `${x.c.id}:${Math.floor(x.b.floors)}:${Math.round(x.b.week)}`).join('.')}`;
+  return o.kind + at;
+}
+function dropPart(k) {
+  const part = parts.get(k);
+  if (!part) return;
+  part.group.traverse((m) => { if (m.isMesh) m.geometry.dispose(); });
+  bldGroup.remove(part.group);
+  for (const hit of part.hits) { hit.geometry.dispose(); hitGroup.remove(hit); }
+  for (const [map, key] of part.keys) map.delete(key);
+  parts.delete(k);
+}
+// a part that did not change keeps its meshes: only its hit boxes learn the new reading's objects
+function refreshPart(part, objs) {
+  objs.forEach((o, i) => {
+    const ud = part.entries[i];
+    if (!ud) return;
+    if (o.kind === 'bld') { ud.b = o.b; ud.c = o.c; } else if (o.kind === 'mon') { ud.c = o.c; if (ud.dojo) ud.dojo = o.m; else ud.mon = o.m; } else ud[o.kind] = o.p;
+  });
+}
+function buildPart(objs, sig, colorOf) {
+  const batch = new Batcher(), group = new THREE.Group(), part = { sig, group, hits: [], entries: [], keys: [], airports: [], maxH: new Map(), kit: null };
+  kit = part.kit = makeKit(batch, heightOf, wkOf, colorOf);
+  const addHit = (hit, ud) => { hit.layers.set(1); hit.userData = ud; hitGroup.add(hit); part.hits.push(hit); return ud; };
+  for (const o of objs) {
+    const x = wx(o.gx), z = wz(o.gy);
+    let ud = null;
+    if (o.kind === 'bld') {
+      const { h } = o.b.floors < 15 ? kit.house(o.b, o.c, x, z) : kit.tower(o.b, o.c, x, z);
+      part.maxH.set(o.c.id, Math.max(part.maxH.get(o.c.id) ?? 0, h));
+      const hit = new THREE.Mesh(new THREE.BoxGeometry(L * 0.9, h + 2, L * 0.9), DARK);
+      hit.position.set(x, (h + 2) / 2, z);
+      ud = addHit(hit, { b: o.b, c: o.c, h, x, z });
+      hitByKey.set(keyOf(o.c.id, o.b.id), ud); part.keys.push([hitByKey, keyOf(o.c.id, o.b.id)]);
+    } else if (o.kind === 'mon') {
+      const mx = x + (o.size - 1) * L / 2, mz = z + (o.size - 1) * L / 2;
+      const out = kit.monument(o.m, o.size, mx, mz);
+      // every monument can be hovered (its name and what earns it); the Dojo also opens the masters' card
+      const h = out?.h ?? MON_H[o.m.key] ?? 8, w = MON_W[o.m.key] ?? o.size * L * 0.95, hit = new THREE.Mesh(new THREE.BoxGeometry(w, h + 1, w), DARK);
+      hit.position.set(mx, (h + 1) / 2, mz);
+      ud = addHit(hit, o.m.key === 'dojo' ? { dojo: o.m, c: o.c, h, x: mx, z: mz, w } : { mon: o.m, c: o.c, h, x: mx, z: mz, w });
+      if (o.m.key === 'dojo') { dojoHits.set(o.c.id, ud); part.keys.push([dojoHits, o.c.id]); }
+      if (o.m.key === 'airport') part.airports.push({ x0: mx - o.size * L * 0.5, x1: mx + o.size * L * 0.5, z: mz - 4 });
+    } else if (o.kind === 'hq' || o.kind === 'found') { // the Corporate District: a headquarters or the foundation of the next in line
+      const cx = x + L / 2, cz = z + L / 2;
+      const { h } = o.kind === 'hq' ? kit.hq(o.p, cx, cz, hqH) : kit.foundation(o.p, cx, cz, world.mega.line, Math.max(2, hqH(world.mega.line / 2) - 0.8));
+      const w = L * (o.kind === 'hq' ? 1.84 : 1.76), hit = new THREE.Mesh(new THREE.BoxGeometry(w, h + 2, w), DARK); // the campus's pad, the foundation's fence
+      hit.position.set(cx, (h + 2) / 2, cz);
+      ud = addHit(hit, { [o.kind]: o.p, h, x: cx, z: cz, w, rank: o.rank });
+      hqHits.set(o.p.id, ud); part.keys.push([hqHits, o.p.id]);
+    } else if (o.kind === 'diamond') kit.diamond(x, z);
+    part.entries.push(ud);
+  }
+  for (const m of batch.build()) group.add(m);
+  for (const a of kit.anims) group.add(a.obj);
+  bldGroup.add(group);
+  return part;
 }
 function buildScene() {
-  clearScene();
-  const src = data;
+  const t0 = performance.now(), src = data;
   world = buildWorld(src, { allMonuments: params.get('monuments') === 'all' });
   GW = world.GW; GH = world.GH; terrainSize = Math.max(GW, GH) * L;
   // a big scene (the dense ?demo region): a smaller shadow map, otherwise the shadow pass rules the frame
   const want = LOW_Q ? 1024 : PHONE || src.cities.reduce((a, c) => a + c.buildings.length, 0) > 1500 ? 2048 : 4096;
   if (sun.shadow.mapSize.x !== want) { sun.shadow.mapSize.set(want, want); sun.shadow.map?.dispose(); sun.shadow.map = null; }
   if (STYLE_PAL[params.get('style')]) for (const c of src.cities) c.style = params.get('style');
-  const grey = !!mapMode;
+  const grey = !!mapMode, key = landKeyOf(world, grey), full = key !== landKey;
+  landKey = key;
+  clearScene(full);
+  if (full) {
   // ground: the terrain's texture and the field up to the horizon
   groundTex = new THREE.CanvasTexture(groundCanvas(world, { grey })); groundTex.colorSpace = THREE.SRGBColorSpace; groundTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(GW * L, GH * L), new THREE.MeshStandardMaterial({ map: groundTex, roughness: 1, metalness: 0, envMapIntensity: 0.2 }));
-  ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; cityGroup.add(ground);
-  const far = new THREE.Mesh(new THREE.PlaneGeometry(14000, 14000), matte(grey ? '#aeb3aa' : '#7fb95a'));
-  far.rotation.x = -Math.PI / 2; far.position.y = -0.3; far.receiveShadow = true; cityGroup.add(far);
+  groundMat = new THREE.MeshStandardMaterial({ map: groundTex, roughness: 1, metalness: 0, envMapIntensity: 0.2 * (0.15 + 0.85 * dayF) });
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(GW * L, GH * L), groundMat);
+  ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; landGroup.add(ground);
+  const far = new THREE.Mesh(new THREE.PlaneGeometry(14000, 14000), grey || LOW_Q ? matte(grey ? '#aeb3aa' : '#7fb95a') : fieldsMaterial());
+  far.rotation.x = -Math.PI / 2; far.position.y = -0.3; far.receiveShadow = true; landGroup.add(far);
   // river: a sheet of water over the texture; bridges where the highways cross
   const scen = new Batcher(), waterTiles = [];
   for (const [key, t] of world.tiles) {
@@ -241,52 +375,49 @@ function buildScene() {
   }
   if (waterTiles.length) {
     const water = new THREE.Mesh(mergeGeometries(waterTiles, false), matte(grey ? '#8ea3b5' : '#3f8fd0', { roughness: 0.12, metalness: 0.2, transparent: true, opacity: 0.72, envMapIntensity: 0.9 }));
-    cityGroup.add(water);
+    landGroup.add(water);
+    waterMat = grey ? null : water.material;
+    if (!grey && !LOW_Q) { const rip = new THREE.Mesh(water.geometry.clone().translate(0, 0.03, 0), rippleMat); rip.renderOrder = 1; landGroup.add(rip); } // glints drifting over the water
+    applyWater();
   }
-  // buildings, houses and monuments, from the kit, in one batch per material
-  const batch = new Batcher();
-  kit = makeKit(batch, heightOf, wkOf, grey ? mapColorFor(mapMode, world.maxWeek) : null);
-  const trees = [], lamps = [], airports = [];
-  for (const c of src.cities) c.maxH = 0;
+  for (const m of scen.build()) landGroup.add(m);
+  } // (the land)
+  // Buildings, houses and monuments, from the kit, merged by material. In a region of up to PER_CITY_MAX
+  // cities each city is a part of its own (the Corporate District is another): a reading that changes one
+  // city redraws that city only, and the others stay as they are. A bigger region is one single part,
+  // to keep the draw calls down.
+  const colorOf = grey ? mapColorFor(mapMode, world.maxWeek) : null, perCity = src.cities.length <= PER_CITY_MAX;
+  const groups = new Map(), trees = [], lamps = [];
   for (const o of world.objs) {
-    const x = wx(o.gx), z = wz(o.gy);
-    if (o.kind === 'bld') {
-      const { h } = o.b.floors < 15 ? kit.house(o.b, o.c, x, z) : kit.tower(o.b, o.c, x, z);
-      o.c.maxH = Math.max(o.c.maxH, h);
-      const hit = new THREE.Mesh(new THREE.BoxGeometry(L * 0.9, h + 2, L * 0.9), DARK);
-      hit.position.set(x, (h + 2) / 2, z); hit.layers.set(1); hit.userData = { b: o.b, c: o.c, h, x, z };
-      hitGroup.add(hit); hitByKey.set(keyOf(o.c.id, o.b.id), hit.userData);
-    } else if (o.kind === 'mon') {
-      const mx = x + (o.size - 1) * L / 2, mz = z + (o.size - 1) * L / 2;
-      const out = kit.monument(o.m, o.size, mx, mz);
-      // every monument can be hovered (its name and what earns it); the Dojo also opens the masters' card
-      const h = out?.h ?? MON_H[o.m.key] ?? 8, w = MON_W[o.m.key] ?? o.size * L * 0.95, hit = new THREE.Mesh(new THREE.BoxGeometry(w, h + 1, w), DARK);
-      hit.position.set(mx, (h + 1) / 2, mz); hit.layers.set(1);
-      hit.userData = o.m.key === 'dojo' ? { dojo: o.m, c: o.c, h, x: mx, z: mz, w } : { mon: o.m, c: o.c, h, x: mx, z: mz, w };
-      hitGroup.add(hit); if (o.m.key === 'dojo') dojoHits.set(o.c.id, hit.userData);
-      if (o.m.key === 'airport') airports.push({ x0: mx - o.size * L * 0.5, x1: mx + o.size * L * 0.5, z: mz - 4 });
-    } else if (o.kind === 'hq' || o.kind === 'found') { // the Corporate District: a headquarters or the foundation of the next in line
-      const cx = x + L / 2, cz = z + L / 2;
-      const { h } = o.kind === 'hq' ? kit.hq(o.p, cx, cz, hqH) : kit.foundation(o.p, cx, cz, world.mega.line, Math.max(2, hqH(world.mega.line / 2) - 0.8));
-      const w = L * (o.kind === 'hq' ? 1.84 : 1.76), hit = new THREE.Mesh(new THREE.BoxGeometry(w, h + 2, w), DARK); // the campus's pad, the foundation's fence
-      hit.position.set(cx, (h + 2) / 2, cz); hit.layers.set(1);
-      hit.userData = { [o.kind]: o.p, h, x: cx, z: cz, w, rank: o.rank };
-      hitGroup.add(hit); hqHits.set(o.p.id, hit.userData);
-    } else if (o.kind === 'diamond') kit.diamond(x, z);
-    else if (o.kind === 'tree') trees.push({ x: x - L / 2 + o.u * L, z: z - L / 2 + o.v * L, s: o.s });
-    else if (o.kind === 'lamp') lamps.push({ x: x + L * 0.36, z: z + L * 0.36 });
+    if (o.kind === 'tree') trees.push({ x: wx(o.gx) - L / 2 + o.u * L, z: wz(o.gy) - L / 2 + o.v * L, s: o.s });
+    else if (o.kind === 'lamp') lamps.push({ x: wx(o.gx) + L * 0.36, z: wz(o.gy) + L * 0.36 });
+    else { const k = !perCity ? '~all' : o.c ? o.c.id : '~district'; (groups.get(k) ?? groups.set(k, []).get(k)).push(o); }
   }
-  for (const m of batch.build()) bldGroup.add(m);
-  sweepSigns(); // frees the canvas signs this reading no longer draws
-  for (const m of scen.build()) cityGroup.add(m);
-  for (const a of kit.anims) bldGroup.add(a.obj);
-  anims = kit.anims;
-  if (kit.cranes.length) { // the jibs of every crane: two instanced meshes, turned every frame
-    const meshes = craneJib().map(({ geometry, material }) => { const im = new THREE.InstancedMesh(geometry, material, kit.cranes.length); im.castShadow = true; im.frustumCulled = false; bldGroup.add(im); return im; });
-    anims.push({ kind: 'cranes', meshes, list: kit.cranes });
+  const head = `${FLOOR}|${CLOUD}|${grey ? `${mapMode}${world.maxWeek}` : ''}|${world.mega.line}|${params.get('style') ?? ''}|`;
+  const patch = !full && parts.size === groups.size && [...groups.keys()].every((k) => parts.has(k));
+  if (!patch) for (const k of [...parts.keys()]) dropPart(k);
+  let rebuilt = 0;
+  for (const [k, objs] of groups) {
+    const sig = head + objs.map(partSig).join(';'), old = parts.get(k);
+    if (old && old.sig === sig) { refreshPart(old, objs); continue; } // nothing to redraw here: only the new reading's objects
+    if (old) dropPart(k);
+    parts.set(k, buildPart(objs, sig, colorOf)); rebuilt++;
+  }
+  if (!patch) sweepSigns(); // frees the canvas signs this reading no longer draws (not when some parts were kept: theirs are still in use)
+  // what belongs to the whole region, gathered from the parts: the heights, the animations, the cranes' jibs
+  for (const c of src.cities) c.maxH = 0;
+  anims = [];
+  const cranes = [], marks = [], airports = [], kitTrees = [];
+  for (const part of parts.values()) {
+    anims.push(...part.kit.anims); cranes.push(...part.kit.cranes); marks.push(...part.kit.marks); airports.push(...part.airports); kitTrees.push(...part.kit.trees);
+    for (const [id, h] of part.maxH) { const c = cityOf(id); if (c) c.maxH = Math.max(c.maxH, h); }
+  }
+  if (cranes.length) { // the jibs of every crane: two instanced meshes, turned every frame
+    craneMeshes = craneJib().map(({ geometry, material }) => { const im = new THREE.InstancedMesh(geometry, material, cranes.length); im.castShadow = true; im.frustumCulled = false; bldGroup.add(im); return im; });
+    anims.push({ kind: 'cranes', meshes: craneMeshes, list: cranes });
     stepCranes(anims[anims.length - 1], 0);
   }
-  for (const m of [...makeTrees([...trees, ...kit.trees]), ...makeLamps(lamps), makeCars()]) if (m) cityGroup.add(m);
+  if (full) for (const m of [...makeTrees([...trees, ...kitTrees]), ...makeLamps(lamps), makeCars()]) if (m) landGroup.add(m);
   // the cities' signs and the little "N in common" plates on the golden roads
   for (const c of src.cities) {
     const tr = tierOf(c.floors), dj = dojoOf(c), wrap = document.createElement('div'); // the sign sits in a wrapper, to shrink from afar (--signk)
@@ -306,13 +437,14 @@ function buildScene() {
     const sign = new CSS2DObject(wrap); sign.position.set(wx(dt.sign[0]), 5, wz(dt.sign[1])); cityGroup.add(sign);
   }
   world.maxH = Math.max(0, ...src.cities.map((c) => c.maxH), ...[...hqHits.values()].map((h) => h.h)); // and the district's campuses, in case one stands above the buildings
-  if (!hills) makeHills(terrainSize);
+  if (!hills || Math.abs(hillsSize - terrainSize) > terrainSize * 0.15) makeHills(terrainSize); // the hills follow the region when it grows
   // life: people, boats, planes, helicopter, airship, beacon, elevator
-  life = makeLife({ scene, world, data: src, wx, wz, marks: kit.marks, airports, size: terrainSize });
+  life = makeLife({ scene, world, data: src, wx, wz, marks, airports, size: terrainSize });
   life.setBlimpMsgs(blimpLines(src, context(src).leader));
   updateHeli();
   applyHour(hour);
   paintMe();
+  lastBuild = { ms: Math.round(performance.now() - t0), full, parts: parts.size, rebuilt };
 }
 
 // ───────── trees, lamps and cars (instanced) ─────────
@@ -320,25 +452,43 @@ function makeTrees(list) {
   const n = list.length; if (!n) return [];
   const trunk = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.18, 0.28, 1, 6).translate(0, 0.5, 0), matte('#6b4b2e'), n);
   // in a dense region (tens of thousands of trees) the crown gets 20 faces instead of 80: unnoticeable from afar, and the shadows are grateful
-  const crown = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, n > 6000 ? 0 : 1), matte('#ffffff', { roughness: 0.95, envMapIntensity: 0.2 }), n);
-  const greens = mapMode ? ['#9aa89a', '#a3b0a3', '#93a193', '#aab6aa'] : ['#3f8f4a', '#4c9c3f', '#2f7d45', '#58a84a'], mt = new THREE.Matrix4(), col = new THREE.Color();
-  list.forEach((t, i) => {
-    const s = t.s * 2.2;
-    mt.makeScale(s * 0.9, s * 0.8, s * 0.9).setPosition(t.x, 0, t.z); trunk.setMatrixAt(i, mt);
-    mt.makeScale(s * 1.05, s * 1.15, s * 1.05).setPosition(t.x, s * 0.8 + s * 0.95, t.z); crown.setMatrixAt(i, mt);
-    crown.setColorAt(i, col.set(greens[Math.floor(hash(Math.round(t.x * 10), Math.round(t.z * 10), 8) * 4)]));
-  });
-  trunk.castShadow = crown.castShadow = true; crown.receiveShadow = true;
-  return [trunk, crown];
+  // Three shapes, fixed by where each tree stands: round crowns, pines and tall poplars, each with its greens.
+  const det = n > 6000 ? 0 : 1, kinds = [[], [], []];
+  list.forEach((t, i) => { const v = hash(Math.round(t.x * 7), Math.round(t.z * 7), 12); kinds[v < 0.62 ? 0 : v < 0.86 ? 1 : 2].push(i); });
+  const geos = [new THREE.IcosahedronGeometry(1, det), new THREE.ConeGeometry(0.92, 2.3, 7).translate(0, 0.3, 0), new THREE.IcosahedronGeometry(1, det).scale(0.6, 1.5, 0.6).translate(0, 0.4, 0)];
+  const greens = mapMode ? [['#9aa89a', '#a3b0a3', '#93a193', '#aab6aa'], ['#8e9a8e', '#96a296'], ['#a6b2a6', '#aebaae']]
+    : [['#3f8f4a', '#4c9c3f', '#2f7d45', '#58a84a'], ['#1f6b45', '#2a7a4e', '#236a3c'], ['#6aa84f', '#7ab85a', '#5c9c48']];
+  const crowns = geos.map((g, k) => new THREE.InstancedMesh(g, matte('#ffffff', { roughness: 0.95, envMapIntensity: 0.2 }), kinds[k].length));
+  const mt = new THREE.Matrix4(), col = new THREE.Color();
+  list.forEach((t, i) => { const s = t.s * 2.2; mt.makeScale(s * 0.9, s * 0.8, s * 0.9).setPosition(t.x, 0, t.z); trunk.setMatrixAt(i, mt); });
+  kinds.forEach((idx, k) => idx.forEach((i, j) => {
+    const t = list[i], s = t.s * 2.2;
+    mt.makeScale(s * 1.05, s * 1.15, s * 1.05).setPosition(t.x, s * 0.8 + s * 0.95, t.z); crowns[k].setMatrixAt(j, mt);
+    crowns[k].setColorAt(j, col.set(greens[k][Math.floor(hash(Math.round(t.x * 10), Math.round(t.z * 10), 8) * greens[k].length)]));
+  }));
+  trunk.castShadow = true;
+  for (const c of crowns) { c.castShadow = true; c.receiveShadow = true; }
+  return [trunk, ...crowns.filter((c) => c.count > 0)];
 }
+// The pool of light under each street lamp: a flat disc that adds a warm glow to the ground at night
+// (no real light: hundreds of lamps would cost every pixel of every material).
+const poolMat = (() => {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 128; const x = cv.getContext('2d');
+  const gr = x.createRadialGradient(64, 64, 2, 64, 64, 64); gr.addColorStop(0, 'rgba(255,214,150,1)'); gr.addColorStop(0.35, 'rgba(255,196,120,.5)'); gr.addColorStop(1, 'rgba(255,180,100,0)');
+  x.fillStyle = gr; x.fillRect(0, 0, 128, 128);
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+  return new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+})();
 function makeLamps(list) {
   const n = list.length; if (!n) return [];
   const pole = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.1, 0.14, 5, 6).translate(0, 2.5, 0), SILVER, n);
   const head = new THREE.InstancedMesh(new THREE.SphereGeometry(0.35, 8, 8), WARM_LIGHT, n);
   const mt = new THREE.Matrix4();
-  list.forEach((p, i) => { mt.makeTranslation(p.x, 0, p.z); pole.setMatrixAt(i, mt); mt.makeTranslation(p.x, 5.1, p.z); head.setMatrixAt(i, mt); });
+  const pool = LOW_Q || mapMode ? null : new THREE.InstancedMesh(new THREE.CircleGeometry(6.5, 20).rotateX(-Math.PI / 2), poolMat, n);
+  list.forEach((p, i) => { mt.makeTranslation(p.x, 0, p.z); pole.setMatrixAt(i, mt); mt.makeTranslation(p.x, 5.1, p.z); head.setMatrixAt(i, mt); mt.makeTranslation(p.x, 0.14, p.z); pool?.setMatrixAt(i, mt); });
   pole.castShadow = true;
-  return [pole, head];
+  if (pool) pool.renderOrder = 1;
+  return pool ? [pole, head, pool] : [pole, head];
 }
 const CAR_COLORS = ['#d9473f', '#f2f2f2', '#3d7bd9', '#f2c14e', '#2f3640', '#7bc043'];
 function makeCars() {
@@ -372,7 +522,26 @@ function stepCars(dt) {
 // ───────── the time of day ─────────
 // The sun goes east to west with the time in the configured zone; at night, a bluish moon, lit
 // windows and lamps, and glow. Automatic (the zone's time, minute by minute) or fixed (?hour= or the 🌗 control).
-let hour = zoneHour(), hourAuto = !params.has('hour'), dayF = 1;
+let hour = zoneHour(), hourAuto = !params.has('hour'), dayF = 1, groundMat = null, waterMat = null;
+// Living water: soft glints that drift over the river and the channel (a texture that slides, no
+// shader), and the water takes some of the sky's color with the hour.
+const rippleMat = (() => {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 256; const x = cv.getContext('2d'), r = seed('ripples');
+  for (let i = 0; i < 46; i++) {
+    const px = r() * 256, py = r() * 256, w = 14 + r() * 34, h = 2 + r() * 3;
+    for (const [ox, oy] of [[0, 0], [256, 0], [-256, 0], [0, 256], [0, -256]]) { // repeated at the edges, so the texture tiles
+      const gr = x.createRadialGradient(px + ox, py + oy, 0, px + ox, py + oy, w);
+      gr.addColorStop(0, 'rgba(255,255,255,.5)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+      x.save(); x.translate(px + ox, py + oy); x.scale(1, h / w); x.translate(-px - ox, -py - oy); x.fillStyle = gr; x.fillRect(px + ox - w, py + oy - w, w * 2, w * 2); x.restore();
+    }
+  }
+  const tex = new THREE.CanvasTexture(cv); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.colorSpace = THREE.SRGBColorSpace;
+  return new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.5, depthWrite: false });
+})();
+function applyWater() {
+  rippleMat.opacity = 0.14 + 0.4 * dayF;
+  if (waterMat) waterMat.color.set('#3f8fd0').lerp(new THREE.Color(skyColorsAt(hour)[1]), 0.22 + 0.3 * (1 - dayF));
+}
 const sunDir = new THREE.Vector3(0, 1, 0);
 function applyHour(h) {
   h = ((h % 24) + 24) % 24; hour = h;
@@ -380,7 +549,19 @@ function applyHour(h) {
   dayF = smooth(-0.08, 0.28, el);
   const dusk = 1 - smooth(0.05, 0.45, Math.abs(el));
   sunDir.set(Math.sin(az) * 0.85, Math.max(0.04, el), Math.cos(az) * 0.6 - 0.2).normalize();
+  // the discs: the sun on its arc (it sets instead of stopping at the horizon), the moon on the night's arc
+  const elM = Math.sin((((h + 6) % 24) / 12) * Math.PI), azM = ((((h + 12) % 24) - 12) / 12) * Math.PI;
+  const sunVis = smooth(-0.1, 0.04, el), moonVis = smooth(-0.06, 0.1, elM) * (1 - dayF);
+  sunDisc.position.set(Math.sin(az) * 0.85, el, Math.cos(az) * 0.6 - 0.2).normalize().multiplyScalar(5000);
+  moonDir.set(Math.sin(azM) * 0.85, Math.max(0.05, elM), Math.cos(azM) * 0.6 - 0.2).normalize();
+  moonDisc.position.set(Math.sin(azM) * 0.85, elM, Math.cos(azM) * 0.6 - 0.2).normalize().multiplyScalar(5000);
+  sunDisc.material.opacity = sunVis; sunDisc.visible = sunVis > 0.01; moonDisc.material.opacity = moonVis; moonDisc.visible = moonVis > 0.01;
+  moon.position.copy(moonDir).multiplyScalar(400);
   sun.intensity = 3.2 * dayF; sun.color.set('#fff2df').lerp(new THREE.Color('#ffb070'), dusk * 0.7);
+  sunDisc.material.color.copy(sun.color);
+  renderer.shadowMap.autoUpdate = dayF > 0.02; // at night the sun casts nothing: the shadow pass rests
+  if (sunVis > moonVis * 0.3) { skyMat.uniforms.orb.value.copy(sunDisc.position).normalize(); skyMat.uniforms.glow.value.copy(sun.color); skyMat.uniforms.glowK.value = sunVis * (0.55 + 0.6 * dusk); }
+  else { skyMat.uniforms.orb.value.copy(moonDir); skyMat.uniforms.glow.value.set('#8fa6e8'); skyMat.uniforms.glowK.value = moonVis * 0.35; }
   moon.intensity = 0.45 * (1 - dayF);
   const sky = skyColorsAt(h);
   skyMat.uniforms.top.value.set(sky[0]); skyMat.uniforms.mid.value.set(sky[1]); skyMat.uniforms.hor.value.set(sky[3]); skyMat.uniforms.low.value.set(sky[3]).multiplyScalar(0.7);
@@ -390,10 +571,15 @@ function applyHour(h) {
   renderer.toneMappingExposure = 1 + 0.25 * (1 - dayF);
   stars.material.opacity = 0.9 * (1 - dayF);
   for (const m of mats) m.envMapIntensity = (m.userData.env ??= m.envMapIntensity) * (0.15 + 0.85 * dayF);
+  if (groundMat) groundMat.envMapIntensity = 0.2 * (0.15 + 0.85 * dayF); // the ground darkens with everything else (it stayed bright green at night)
   const night = 1 - dayF;
   for (const { m, i } of lit) { m.userData.base = i; m.emissiveIntensity = i * night; }
   useBloom = !LOW_Q && night > 0.35; bloom.strength = 0.65 * night;
-  clouds.children.forEach((s) => (s.material.opacity = 0.35 + 0.5 * dayF));
+  // the clouds take the hour's light: white by day, orange at dusk, slate under the moon
+  const cloudCol = new THREE.Color('#ffffff').lerp(new THREE.Color('#ffb98f'), dusk * 0.55 * dayF).lerp(new THREE.Color('#46507a'), 1 - dayF);
+  clouds.children.forEach((s) => { s.material.opacity = 0.35 + 0.5 * dayF; s.material.color.copy(cloudCol); });
+  poolMat.opacity = 0.5 * night; // the pools of light under the street lamps
+  applyWater();
   $('#hour').value = h; $('#hour-out').value = fmt.clock(h);
   $('#sky-btn').classList.toggle('lit', !hourAuto);
   document.querySelectorAll('[data-hour]').forEach((b) => b.classList.toggle('on', b.dataset.hour === 'auto' ? hourAuto : !hourAuto && Number(b.dataset.hour) === h));
@@ -456,7 +642,8 @@ function setView(next, person = null) { // person: the person's id, or { dojo: t
   renderPanels(data, view, selected); $('#hall').classList.remove('open'); frameForDrawers();
   const h = person?.dojo ? dojoHits.get(next.id) : person && hitByKey.get(keyOf(next.id, person));
   if (h) flyTo(fitBuilding(h), 1500); else refit(1500);
-  updateHeli(); updateRing();
+  updateHeli(); updateRing(); syncUrl();
+  atDistrict = false; if (tourTimer) tourCaption();
 }
 // the card of the city's Dojo (masters and who is on the way), with the Dojo in the middle of the screen
 function selectDojo(cityId) {
@@ -464,6 +651,7 @@ function selectDojo(cityId) {
   renderPanels(data, view, selected); frameForDrawers();
   const h = dojoHits.get(cityId);
   if (h) { const v = currentView(); flyTo({ target: new THREE.Vector3(h.x, 6, h.z), phi: v.phi, dist: clamp(v.dist, 80, 240) }, 900); }
+  syncUrl();
 }
 // The Corporate District: a headquarters' (or foundation's) card with the camera on it; the view
 // goes back to the region (the district is outside every city)
@@ -478,18 +666,58 @@ function selectHq(id) {
   closeModals(); selected = { hq: id }; toRegion();
   const v = currentView();
   flyTo({ target: new THREE.Vector3(h.x, h.h * 0.4, h.z), phi: clamp(v.phi, 0.2, 0.5), dist: clamp(h.h * 2.6, 60, 800) }, 1200); // the whole campus, crown included
+  syncUrl();
 }
-function goDistrict() { if (!world?.district) return; closeModals(); selected = null; toRegion(); flyTo(fitDistrict(), 1500); }
+function goDistrict() { if (!world?.district) return; closeModals(); selected = null; toRegion(); flyTo(fitDistrict(), 1500); syncUrl(); atDistrict = true; if (tourTimer) tourCaption(); }
 function goRegion() { if (view.kind !== 'region') setView({ kind: 'region', id: null }); else refit(); }
 function goCity(id, person = null) { if (!cityOf(id)) return; closeModals(); setView({ kind: 'city', id }, person); }
 function goPerson(cityId, personId) { goCity(cityId, personId); }
+
+// ───────── the address follows the screen ─────────
+// The city, the building (or the Dojo, or a headquarters), the data map and a fixed hour go to the URL
+// as the user moves: Back returns to where they were, and a reload or a copied address opens the same
+// screen. A new place is a step in the history; a map or an hour only rewrites the current step. Not
+// during the TV tour, which would fill the history.
+const NAV_KEYS = ['city', 'person', 'dojo', 'hq', 'map', 'hour'];
+let urlBusy = false, lastNav = '', hourSync = 0;
+const navNow = () => `${view.kind === 'city' ? view.id : ''}|${selected?.person ?? ''}|${selected?.dojo ? 1 : ''}|${selected?.hq ?? ''}`;
+function syncUrl() {
+  if (urlBusy || !data || params.has('tour')) return;
+  const u = new URL(location.href), q = u.searchParams;
+  for (const k of NAV_KEYS) q.delete(k);
+  if (view.kind === 'city') { q.set('city', view.id); if (selected?.dojo) q.set('dojo', '1'); else if (selected?.person) q.set('person', selected.person); }
+  else if (selected?.hq) q.set('hq', selected.hq);
+  if (mapMode) q.set('map', mapMode);
+  if (!hourAuto) q.set('hour', String(Math.round(hour * 4) / 4));
+  const href = u.pathname + u.search.replace(/=(?=&|$)/g, '') + u.hash, nav = navNow(); // "?demo", not "?demo="
+  if (href !== location.pathname + location.search + location.hash) { try { history[nav !== lastNav ? 'pushState' : 'replaceState'](null, '', href); } catch { /* a browser that limits history calls: the address just stays behind */ } }
+  lastNav = nav;
+}
+const syncUrlSoon = () => { clearTimeout(hourSync); hourSync = setTimeout(syncUrl, 400); }; // the hour slider fires on every step
+addEventListener('popstate', () => {
+  if (!data) return;
+  const p = new URLSearchParams(location.search), c = findCity(data, p.get('city')), hq = p.get('hq'), h = p.get('hour');
+  urlBusy = true;
+  try {
+    closeModals();
+    const m = MAPKEYS[p.get('map')] ? p.get('map') : null;
+    if (m !== mapMode) setMapMode(m);
+    if (!c && hq && hqHits.has(hq)) selectHq(hq);
+    else if (c) { const person = p.get('person'); setView({ kind: 'city', id: c.id }, p.has('dojo') ? { dojo: true } : c.buildings.some((b) => b.id === person) ? person : null); }
+    else { selected = null; setView({ kind: 'region', id: null }); }
+    if (h !== null && h !== '' && Number.isFinite(Number(h))) { hourAuto = false; applyHour(Number(h)); }
+    else if (!hourAuto) { hourAuto = true; applyHour(zoneHour(undefined, { real: true })); }
+  } finally { urlBusy = false; lastNav = navNow(); }
+});
 // the touched building goes to the middle of the screen (the card on the left, City Hall on the
 // right), keeping the angle; from very far the camera comes a bit closer
 function select(cityId, personId) {
+  if (roofBack) { roofBack = null; delete document.documentElement.dataset.roof; } // another building (or none): the roof is left behind
   selected = personId ? { city: cityId, person: personId } : null;
   renderPanels(data, view, selected); frameForDrawers();
   const h = personId && hitByKey.get(keyOf(cityId, personId));
   if (h) { const v = currentView(); flyTo({ target: new THREE.Vector3(h.x, Math.min(h.h * 0.45, 40), h.z), phi: v.phi, dist: clamp(v.dist, 80, 240) }, 900); }
+  syncUrl();
 }
 function celebrate(cityId, n = 3) {
   const c = cityOf(cityId), h = c?.buildings[0] && hitByKey.get(keyOf(c.id, c.buildings[0].id));
@@ -498,8 +726,28 @@ function celebrate(cityId, n = 3) {
 
 // the TV tour: the region, then each city, with the camera turning slowly
 let tourIdx = -1, tourTimer = null;
+// The tour's caption says what is on screen (the stop and its numbers), big enough for a TV across the
+// room. Touching the screen (mouse, key, wheel) holds the tour for a minute.
+let tourHold = 0, atDistrict = false;
+function tourCaption() {
+  const el = $('#tour-cap'); if (!el || !data) return;
+  let title, sub;
+  if (view.kind === 'city') {
+    const c = cityOf(view.id), top = c.buildings[0];
+    title = cityLabel(c);
+    sub = t('tour.citySub', { tier: cityTier(tierOf(c.floors).key).name, buildings: plural(c.people, 'count.building'), week: fmt.int(c.week), top: top ? displayName(top).full : '—', floors: top ? floorsText(top.floors) : '' });
+  } else if (atDistrict && world?.mega) {
+    title = t('tour.district'); sub = t('tour.districtSub', { members: `${fmt.int(world.mega.members.length)} Mega Builders` });
+  } else {
+    const lead = [...data.cities].sort((a, b) => b.week - a.week)[0];
+    title = t('tour.region');
+    sub = t('tour.regionSub', { cities: plural(data.cities.length, 'count.city'), buildings: plural(data.cities.reduce((a, c) => a + c.people, 0), 'count.building'), leader: lead ? cityLabel(lead) : '—', n: lead ? fmt.int(lead.week) : '0' });
+  }
+  el.hidden = false; el.firstElementChild.textContent = title; el.lastElementChild.textContent = sub;
+}
+for (const ev of ['pointerdown', 'wheel', 'keydown']) addEventListener(ev, () => { if (tourTimer) tourHold = Date.now() + 60_000; }, { passive: true });
 function tourStep() {
-  if (tl) return;
+  if (tl || Date.now() < tourHold) return;
   const ids = data.cities.map((c) => c.id), stops = ids.length + 1 + (world?.district ? 1 : 0); // the region, each city and the Corporate District
   tourIdx = (tourIdx + 1) % stops;
   if (tourIdx === 0) setView({ kind: 'region', id: null });
@@ -677,8 +925,94 @@ function paintMe() {
   const mine = [...[...hitByKey.values()].filter((h) => h.b.id === me), ...[...hqHits.values()].filter((h) => (h.hq ?? h.found).id === me)]; // and the headquarters (or foundation) in the district
   for (const h of mine) { const o = new CSS2DObject(wrapped('mepin', t('me.pin'))); o.position.set(h.x, h.h + 2, h.z); scene.add(o); mePins.push(o); }
 }
+// The view from the roof: the camera stands on the building's roof looking at the middle of the city
+// (the owner of a house looks up at the giants). A second press, or Esc, goes back to where it was.
+let roofBack = null;
+function roofView(cityId, personId) {
+  if (roofBack) return leaveRoof();
+  const c = cityOf(cityId), h = hitByKey.get(keyOf(cityId, personId));
+  if (!c || !h) return;
+  const mid = fitCity(c).target, dir = new THREE.Vector3(mid.x - h.x, 0, mid.z - h.z);
+  if (dir.lengthSq() < 4) dir.set(0, 0, 1); // the building in the very middle: any way
+  dir.normalize();
+  // the most open way: of 16 directions, the one with the farthest taller neighbor in front (toward the
+  // middle of the city when it is a tie), so the view is the city and not the wall next door
+  const taller = [...hitByKey.values()].filter((o) => o !== h && o.c.id === cityId && o.h > h.h + 1);
+  let best = dir.clone(), bestScore = -Infinity;
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 16) * Math.PI * 2, d = new THREE.Vector3(Math.cos(a), 0, Math.sin(a));
+    let clear = 400;
+    for (const o of taller) { const rx = o.x - h.x, rz = o.z - h.z, along = rx * d.x + rz * d.z; if (along > 0 && Math.abs(rx * d.z - rz * d.x) < L * 0.9) clear = Math.min(clear, along); }
+    const score = Math.min(clear, 160) + 25 * d.dot(dir);
+    if (score > bestScore) { bestScore = score; best = d; }
+  }
+  dir.copy(best);
+  roofBack = { position: camera.position.clone(), target: controls.target.clone() };
+  controls.autoRotate = false; $('#spin').setAttribute('aria-pressed', 'false');
+  const eye = new THREE.Vector3(h.x, h.h + 2.2, h.z).addScaledVector(dir, -1.5), look = eye.clone().addScaledVector(dir, 42); look.y = Math.max(1, eye.y - 5);
+  camTween = { fromT: controls.target.clone(), toT: look, fromP: camera.position.clone(), toP: eye, t0: performance.now(), ms: 1400 };
+  document.documentElement.dataset.roof = '';
+}
+function leaveRoof() {
+  if (!roofBack) return;
+  camTween = { fromT: controls.target.clone(), toT: roofBack.target, fromP: camera.position.clone(), toP: roofBack.position, t0: performance.now(), ms: 1100 };
+  roofBack = null; delete document.documentElement.dataset.roof;
+}
+// The building's card: a frame of the scene as it is now (the building is in the middle of the screen)
+// plus the person's numbers, as a PNG to download or, where the browser can, to copy.
+let cardBlob = null, cardUrl = null;
+function openCard(cityId, personId) {
+  const c = cityOf(cityId), b = c?.buildings.find((x) => x.id === personId);
+  if (!b) return;
+  // the frame: drawn and read in the same turn, before the browser clears the drawing buffer
+  // the camera steps back to frame the whole building for the picture, and returns
+  const hit = hitByKey.get(keyOf(cityId, personId)), keepP = camera.position.clone(), keepT = controls.target.clone(), keepTween = camTween;
+  camera.clearViewOffset(); camera.updateProjectionMatrix();
+  if (hit) flyTo({ target: new THREE.Vector3(hit.x, hit.h * 0.52, hit.z), phi: 0.3, dist: clamp(hit.h * 2.3, 90, 1100) }, 0);
+  if (useBloom) composer.render(); else renderer.render(scene, camera);
+  camera.position.copy(keepP); controls.target.copy(keepT); controls.update(); camTween = keepTween;
+  const tr = tierOf(b.floors, BUILDING_TIERS), chips = [`${tr.icon} ${buildingTier(tr.key).name}`];
+  if (b.mega) chips.push('💎 Mega Builder');
+  if (b.belt) chips.push(`🥋 ${t(`belt.${b.belt}`).name}`);
+  if (b.streak >= 2) chips.push(`📅 ${plural(b.streak, 'sheet.badge.streak')}`);
+  const cv = drawBuildingCard({
+    shot: renderer.domElement, title: displayName(b).full, sub: t('card.sub', { c, rank: fmt.ordinal(c.buildings.indexOf(b) + 1) }),
+    stats: [{ value: fmt.int(b.floors), label: t('card.floors') }, { value: `+${fmt.int(b.week)}`, label: t('card.week'), up: true }, { value: `+${fmt.int(b.today)}`, label: t('card.today') }],
+    chips, brand: `🏙️ ${config.appName ?? 'Tokenopolis'}`, date: fmt.date(data.generatedAt, 'long'),
+  });
+  frameForDrawers();
+  const slug = (s) => String(s).normalize('NFD').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase() || 'building';
+  cv.toBlob((blob) => {
+    if (!blob) return;
+    if (cardUrl) URL.revokeObjectURL(cardUrl);
+    cardBlob = blob; cardUrl = URL.createObjectURL(blob);
+    $('#card-img').src = cardUrl; $('#card-img').alt = displayName(b).full;
+    const dl = $('#card-dl'); dl.href = cardUrl; dl.download = `${slug(config.appName ?? 'tokenopolis')}-${slug(displayName(b).full)}.png`;
+    $('#card-copy').hidden = !canCopyImages(); // plain http has no clipboard for images: the download stays
+    openModal('cardbox');
+  }, 'image/png');
+}
+async function copyCard() {
+  if (!cardBlob) return;
+  try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': cardBlob })]); queueToast({ icon: '📸', title: t('card.copied.title'), text: t('card.copied.text'), ms: 3500, quiet: true }); }
+  catch { queueToast({ icon: '📸', title: t('card.failed.title'), text: t('card.failed.text'), ms: 5000, quiet: true }); }
+}
+// First visit: an invitation to find one's own building. Without it nothing personal works (the pin,
+// the 📍 button, the greeting, the notice that the building grew), and nothing else suggests it. Shown
+// once (city.welcomed), never on a TV link (tour, spin, no panels) or when a link opens on a building.
+const seenWelcome = () => { try { return !!localStorage.getItem('city.welcomed'); } catch { return true; } };
+function closeWelcome(find) {
+  $('#welcome').hidden = true;
+  try { localStorage.setItem('city.welcomed', '1'); } catch {}
+  if (find) { document.documentElement.dataset.invite = ''; openTool('find'); } // the "this is my building" button pulses until one is marked
+}
+function offerWelcome() {
+  if (me || seenWelcome() || params.has('tour') || params.has('spin') || params.get('panels') === '0' || params.has('person') || params.has('hq')) return;
+  setTimeout(() => { if (!me && !selected && !anyModal() && !tl) $('#welcome').hidden = false; }, 2500);
+}
 function setMe(id) {
   me = me === id ? null : id;
+  if (me) { delete document.documentElement.dataset.invite; $('#welcome').hidden = true; try { localStorage.setItem('city.welcomed', '1'); } catch {} }
   try { if (me) localStorage.setItem('city.me', me); else localStorage.removeItem('city.me'); } catch {}
   panelsSetMe(me); paintMe(); renderPanels(data, view, selected);
   if (me) queueToast({ icon: '📍', title: t('toast.mine.title'), text: t('toast.mine.text'), ms: 6000, quiet: true });
@@ -692,20 +1026,65 @@ function applyPanels() {
 }
 function setPanels(list, show) { for (const p of list) if (show) hiddenPanels.delete(p); else hiddenPanels.add(p); try { localStorage.setItem('city.hiddenPanels', JSON.stringify([...hiddenPanels])); } catch {} applyPanels(); }
 function toggleAllPanels() { const show = PANELS.every((p) => hiddenPanels.has(p)); setPanels(PANELS, show); if (!show) queueToast({ icon: '👁️', title: t('toast.panelsHidden.title'), text: t('toast.panelsHidden.text'), ms: 3500, quiet: true }); }
+// Signs that would sit on top of one another: the city's sign nearest the camera stays, and the ones it
+// would cover (other signs, then the "in common" pills, then the mayors' tags) fade until there is room.
+let clutterAt = 0;
+function declutter() {
+  const rank = (e) => (e.classList.contains('sign') ? 0 : e.classList.contains('route') ? 1 : 2);
+  const boxes = [...labels.domElement.querySelectorAll('.sign, .route, .rally')].filter((e) => e.offsetParent !== null)
+    .map((e) => ({ e, r: e.getBoundingClientRect(), k: rank(e) })).filter((b) => b.r.width > 0).sort((a, b) => a.k - b.k || b.r.bottom - a.r.bottom);
+  const kept = [];
+  for (const b of boxes) {
+    const hit = kept.some((r) => b.r.left < r.right - 4 && b.r.right > r.left + 4 && b.r.top < r.bottom - 3 && b.r.bottom > r.top + 3);
+    b.e.classList.toggle('clash', hit);
+    if (!hit) kept.push(b.r);
+  }
+}
+// The text size of the panels and signs (A, A+, A++ in the 👁️ list), kept between visits.
+let textZoom = 1;
+function setTextZoom(v, save = true) {
+  textZoom = [1, 1.15, 1.3].includes(Number(v)) ? Number(v) : 1;
+  document.documentElement.style.setProperty('--ui-zoom', textZoom);
+  for (const b of document.querySelectorAll('[data-text]')) b.setAttribute('aria-pressed', String(Number(b.dataset.text) === textZoom));
+  if (save) { try { localStorage.setItem('city.textSize', String(textZoom)); } catch {} }
+}
+try { setTextZoom(localStorage.getItem('city.textSize') ?? 1, false); } catch { setTextZoom(1, false); }
+// A dialog takes the focus when it opens, keeps Tab inside it and gives the focus back when it closes.
+let modalBack = null;
+function trapFocus(e) {
+  const d = [...document.querySelectorAll('.modal')].find((m) => !m.hidden)?.querySelector('[role="dialog"]');
+  if (!d) return;
+  const f = [...d.querySelectorAll('a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])')].filter((x) => x.offsetParent !== null);
+  if (!f.length) return;
+  const inside = d.contains(document.activeElement);
+  if (e.shiftKey && (!inside || document.activeElement === f[0])) { e.preventDefault(); f.at(-1).focus(); }
+  else if (!e.shiftKey && (!inside || document.activeElement === f.at(-1))) { e.preventDefault(); f[0].focus(); }
+}
 function closePopovers() { document.querySelectorAll('.popover').forEach((el) => (el.hidden = true)); document.querySelectorAll('.tools .on').forEach((b) => b.classList.remove('on')); }
-function closeModals() { closePopovers(); document.querySelectorAll('.modal').forEach((el) => (el.hidden = true)); }
+function closeModals() {
+  const was = anyModal();
+  closePopovers(); document.querySelectorAll('.modal').forEach((el) => (el.hidden = true));
+  if (was) { if (modalBack?.isConnected) modalBack.focus({ preventScroll: true }); modalBack = null; }
+}
 const anyModal = () => [...document.querySelectorAll('.modal')].some((el) => !el.hidden);
-function openModal(id) { closeModals(); $(`#${id}`).hidden = false; }
+function openModal(id) {
+  const back = anyModal() ? modalBack : document.activeElement;
+  closeModals(); modalBack = back;
+  const m = $(`#${id}`), d = m.querySelector('[role="dialog"]');
+  m.hidden = false;
+  if (d) { d.setAttribute('aria-modal', 'true'); d.tabIndex = -1; (d.querySelector('input, .close, button, a[href]') ?? d).focus({ preventScroll: true }); }
+}
 function openTool(name, btn) {
   setMenu(false);
   if (name === 'me') { const hit = me && locatePerson(me); if (hit) goPerson(hit.c.id, hit.b.id); return; }
   if (name === 'find') { openModal('finder'); $('#finder-q').value = ''; renderFinder(); $('#finder-q').focus(); return; }
   if (name === 'paper') { renderPaper(dayF < 0.5); openModal('newspaper'); return; }
   if (name === 'help') { openModal('help'); links.showTab('read'); return; }
-  const pop = $({ panels: '#panels', sky: '#sky', maps: '#maps', history: '#films' }[name]), was = pop && !pop.hidden;
+  const pop = $({ panels: '#panels', sky: '#sky', maps: '#maps', history: '#films', bell: '#bell' }[name]), was = pop && !pop.hidden;
   closeModals();
   if (!pop || was) return;
   pop.hidden = false; btn?.classList.add('on');
+  if (name === 'bell') { renderBell(null); loadHistory().then(() => { if (!pop.hidden) renderBell(weekDiary(data)); }, () => { if (!pop.hidden) renderBell([]); }); } // the diary comes with the record
 }
 function setMapMode(m) {
   if (tl) stopFilm();
@@ -714,12 +1093,18 @@ function setMapMode(m) {
   renderMapKey(mapMode);
   closeModals();
   if (data) { buildScene(); updateRing(); }
+  syncUrl();
 }
 document.addEventListener('click', (e) => {
-  const el = e.target.closest('[data-menu], [data-hide-panel], [data-panel], [data-panels], [data-tool], [data-back], [data-close], [data-close-modal], [data-share], [data-me], [data-building], [data-dojo], [data-hq], [data-district], [data-city], [data-dir], [data-map-mode], [data-film], [data-race], [data-tl-stop], #spin, #refit, [data-hour], .sign');
+  const el = e.target.closest('[data-menu], [data-hide-panel], [data-panel], [data-panels], [data-tool], [data-back], [data-close], [data-close-modal], [data-share], [data-me], [data-building], [data-dojo], [data-hq], [data-district], [data-city], [data-dir], [data-map-mode], [data-film], [data-race], [data-tl-stop], #spin, #refit, [data-hour], [data-welcome], [data-card], [data-card-copy], [data-text], [data-roof], .sign');
   if (el?.hasAttribute('data-menu')) return setMenu(!('menu' in document.documentElement.dataset));
   if (!e.target.closest('#menu')) setMenu(false);
   if (!el) { if (e.target.classList.contains('modal')) closeModals(); else if (!e.target.closest('.popover')) closePopovers(); return; }
+  if (el.dataset.welcome) return closeWelcome(el.dataset.welcome === 'find');
+  if (el.dataset.card) return openCard(...el.dataset.card.split('|'));
+  if (el.dataset.text) return setTextZoom(el.dataset.text);
+  if (el.dataset.roof) return roofView(...el.dataset.roof.split('|'));
+  if (el.hasAttribute('data-card-copy')) return copyCard();
   if (el.dataset.dojo) { const id = el.dataset.dojo; if (view.kind === 'city' && view.id === id) selectDojo(id); else goCity(id, { dojo: true }); return; }
   if (el.dataset.hq) return selectHq(el.dataset.hq);
   if (el.dataset.district) return goDistrict();
@@ -748,10 +1133,16 @@ document.addEventListener('click', (e) => {
   if (el.dataset.dir) { const v = currentView(); const c = view.kind === 'city' && cityOf(view.id); flyTo({ ...(c ? fitCity(c) : fitRegion()), phi: v.phi, dist: v.dist }, 900, Number(el.dataset.dir) * Math.PI / 2 + 0.55); return; }
   if (el.id === 'spin') { controls.autoRotate = !controls.autoRotate; el.setAttribute('aria-pressed', String(controls.autoRotate)); return; }
   if (el.id === 'refit') return refit();
-  if (el.dataset.hour) { if (el.dataset.hour === 'auto') { hourAuto = true; applyHour(zoneHour(undefined, { real: true })); } else { hourAuto = false; applyHour(Number(el.dataset.hour)); } }
+  if (el.dataset.hour) { if (el.dataset.hour === 'auto') { hourAuto = true; applyHour(zoneHour(undefined, { real: true })); } else { hourAuto = false; applyHour(Number(el.dataset.hour)); } syncUrl(); }
 });
-$('#hour').addEventListener('input', (e) => { hourAuto = false; applyHour(Number(e.target.value)); });
+$('#hour').addEventListener('input', (e) => { hourAuto = false; applyHour(Number(e.target.value)); syncUrlSoon(); });
 $('#finder-q').addEventListener('input', renderFinder);
+// on a phone a drawer goes down with a swipe (started at its top, so its own scrolling still works)
+for (const [sel, close] of [['#sheet', () => select(null)], ['#hall', () => $('#hall').classList.remove('open')]]) {
+  let y0 = null;
+  $(sel).addEventListener('touchstart', (e) => { y0 = narrow() && $(sel).scrollTop <= 0 ? e.touches[0].clientY : null; }, { passive: true });
+  $(sel).addEventListener('touchend', (e) => { if (y0 !== null && e.changedTouches[0].clientY - y0 > 70) close(); y0 = null; }, { passive: true });
+}
 $('#finder-q').addEventListener('keydown', finderKey);
 // easter egg: the monster (Konami code or ?monster)
 const KONAMI = ['arrowup', 'arrowup', 'arrowdown', 'arrowdown', 'arrowleft', 'arrowright', 'arrowleft', 'arrowright', 'b', 'a'];
@@ -765,19 +1156,34 @@ document.addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
   konami = k === KONAMI[konami] ? konami + 1 : k === KONAMI[0] ? 1 : 0;
   if (konami === KONAMI.length) { konami = 0; summonMonster(); }
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches?.('[role="button"][tabindex]')) { e.preventDefault(); e.target.click(); return; } // a row of a panel, reached with Tab
+  if (e.key === 'Tab' && anyModal()) trapFocus(e);
+  // the arrows walk a list: from a row of a panel (or a button of a menu) to the next or the previous one,
+  // Home and End to its ends
+  if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key) && e.target.matches?.('[role="button"][tabindex], .popover button, .hall .sorts button')) {
+    const box = e.target.closest('ol, ul, .popover, .sorts, #trophies, .rcol, #hall, #sheet') ?? document.body;
+    const rows = [...box.querySelectorAll('[role="button"][tabindex], button:not([disabled])')].filter((x) => x.getClientRects().length), i = rows.indexOf(e.target);
+    const j = e.key === 'Home' ? 0 : e.key === 'End' ? rows.length - 1 : clamp(i + (e.key === 'ArrowDown' ? 1 : -1), 0, rows.length - 1);
+    if (rows[j]) { e.preventDefault(); rows[j].focus(); }
+    return;
+  }
   if (e.ctrlKey || e.metaKey || e.altKey || e.target.closest?.('input, textarea, select')) { if (e.key === 'Escape') closeModals(); return; }
+  if (e.key === '/') { e.preventDefault(); openTool('find'); return; } // the finder, as in most apps
   if (e.key === 'p' || e.key === 'P') toggleAllPanels();
   else if (e.key === '?') openTool('help');
-  else if (e.key === 'Escape') { setMenu(false); if (anyModal()) closeModals(); else if (tl) stopFilm(); else { closePopovers(); if (selected) select(null); else if (view.kind === 'city') goRegion(); } }
+  else if (e.key === 'Escape') { setMenu(false); if (roofBack && !anyModal()) leaveRoof(); else if (anyModal()) closeModals(); else if (tl) stopFilm(); else { closePopovers(); if (selected) select(null); else if (view.kind === 'city') goRegion(); } }
   else if (e.key === 'g' || e.key === 'G') { controls.autoRotate = !controls.autoRotate; $('#spin').setAttribute('aria-pressed', String(controls.autoRotate)); }
 });
 addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; frameForDrawers(); camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight); labels.setSize(innerWidth, innerHeight); });
 // the folded panels of a narrow screen: this week's builds and the Mega Builders open on their title; City Hall opens on any
 // touch and folds again on its top (the buttons and names inside keep working as usual)
-$('#ranking h2').addEventListener('click', () => { if (narrow()) $('#ranking').classList.toggle('open'); });
-$('#mega').addEventListener('click', (e) => { if (narrow() && e.target.closest('h2')) $('#mega').classList.toggle('open'); }); // the Mega Builders too (the panel is drawn again on every reading, its box stays)
+const folds = () => innerWidth <= 1300; // the panels fold into chips on a phone and on a mid-size window
+if (innerWidth > 900 && innerWidth <= 1300) $('#ranking').classList.add('open'); // on a laptop the week's builds start open; the Mega Builders start as a chip
+// one open at a time: the column is short, and the other one folds back into its chip
+$('#ranking h2').addEventListener('click', () => { if (folds() && $('#ranking').classList.toggle('open')) $('#mega').classList.remove('open'); });
+$('#mega').addEventListener('click', (e) => { if (folds() && e.target.closest('h2') && $('#mega').classList.toggle('open')) $('#ranking').classList.remove('open'); }); // the Mega Builders too (the panel is drawn again on every reading, its box stays)
 $('#hall').addEventListener('click', (e) => {
-  if (!narrow() || e.target.closest('button, a, [data-building], [data-dojo], [data-city]')) return;
+  if (!narrow() || e.target.closest('button, a, input, [data-building], [data-dojo], [data-city]')) return;
   const hall = $('#hall');
   if (!hall.classList.contains('open') || e.target.closest('.head')) hall.classList.toggle('open');
 });
@@ -827,8 +1233,10 @@ function frame(now) {
   const dist = camera.position.distanceTo(controls.target), R = clamp(dist * 0.95, 140, 1400);
   if (Math.abs(R - shadowR) > shadowR * 0.1) { shadowR = R; Object.assign(sun.shadow.camera, { left: -R, right: R, top: R, bottom: -R }); sun.shadow.camera.updateProjectionMatrix(); }
   sun.target.position.copy(controls.target); sun.position.copy(controls.target).addScaledVector(sunDir, 900);
-  document.documentElement.style.setProperty('--signk', clamp(420 / dist, 0.5, 1).toFixed(2));
+  document.documentElement.style.setProperty('--signk', (clamp(420 / dist, 0.62, 1) * (1 + (textZoom - 1) * 0.6)).toFixed(2)); // from afar the signs shrink, but stay readable
+  if (now - clutterAt > 350) { clutterAt = now; declutter(); }
   const night = 1 - dayF, sec = now / 1000;
+  rippleMat.map.offset.set((sec * 0.011) % 1, (sec * 0.007) % 1);
   // everyday life: always moving
   stepCars(dt);
   for (const a of anims) {
@@ -871,7 +1279,7 @@ function findCity(d, q) {
   return d.cities.find((c) => is(c.id) || is(c.name) || is(c.code) || (q.length >= 4 && c.id.toLowerCase().startsWith(q))) ?? null;
 }
 // What changes the drawing: the scene is rebuilt only when something here differs (a reading comes every minute)
-const signature = (d) => d.cities.map((c) => `${c.id}:${Math.round(c.floors)}:${c.sessions}:${c.buildings.map((b) => `${b.id}|${Math.floor(b.floors)}|${Math.round(b.week)}|${+b.now}|${+b.isNew}|${b.heli}|${b.streak}|${+(b.today > 0)}|${b.night}|${b.cities}|${b.hours}|${b.belt}`).join(',')}`).join(';');
+const signature = (d) => d.cities.map((c) => `${c.id}:${Math.round(c.floors)}:${c.sessions}:${c.buildings.map(bSig).join(',')}`).join(';');
 let dataAt = 0, dataSig = '', pending = null;
 const showStale = (error) => { const s = $('#stale-pill'); s.hidden = !error; if (error) s.textContent = s.title = staleText(error, dataAt); };
 async function load() {
@@ -887,9 +1295,14 @@ async function load() {
     if (params.has('giant')) { const c = json.cities[0], b = c?.buildings[0]; if (b) { const n = Number(params.get('giant')) || TEN_BI; c.floors += n - b.floors; b.floors = n; } }
     const prev = data;
     data = json; dataAt = json.generatedAt;
+    // a belt earned this week (the zen garden on the roof)
+    for (const c of data.cities) for (const b of c.buildings) b.beltUp = !!b.beltSince && Date.parse(`${b.beltSince}T12:00:00Z`) >= data.week.start;
     const tops = data.cities.flatMap((c) => c.buildings.map((b) => b.floors)).sort((a, b) => b - a);
-    CLOUD = Math.max(2500, 1.5 * (tops[2] ?? 0));
-    FLOOR = clamp(160 / Math.max(15, scaled(tops[0] ?? 15)), 0.03, 0.9);
+    // in steps of 2%: one more floor on the tallest building must not change every height in the region
+    // (and with it every city's drawing); the scale follows when the top has grown a step
+    const step = (v) => 1.02 ** Math.ceil(Math.log(Math.max(1, v)) / Math.log(1.02));
+    CLOUD = Math.max(2500, 1.5 * step(tops[2] ?? 0));
+    FLOOR = clamp(160 / Math.max(15, scaled(step(tops[0] ?? 15))), 0.03, 0.9);
     const sig = signature(data);
     if (sig !== dataSig) { dataSig = sig; buildScene(); }
     else { // nothing changed in the drawing: only the panels' data (the buildings stay the same objects)
@@ -899,6 +1312,17 @@ async function load() {
     $('#error').hidden = true;
     if (prev) {
       const ev = liveEvents(prev, data);
+      // back from the ashes: used again after the building had caught fire
+      for (const c of data.cities) for (const b of c.buildings) {
+        if (!b.back || prev.cities.find((x) => x.id === c.id)?.buildings.find((x) => x.id === b.id)?.back) continue;
+        queueToast({ icon: '🎉', title: t('toast.back.title', { name: displayName(b).short }), text: t('toast.back.text', { days: plural(b.back, 'count.day'), c }), city: c.id, person: b.id, ms: 9000 });
+        const at = atKey(keyOf(c.id, b.id)); if (at && ANIM) fx.spawn('confetti', at, { dur: 2600, delay: 600 });
+      }
+      const m0 = missionOf(prev), m1 = missionOf(data); // the region's mission, met between two readings
+      if (m0 && m1 && m0.done < m0.target && m1.done >= m1.target) {
+        queueToast({ icon: '🎯', title: t('mission.toast.title'), text: t('mission.toast.text', { target: floorsText(m1.target) }), ms: 10_000 });
+        [...data.cities].sort((a, b) => b.week - a.week).slice(0, 3).forEach((c, i) => setTimeout(() => celebrate(c.id, 4), i * 900));
+      }
       for (const f of ev.floats) setTimeout(() => spawnFloat(keyOf(f.city, f.person), f.text, f.gold), f.delay);
       if (ANIM) {
         for (const s of ev.sparkles) { const at = atKey(s.key); if (at) fx.spawn('sparkle', at, { dur: 1200, delay: s.delay }); }
@@ -910,16 +1334,25 @@ async function load() {
       const c = findCity(data, params.get('city'));
       view = c ? { kind: 'city', id: c.id } : { kind: 'region', id: null };
       const person = c && params.get('person') && c.buildings.find((b) => b.id === params.get('person'))?.id;
-      selected = person ? { city: c.id, person } : null;
+      selected = person ? { city: c.id, person } : c && params.has('dojo') && dojoHits.has(c.id) ? { city: c.id, dojo: true } : null;
       const fit = c ? fitCity(c) : fitRegion(), cam = (params.get('cam') ?? '').split(',').map(Number); // ?cam=angle,tilt,distance (screenshots)
       if (cam.length === 3 && cam.every(Number.isFinite)) flyTo({ ...fit, phi: cam[1], dist: cam[2] }, 0, cam[0]); else flyTo(fit, 0);
       if (person) { const h = hitByKey.get(keyOf(c.id, person)); if (h) flyTo(fitBuilding(h), 0); } // a building's link: opened right on it
-      if (params.has('tour')) { document.documentElement.dataset.tour = '1'; tourIdx = c ? data.cities.findIndex((x) => x.id === c.id) + 1 : 0; tourTimer = setInterval(tourStep, TOUR_MS); }
+      if (params.has('tour')) { document.documentElement.dataset.tour = '1'; tourIdx = c ? data.cities.findIndex((x) => x.id === c.id) + 1 : 0; tourTimer = setInterval(tourStep, TOUR_MS); setTimeout(tourCaption, 0); }
       if (params.has('monster')) setTimeout(summonMonster, 2500);
+      const hq0 = !c && params.get('hq'); // a headquarters' link: opened right on it
+      if (hq0 && hqHits.has(hq0)) { urlBusy = true; selectHq(hq0); urlBusy = false; }
+      lastNav = navNow();
+      offerWelcome();
     }
     if (view.kind === 'city' && !cityOf(view.id)) view = { kind: 'region', id: null };
     renderPanels(data, view, selected);
     updateHeli(); updateRing();
+    // a link with only the person (the climb's "🏙️ Building"): opened on their tallest building
+    if (!prev && !params.get('city') && params.get('person')) {
+      const hit = locatePerson(params.get('person'));
+      if (hit) { lastNav = `${hit.c.id}|${hit.b.id}||`; goPerson(hit.c.id, hit.b.id); flyTo(fitBuilding(hitByKey.get(keyOf(hit.c.id, hit.b.id)) ?? { x: 0, z: 0, h: 10 }), 0); }
+    }
     // whoever marked their own building is greeted with its numbers (after the panels: the finder uses their data)
     if (!prev && me && !selected) {
       const mine = locatePerson(me);
@@ -962,4 +1395,4 @@ applyHour(hour);
 load().then(() => { const el = $('#loading'); el.style.opacity = 0; setTimeout(() => el.remove(), 700); requestAnimationFrame(frame); })
   .catch(() => { $('#loading').remove(); requestAnimationFrame(frame); });
 setInterval(() => { if (pending && !tl) { const p = pending; pending = null; dataAt = 0; load().catch(() => {}); return; } load().catch(() => {}); }, REFRESH_MS);
-window.city = { scene, camera, controls, renderer, applyHour, goCity, goPerson, goRegion, select, selectDojo, selectHq, goDistrict, fitDistrict, flyTo, fitCity, fitRegion, reload: load, rebuild: buildScene, setMapMode, startFilm, stopFilm, summonMonster, celebrate, fx, hi: { hoverHi, selHi, selBeam, selRing, selFrame }, get life() { return life; }, get data() { return data; }, get world() { return world; }, get view() { return view; }, get selected() { return selected; } };
+window.city = { scene, camera, controls, renderer, applyHour, goCity, goPerson, goRegion, select, selectDojo, selectHq, goDistrict, fitDistrict, flyTo, fitCity, fitRegion, reload: load, rebuild: buildScene, setMapMode, startFilm, stopFilm, summonMonster, celebrate, fx, hi: { hoverHi, selHi, selBeam, selRing, selFrame }, get life() { return life; }, get lastBuild() { return lastBuild; }, get data() { return data; }, get world() { return world; }, get view() { return view; }, get selected() { return selected; } };

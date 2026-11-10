@@ -1,6 +1,7 @@
 // HTTP server: static files from public/, the JSON API and the refresh loops. See docs/contract.md.
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { createServer } from 'node:http';
+import { gzip } from 'node:zlib';
 import { readFile } from 'node:fs/promises';
 import { extname, join, normalize, resolve } from 'node:path';
 import { config } from './config.js';
@@ -162,9 +163,17 @@ async function serveStatic(pathname, res) {
   }
 }
 
+// Text (pages, scripts, JSON) goes out gzipped to a browser that accepts it: the cities' reading alone
+// is a few hundred kB every minute per screen, and shrinks to about a tenth.
+const COMPRESSIBLE = /^(text\/|application\/json|image\/svg)/;
 function send(res, status, type, body) {
-  res.writeHead(status, { 'Content-Type': type, 'Cache-Control': 'no-store' });
-  res.end(body);
+  const headers = { 'Content-Type': type, 'Cache-Control': 'no-store' };
+  if (!res.gzipOk || !COMPRESSIBLE.test(type) || Buffer.byteLength(body) < 1024) { res.writeHead(status, headers); return res.end(body); }
+  gzip(body, { level: 5 }, (err, packed) => {
+    if (err) { res.writeHead(status, headers); return res.end(body); }
+    res.writeHead(status, { ...headers, 'Content-Encoding': 'gzip', Vary: 'Accept-Encoding' });
+    res.end(packed);
+  });
 }
 
 const json = (res, status, value) => send(res, status, 'application/json; charset=utf-8', JSON.stringify(value));
@@ -189,6 +198,7 @@ const server = createServer(async (req, res) => {
     res.writeHead(401, { 'WWW-Authenticate': `Basic realm="${config.realm}", charset="UTF-8"`, 'Content-Type': 'text/plain; charset=utf-8' });
     return res.end('password required');
   }
+  res.gzipOk = /\bgzip\b/.test(String(req.headers['accept-encoding'] ?? ''));
   const { pathname, searchParams } = new URL(req.url, 'http://localhost');
   const stack = searchParams.has('demo') ? demo() : main; // ?demo: the demo region instead of the real data
   if (pathname === '/api/config') return json(res, 200, configJson(stack));

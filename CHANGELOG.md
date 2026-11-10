@@ -3,6 +3,74 @@
 Dates are the day each version went live on the author's panel. Earlier versions were an internal
 tool with another name; the open-source release renames it Tokenopolis.
 
+## v30 (2026-11-10)
+
+- The address follows the screen: the city, the building (or the Dojo, `dojo`, or a headquarters,
+  `hq=<id>`), the data map and a fixed hour go to the URL as you move, so Back returns to where you
+  were and a reload opens the same screen. `?person=<id>` alone opens the person's tallest building.
+- City Hall lists everyone: "See everyone" opens the whole city, sorted by floors, this week, today or
+  days stopped, with a filter by name. The finder finds cities too.
+- The card shows the race around the building: its place in the week's builds, how many floors to
+  pass whoever is just above, last week against this one, and how long until it catches fire.
+- First visit: an invitation to find your building and mark it as yours (once per browser, never on
+  a TV link).
+- The city and the climb know each other's people: "See on the climb" on the card,
+  "🏙️ Building" on a climber's tag, `climb.html?person=<id>`, and the building marked as yours in the
+  city is marked on the wall and in the ranking.
+- Breathing room for small buildings: a gentle rise at the base, so a 20-floor building no longer
+  looks like a 50-floor one (and both no longer sit lower than a townhouse) next to a giant. More
+  floors is still always taller.
+- The sky has a sun and a moon that cross it with the hour, brightens toward them, and its clouds
+  take the color of dusk and of the night.
+- Night: the ground darkens with everything else (it stayed bright green), street lamps cast a pool
+  of light, the glow keeps the edges smooth, and the shadow pass rests while the sun is down.
+- The ground: a soft shadow at the foot of every building, crosswalks at the crossings, a grain on
+  the grass.
+- The region's mission: the whole region against last week's floors plus `MISSION_GROWTH` % (10), with
+  a bar under the week's builds and fireworks when it is met (`mission` in `/api/cities`).
+- The TV tour says what is on screen (the stop and its numbers, in big letters) and holds for a
+  minute when someone touches the screen.
+- The building's card: a PNG with the building framed and the person's numbers, to download or, where
+  the browser can, to copy.
+- The climb shows the season's badges on each climber's tag (the server always worked them out).
+- A new data map, 🚒 Health (`?map=health`): green for buildings used today, then yellow, orange close
+  to the fire, red on fire and dark for rubble. Every map's key now counts the buildings of each color.
+- The numbers as a spreadsheet: "⬇️ CSV" for a city (in City Hall's full list) and for the whole
+  region (under this week's builds), one line per building.
+- Pages, scripts and API answers go out gzipped (the cities' reading shrinks to about a tenth).
+- Tests (`npm test`, in CI): the two languages have the same keys, no key is defined twice, and the
+  rules for tiers, abandoned buildings and Mega Builders.
+- three.js is served by the panel itself (`public/vendor/three/`, r160, unmodified) instead of a
+  CDN: the pages open on a network that blocks outside sites.
+- 🔔 Notices: the notices of the visit stay in a list, with the week's diary (worked out from the
+  record, so it is there for whoever was not watching). The news ticker's items are clickable.
+- Keyboard: `/` opens the finder, every button and panel row is reachable with Tab and shows a focus
+  ring, the arrows (and Home/End) walk the rows of a list or a menu, dialogs take the focus, keep it inside and give it back.
+- City signs keep a readable size from afar and no longer pile up (the nearer city's stays); a text
+  size (A, A+, A++) for panels and signs in the 👁️ list.
+- Phone: finger-sized rows in the drawers and lists; a drawer goes down with a swipe.
+- Mid-size windows (701 to 900 px): this week's builds and the Mega Builders fold into chips, as on a
+  phone, instead of the Mega Builders vanishing. On a short window the Mega Builders list scrolls
+  instead of running under the derby.
+- The card shows the person's habits: the hours of the day they build (last 7 days), the models
+  they use and on how many of the last 30 days they built (`clock` and `models` in `/api/cities`).
+- A look of their own for the three biggest city titles (they shared the Megalopolis's neon): white
+  stone and sea-green glass for the Global City, chrome and violet for the City of the Future,
+  Martian terracotta for the Mars Colony (`?style=global|future|mars`).
+- Living water (glints drifting over the river and the channel, and the sky's color in it), trees of
+  three shapes, and fields and rounded hills beyond the map instead of a flat green and cones.
+- Back from the ashes: a building used again after it had caught fire gets balloons, confetti, a
+  notice and a line in the news (`back` in `/api/cities`). Fire trucks at some burning buildings;
+  rubble closed off with trestles and tape, with weeds around it.
+- New roofs: an infinity pool on the day of a personal record (`record`), a zen garden in the week
+  of a new belt. Buildings got a street level (a ledge, doors, a canopy).
+- "🏙️ Rooftop view" on the card: the camera stands on the building's roof and looks at the city.
+- A new floor redraws only its city: each city is a piece of the scene of its own (up to 24 cities;
+  the Corporate District is another), and the land (ground, water, trees, lamps, cars) is redrawn only
+  when the map's layout changes. With the author's data a change in one city went from about 830 ms
+  to about 115 ms. It costs more draw calls per frame; `?parts=0` goes back to one piece.
+- Mid-size windows up to 1,300 px: the right column folds into chips (this week's builds start open).
+
 ## v29 (2026-11-10)
 
 - "Copy link" works on a panel served over plain http (a browser offers no clipboard there, and the

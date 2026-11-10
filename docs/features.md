@@ -10,6 +10,9 @@ what changed. `?demo` on either page shows a fictional region/stage instead of y
 tokens that count (`SCORE_TYPES`) accumulated since `CITIES_START`, at `CITY_FLOOR_TOKENS` per floor
 (default one million). Teams with fewer than `CITY_MIN_PEOPLE` people are not cities. The week's
 contest is the floors built from Monday to Sunday; the total never resets.
+On screen a building of 15 floors or more gets a small rise at the base on top of its floors (it grows
+with the logarithm of the floors up to 450 and is constant above), so small buildings can be told
+apart next to a giant; more floors is always taller.
 
 **City milestones.** The title of a city follows its total floors and changes the look of all its
 buildings and unlocks a perk on the map:
@@ -21,20 +24,22 @@ buildings and unlocks a perk on the map:
 | 1,000 | Capital | blue glass |
 | 3,000 | Metropolis | golden art deco |
 | 8,000 | Megalopolis | neon and solar roofs |
-| 15,000 | Global City | a holographic globe |
-| 30,000 | City of the Future | flying cars |
-| 60,000 | Mars Colony | a base on Mars |
+| 15,000 | Global City | white stone and sea-green glass; a holographic globe |
+| 30,000 | City of the Future | chrome and violet; flying cars |
+| 60,000 | Mars Colony | Martian terracotta; a base on Mars |
 
 **Building types.** House (0), townhouse (3), house with pool (7), condo (11), building (15), tower
 (150), skyscraper (450), supertower (1,000), cloud tower (2,500, with a lighthouse beam), orbital
 tower (5,000) and the space elevator (10,000 floors = 10 billion tokens, with a cable to the sky
-and a rocket on the day someone gets there). Roofs tell a story: helipad, garden, antenna, and an
-owl sign for night workers. Windows light up by the hours each person actually used.
+and a rocket on the day someone gets there). Roofs tell a story: helipad, an infinity pool on the day of a
+personal record, a zen garden in the week of a new belt, garden, antenna, and an owl sign for night
+workers. Buildings have a street level: a ledge, doors and a canopy. "🏙️ Rooftop view" on the card
+puts the camera on the building's roof, looking at the city. Windows light up by the hours each person actually used.
 
 **Abandoned buildings.** After more than `IDLE_FIRE_DAYS` (15) calendar days without Claude the
 building catches fire: soot on the walls, flames on the roof and out of the windows, a column of
 smoke. After more than `IDLE_RUBBLE_DAYS` (30) it is a pile of rubble with a broken wall and twisted
-beams. Using Claude again puts it back up the same day. The card and the hover tip say how many days;
+beams. Using Claude again puts it back up the same day, with balloons, confetti and a notice ("back today after N days"). Some burning buildings have a fire truck at the door; rubble is closed off with trestles and tape, and weeds grow around it. The card and the hover tip say how many days;
 `0` turns either stage off and `?ruins=0` hides both on one screen. Someone whose last use is older than
 `CITIES_START` has no tokens in the window and no building at all.
 
@@ -81,6 +86,10 @@ the bottom (the touched building is framed above them), the camera bar keeps spi
 (drag to turn, pinch to zoom), and from afar only the city names show. Phones also get a lighter
 canvas (pixel ratio 1.25, a 2,048 shadow map).
 
+**Reading it.** City signs keep a readable size from afar, and where two would overlap the nearer
+city's stays and the other fades. The 👁️ list has a text size (A, A+, A++) for the panels and signs,
+kept between visits. On a phone the rows are finger-sized and a drawer goes down with a swipe.
+
 **Reduced motion.** A device that asks to reduce motion (iOS Reduce Motion, Android "Remove
 animations", which some battery savers switch on) keeps the slow everyday life (cars, people, cranes,
 flames and smoke, the Ferris wheel, boats, clouds) and drops the bursts: fireworks, sparkles, confetti,
@@ -90,12 +99,34 @@ rockets, blinking lights and the monster.
 it becomes a short "3 min ago", and the climb shows the same under its clock. When the data source
 fails, the warning says when the last good reading was made.
 
-**The top bar on smaller windows.** It never runs off the screen: up to 1,480 px wide it drops the
-building and floor counts, up to 1,180 px the date gives way to the short "3 min ago", and up to
-1,100 px the tools, the climb link and the language go behind ☰ (the phone's drawer).
+**The top bar on smaller windows.** It never runs off the screen: up to 1,530 px wide it drops the
+building and floor counts, up to 1,230 px the date gives way to the short "3 min ago", and up to
+1,150 px the tools, the climb link and the language go behind ☰ (the phone's drawer).
 
-**Tools.** 🔍 find a building, 📍 "my building" (a pin that follows you between visits), 🗺️ data
-maps (`?map=now|week|network|model|belts`; ⚡ now, 📈 week, 🚩 network, 🧠 model, 🥋 belts), 📰 newspaper, 🎬 history (a time-lapse since day one,
+**Your building.** On a first visit the city invites you to find your building and mark "This is my
+building": it gets a pin, the 📍 button, a greeting with its numbers and a notice when it grows; the
+climb marks the same person on the wall. Every card shows the race around the building (its place in
+the week's builds, the floors to pass whoever is just above, last week against this one, the days
+until it catches fire) and links to the person on the climb.
+
+**The address follows the screen.** City, building, Dojo, headquarters, data map and fixed hour are
+written to the URL as you move, so Back works and a reload or a copied address opens the same
+screen (not during `?tour`).
+
+**The region's mission.** Every week the whole region plays against itself: build `MISSION_GROWTH` %
+(10) more floors than last week. A bar under this week's builds shows how far it is, and the leading
+cities get fireworks when it is met. `0` turns it off; a region in its first week has no mission.
+
+**The building's card.** "📸 Card" on the details card makes a 1080×1350 PNG with the building framed
+and the person's numbers, to download or (on https or localhost) to copy.
+
+**Notices and the week's diary.** 🔔 keeps the notices of the visit (they leave the screen in seconds)
+and lists what happened since Monday, worked out from the record: who moved up a type of building,
+newcomers, buildings that caught fire, cities that changed title or passed another. Every line, and
+every item of the news ticker about a city or a person, goes there on a click.
+
+**Tools.** 🔍 find a building or a city, 📍 "my building" (a pin that follows you between visits), 🗺️ data
+maps (`?map=now|week|network|model|belts|health`; ⚡ now, 📈 week, 🚩 network, 🧠 model, 🥋 belts, 🚒 health: days without Claude, from today to rubble; the key counts the buildings of each color), 📰 newspaper, 🎬 history (a time-lapse since day one,
 the timeline of a building, and a race of the cities week by week), ❔ help with a tab that builds
 URLs for every parameter and preset (TV, TV at night, clean, reset).
 
@@ -106,9 +137,9 @@ The Dojo sheet lists the masters and, only there, who is on the way (white, blue
 The `belts` map paints each building with its belt color and the rest grey.
 
 **URL parameters.** `city`, `person`, `hour` (0–24, fixes the sun), `map`, `style`
-(`brick|concrete|glass|deco|neon`), `panels=0`, `names=0`, `quality=low`, `ruins=0`, `monuments=all`,
-`monster`, `spin`, `tour` (flies from region to city to city, for TVs), `cam=angle,tilt,distance`,
-`giant=N` (test tall buildings), `mega=<floors>` (the Mega Builders' line), `demo`, `lang`, `debug`. The help modal documents all of them.
+(`brick|concrete|glass|deco|neon|global|future|mars`), `panels=0`, `names=0`, `quality=low`, `ruins=0`, `monuments=all`,
+`monster`, `spin`, `tour` (flies from region to city to city with a caption that says what is on screen, for TVs; touching the screen holds it for a minute), `cam=angle,tilt,distance`,
+`giant=N` (test tall buildings), `parts=0` (the region as one piece: fewer draw calls, a full redraw on every change), `mega=<floors>` (the Mega Builders' line), `dojo` (the city's Dojo card), `hq=<id>` (a headquarters), `demo`, `lang`, `debug`. The help modal documents all of them.
 
 ## The climb
 
@@ -160,8 +191,17 @@ each) are left out of those two.
 confetti). Zoom levels Top 5 / 10 / 25 / whole wall (keys 1–4, `?zoom=`), name cards (`N`,
 `?names=0`), the ranking list with Today and Week tabs (`R`, `T`, `?board=0`, `?tab=week`), plaques
 (`?plaques=0`), `?hour=` to fix the light, `?tour` to cycle zoom levels on a TV, `?quality=low` for
-weak machines. A shareable vertical PNG card of any climber (position, today's tokens, badges, the
+weak machines, `?person=<id>` to open on a climber. A shareable vertical PNG card of any climber (position, today's tokens, badges, the
 jersey).
+
+## Redrawing
+
+A reading that changes nothing visible redraws nothing. In a region of up to 24 cities each city is a
+piece of the scene of its own (the Corporate District is another), so a new floor redraws only its
+city; the land (ground, water, trees, lamps, cars) is redrawn only when the map's layout changes. The
+price is more draw calls per frame: `?parts=0` makes the region one piece again (a weak machine or a
+TV), as a region of more than 24 cities always is. The height scale moves in steps of 2%, so one more
+floor on the tallest building does not change every height.
 
 ## Demo mode
 
@@ -172,5 +212,7 @@ days of history. The pill "demo · fictional data" shows while it is on.
 
 ## Keyboard
 
-City: `P` panels, `G` spin, `?` help, `Esc` back to the region. Climb: `1`–`4` zoom, `N` names,
+City: `/` find, `P` panels, `G` spin, `?` help, `Esc` back to the region; `Tab` reaches every button and
+every row of the panels (`Enter` opens it; `↑` `↓` `Home` `End` walk the list), with a visible focus ring; a dialog keeps the focus inside
+and gives it back when it closes. Climb: `1`–`4` zoom, `N` names,
 `R` ranking, `T` tab, `F` next person, `Home`/`End` summit/base, arrows and `+`/`−` to move.

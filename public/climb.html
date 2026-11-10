@@ -11,8 +11,8 @@
   <script type="importmap">
     {
       "imports": {
-        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        "three": "./vendor/three/build/three.module.js",
+        "three/addons/": "./vendor/three/examples/jsm/"
       }
     }
   </script>
@@ -159,10 +159,16 @@
     .tag small { display: block; font-size: 11px; font-weight: 700; color: var(--muted); }
     .tag small[hidden] { display: none; }
     .tag .gap { color: #e8dccd; }
+    .tag .bdg { font-size: 14px; letter-spacing: 1px; margin-top: 2px; }
     .tag .sum, .tag .ctok.gold { color: var(--gold); }
     .tag.full .ctok { display: none; }
     /* "📸 Card": only on the tag of whoever was clicked (the tag ignores the mouse; the button does not) */
     .tag .tag-card { display: none; }
+    .tag a.tag-card { text-decoration: none; margin-left: 4px; }
+    .tag.me .name::before { content: '📍 '; }
+    .board li.me .n { color: #ffd36b; font-weight: 900; }
+    .board li.me .n::before { content: '📍 '; }
+    #note { color: #ffd36b; font-weight: 700; }
     .tag.sel .tag-card {
       display: block; margin-top: 5px; pointer-events: auto; cursor: pointer; font: inherit; font-size: 12px; font-weight: 900;
       color: #1a1408; background: var(--gold); border: 0; border-radius: 99px; padding: 3px 11px;
@@ -353,6 +359,7 @@
     <p id="stage-line" hidden><span id="stage-name" data-i18n="html.hud.stage">Today’s stage</span><span data-i18n="html.hud.mark"> · mark of the day </span><b id="stage-mark">—</b></p>
     <p id="clock"></p>
     <p id="updated"></p>
+    <p id="note" role="status" hidden></p>
     <p class="credit"><span data-i18n="html.hud.credit">People:</span> <a href="models/rocketbox/LICENSE.md" target="_blank" rel="noopener">Microsoft Rocketbox (MIT)</a></p>
     <p id="error" role="alert" hidden></p>
     <div class="view" role="group" aria-label="Display" data-i18n-aria="html.view.aria">

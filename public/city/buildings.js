@@ -31,7 +31,14 @@ export const STYLE_PAL = {
   glass: { building: ['#8fc1e3', '#7fb6dc', '#a4cbe6', '#b9d6ea'], tower: ['#4f93c9', '#5aa0d4', '#3f86c0'], skyscraper: ['#6fb3e8', '#5fa6df', '#7dbbe9'] },
   deco: { building: ['#efe3c4', '#e6d3a8', '#f2e8d0', '#dcc89c'], tower: ['#e9d9b0', '#dcc596', '#efdfb8'], skyscraper: ['#f0e2bd', '#e4cf9f'] },
   neon: { building: ['#8293b6', '#8c9dc0', '#7789ab'], tower: ['#647aa6', '#6e84b0', '#5b7099'], skyscraper: ['#5a71a3', '#647bad'] },
+  // the three titles after the Megalopolis: white stone and sea-green glass; chrome and violet; Martian terracotta
+  global: { building: ['#e9f1f2', '#d6e6e8', '#f4f7f7', '#cfe0e2'], tower: ['#5fb8b0', '#4fa7a3', '#73c4bb'], skyscraper: ['#7fd1c6', '#69c2b8'] },
+  future: { building: ['#c9cedb', '#b9c0d1', '#d6dae6'], tower: ['#8f86c9', '#7d75ba', '#a39bd6'], skyscraper: ['#9a8fe0', '#8a7fd2'] },
+  mars: { building: ['#c98a64', '#b97b58', '#d59a74'], tower: ['#b5593c', '#a44e35', '#c46a4b'], skyscraper: ['#c8623f', '#b85736'] },
 };
+// the styles of glass towers (the others are masonry), and the color of each one's lit windows
+const GLASSY = new Set(['glass', 'neon', 'global', 'future', 'mars']);
+const WINDOW_GLOW = { neon: '#9be8ff', global: '#c8fff0', future: '#dcc2ff', mars: '#ffbf8a' };
 // Blocks of each type: [setback, fraction of the height where the block ends]; from the skyscraper
 // up the tower narrows in steps. Art deco: a stepped crown from the tower up.
 const SECTIONS = {
@@ -151,7 +158,7 @@ function facadeMat(st, variant, glass, hex) {
   if (facadeCache.has(key)) return facadeCache.get(key);
   const { map, emissive } = windowTile(st, variant, glass);
   const m = nightly(reg(new THREE.MeshStandardMaterial({
-    color: hex, map, emissiveMap: emissive, emissive: new THREE.Color(st === 'neon' ? '#9be8ff' : '#ffd27a'), emissiveIntensity: 0,
+    color: hex, map, emissiveMap: emissive, emissive: new THREE.Color(WINDOW_GLOW[st] ?? '#ffd27a'), emissiveIntensity: 0,
     roughness: glass ? 0.22 : st === 'pagoda' ? 0.45 : 0.8, metalness: glass ? 0.45 : st === 'pagoda' ? 0.12 : 0, envMapIntensity: glass ? 1 : st === 'pagoda' ? 0.5 : 0.3,
   })), 1.5);
   m.userData.facade = true; m.onBeforeCompile = hoursShader; m.customProgramCacheKey = () => 'hours';
@@ -298,7 +305,7 @@ export function makeKit(batch, hOf, wkOf, colorOf = null) {
     // Dojo black belt: a black pagoda (the giants keep their shape, with the palette and a pagoda on the podium)
     const dojo = b.belt === 'black' && !colorOf, giant = k === 'supertower' || k === 'cloudTower' || k === 'orbitalTower' || k === 'spaceElevator';
     const hex = colorOf ? colorOf(b) : fire ? shade(pick(STYLE_PAL[st][t]), 0.5) : pick(STYLE_PAL[st][t]); // on fire: soot
-    const glass = st === 'glass' || st === 'neon' || (st === 'concrete' && t !== 'building' && r() < 0.6);
+    const glass = GLASSY.has(st) || (st === 'concrete' && t !== 'building' && r() < 0.6);
     const side = colorOf ? matte(hex) : dojo ? facadeMat('pagoda', 0, false, '#ffffff') : facadeMat(st, Math.floor(r() * 3), glass, hex), roof = dojo ? LACQUER : matte(shade(hex, 0.72));
     const mask = b.hours || 0;
     cur = { hours: [mask & 255, (mask >> 8) & 255, (mask >> 16) & 255, fire ? 0 : b.now ? 1 : b.today > 0 ? 0.6 : 0.15], H: h };
@@ -324,6 +331,14 @@ export function makeKit(batch, hOf, wkOf, colorOf = null) {
       topW = sw; topD = sd; y = y1;
     }
     if (shape === 'L') bx(w * 0.5, h * (0.55 + r() * 0.3), d * 0.5, side, roof, x + w * 0.32, 0, z + d * 0.32);
+    // the street level: a ledge over the ground floor, the doors and a canopy on the front
+    if (!colorOf && !dojo) {
+      const bw0 = shape === 'podium' ? L * 0.84 : body.bw, bd0 = shape === 'podium' ? L * 0.84 : body.bd, fz = z + bd0 / 2, trim = TRIM; // one material for every building: a tint per facade would be one more mesh per color
+      B(boxGeo(bw0 + 0.14, 0.2, bd0 + 0.14), trim, x, 1.55, z);
+      B(boxGeo(Math.min(2.2, bw0 * 0.4), 1.3, 0.1), DARK, x, 0, fz + 0.03);
+      B(boxGeo(Math.min(3, bw0 * 0.54), 0.14, 1), trim, x, 1.42, fz + 0.5);
+      if (fire && r() < 0.4) fireTruck(x + L * 0.26, z + L * 0.47, r); // the firefighters are at some of the fires
+    }
     // this week's floors: the top in yellow, with scaffolding
     const wk = Math.min(h - 1.5, wkOf(b));
     if (wk >= 0.8) bx(topW + 0.25, wk, topD + 0.25, SCAFFOLD, SCAFFOLD_TOP, x, h - wk, z);
@@ -363,17 +378,34 @@ export function makeKit(batch, hOf, wkOf, colorOf = null) {
       if (r() < 0.3) B(boxGeo(1.6, 1, 1.2), matte('#aeb4ba'), x - w * 0.25, h, z + d * 0.22);
     }
   }
+  const TRIM = matte('#4a545e');
+  // A fire truck at the door of a burning building: the red body, the cab, the ladder raised to the
+  // facade and a blue light (static: it goes into the merged mesh).
+  function fireTruck(x, z, r) {
+    const red = matte('#c8302b'), a = (r() - 0.5) * 0.5;
+    B(boxGeo(2.9, 1.0, 1.15), red, x, 0.25, z, a); B(boxGeo(0.9, 0.75, 1.1), matte('#e8eaec'), x - Math.cos(a) * 0.95, 1.2, z + Math.sin(a) * 0.95, a);
+    const ladder = NI(boxGeo(0.16, 4.2, 0.5)); ladder.rotateX(0.75);
+    B(ladder, SILVER, x + 0.4, 1.2, z - 0.2, a); B(sphGeo(0.16, 6), RED_LIGHT, x - Math.cos(a) * 0.95, 1.98, z + Math.sin(a) * 0.95);
+    for (const s of [-1, 1]) B(cylGeo(0.26, 0.26, 0.2, 8), DARK, x + s * 0.9, 0.26, z + 0.55, 0, [1, 1, 1]);
+  }
   // On the roof, what tells the story: helipad (biggest build of the week; golden in the region),
   // garden (5 workdays in a row), antenna (used today; green if using it now), neon sign (night
   // owl), crane (building now), balloons (newcomer) and the flag of whoever is in more cities.
   function roofBits(b, h, w, d, r, x, z) {
     const mini = Math.min(w, d);
     if (b.heli) { B(cylGeo(mini * 0.36, mini * 0.36, 0.25, 20), DARK, x, h, z); B(torusFlat(mini * 0.28, 0.14, 6, 30), b.heli === 2 ? GOLD_MAT : matte('#f4f6f8'), x, h + 0.28, z); }
-    if (b.streak >= 5 && !b.heli) { B(boxGeo(w * 0.8, 0.2, d * 0.8), matte('#6fae4f'), x, h, z); for (const [u, v] of [[0.25, 0.25], [-0.25, 0.3], [0.2, -0.28]]) { B(cylGeo(0.12, 0.12, 0.8, 5), matte('#6b4b2e'), x + w * u, h + 0.2, z + d * v); B(sphGeo(0.75, 8), matte('#3f8f4a'), x + w * u, h + 1.3, z + d * v); } }
+    if (b.record && !b.heli) { // an infinity pool: today is the person's best day
+      B(boxGeo(w * 0.72, 0.22, d * 0.5), matte('#f4f6f8'), x, h, z); B(boxGeo(w * 0.64, 0.24, d * 0.4), matte('#39b6e8', { roughness: 0.15, metalness: 0.2 }), x, h + 0.02, z);
+      B(boxGeo(0.5, 0.18, 1.2), matte('#e8c56a'), x - w * 0.24, h, z + d * 0.33); B(boxGeo(0.5, 0.18, 1.2), matte('#e86a6a'), x + w * 0.02, h, z + d * 0.33);
+    } else if (b.beltUp && !b.heli) { // a zen garden: a new belt this week
+      B(boxGeo(w * 0.78, 0.16, d * 0.78), matte('#e9dfc6'), x, h, z);
+      B(NI(new THREE.DodecahedronGeometry(0.42, 0)), matte('#7d7f84'), x - w * 0.2, h + 0.1, z + d * 0.14, 0.6, [1.3, 0.8, 1]); B(NI(new THREE.DodecahedronGeometry(0.28, 0)), matte('#8c8e92'), x + w * 0.08, h + 0.1, z + d * 0.24, 1.2);
+      B(cylGeo(0.09, 0.12, 1.1, 5), matte('#5a3d2a'), x + w * 0.2, h + 0.16, z - d * 0.18); B(sphGeo(0.7, 7), matte('#f2a7c3'), x + w * 0.2, h + 1.5, z - d * 0.18, 0, [1, 0.8, 1]);
+    } else if (b.streak >= 5 && !b.heli) { B(boxGeo(w * 0.8, 0.2, d * 0.8), matte('#6fae4f'), x, h, z); for (const [u, v] of [[0.25, 0.25], [-0.25, 0.3], [0.2, -0.28]]) { B(cylGeo(0.12, 0.12, 0.8, 5), matte('#6b4b2e'), x + w * u, h + 0.2, z + d * v); B(sphGeo(0.75, 8), matte('#3f8f4a'), x + w * u, h + 1.3, z + d * v); } }
     if (b.today > 0) { B(cylGeo(0.06, 0.12, 4, 5), SILVER, x + w * 0.35, h, z - d * 0.3); B(sphGeo(0.3, 6), b.now ? GREEN_LIGHT : WARM_LIGHT, x + w * 0.35, h + 4.2, z - d * 0.3); }
     if (b.night >= 2) { B(boxGeo(w * 0.5, 1.4, 0.2), matte('#3a2a40'), x - w * 0.15, h, z + d * 0.4); B(boxGeo(w * 0.46, 1.1, 0.1), PINK, x - w * 0.15, h + 0.15, z + d * 0.45); }
     if (b.now) crane(x - w * 0.3, h, z + w * 0.3, r);
-    if (b.isNew) balloons(x, h, z);
+    if (b.isNew || b.back) balloons(x, h, z); // a newcomer, or back today after the building had caught fire
     flagFor(b, x + w * 0.32, h, z + d * 0.32);
   }
   // whoever builds in more cities: the network's golden flag (with a tip from 3 cities); a Mega
@@ -415,7 +447,7 @@ export function makeKit(batch, hOf, wkOf, colorOf = null) {
       return out;
     }
     const k = kind(b.floors), st = c.style, hh = HOUSE_H[k];
-    const wall = matte(colorOf ? colorOf(b) : soot(pick(PAL.house))), roofM = colorOf ? matte(shade(colorOf(b), 0.8)) : matte(soot(st === 'brick' ? pick(PAL.tile) : st === 'neon' ? pick(PAL.solar) : pick(PAL.roof)), st === 'neon' ? { roughness: 0.3, metalness: 0.4 } : {});
+    const wall = matte(colorOf ? colorOf(b) : soot(pick(PAL.house))), roofM = colorOf ? matte(shade(colorOf(b), 0.8)) : matte(soot(st === 'brick' ? pick(PAL.tile) : WINDOW_GLOW[st] ? pick(PAL.solar) : pick(PAL.roof)), WINDOW_GLOW[st] ? { roughness: 0.3, metalness: 0.4 } : {}); // solar roofs from the Megalopolis on
     const door = matte('#7a5235');
     const units = k === 'condo' ? [[-2.3, 0.4, 3.4, 4.4], [2.3, 0.4, 3.4, 4.4]] : k === 'poolHouse' ? [[-0.9, -1.4, 5.2, 4.8]] : [[0, 0, 6, 5]];
     const walls = hh - 1.6;
@@ -476,6 +508,12 @@ export function makeKit(batch, hOf, wkOf, colorOf = null) {
     for (let i = 0, n = isHouse ? 2 : 4; i < n; i++) { // twisted beams
       const g = boxGeo(0.22, (2.2 + r() * 2.4) * big, 0.22); g.rotateX((r() - 0.5) * 1.5); g.rotateZ((r() - 0.5) * 1.5);
       B(g, rust, cx + (r() - 0.5) * R, H * 0.35, cz + (r() - 0.5) * R);
+    }
+    if (!flat) { // closed off and taken by weeds: striped trestles with a tape between them, and tufts around the heap
+      const tz = z + L * 0.43, stripe = matte('#f2c14e'), weed = matte('#5f9e45');
+      for (const s of [-1, 1]) { B(boxGeo(1.5, 0.2, 0.14), stripe, x + s * L * 0.28, 0.72, tz); for (const u of [-0.6, 0.6]) B(boxGeo(0.1, 0.72, 0.1), DARK, x + s * L * 0.28 + u, 0, tz); }
+      B(boxGeo(L * 0.56 - 1.5, 0.07, 0.03), matte('#f5d54a'), x, 0.82, tz);
+      for (let i = 0; i < 6; i++) { const a = r() * Math.PI * 2, dd = R * (1 + r() * 0.35); B(coneGeo(0.2 + r() * 0.2, 0.6 + r() * 0.6, 5), weed, x + Math.cos(a) * dd, 0.2, z + Math.sin(a) * dd); }
     }
     return { h: top };
   }

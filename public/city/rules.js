@@ -71,9 +71,9 @@ export const CITY_TIERS = [
   { min: 1000, key: 'capital', icon: '🏙️', style: 'glass' },
   { min: 3000, key: 'metropolis', icon: '🌆', style: 'deco' },
   { min: 8000, key: 'megalopolis', icon: '🌃', style: 'neon' },
-  { min: 15000, key: 'globalCity', icon: '🌐', style: 'neon' },
-  { min: 30000, key: 'futureCity', icon: '🛸', style: 'neon' },
-  { min: 60000, key: 'marsColony', icon: '🪐', style: 'neon' },
+  { min: 15000, key: 'globalCity', icon: '🌐', style: 'global' },
+  { min: 30000, key: 'futureCity', icon: '🛸', style: 'future' },
+  { min: 60000, key: 'marsColony', icon: '🪐', style: 'mars' },
 ];
 // From the ground floor to space: houses evolve too, so whoever is starting sees progress, and above
 // the skyscraper there are four more types (the last one at 10 billion tokens). The key is also the drawing.

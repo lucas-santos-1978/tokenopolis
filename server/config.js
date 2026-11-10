@@ -195,6 +195,9 @@ export const config = {
     // Mega Builders: whoever builds in 2+ cities and adds up MEGA_FLOORS floors across them gets a
     // headquarters in the Corporate District (0 turns it off).
     megaFloors: Math.max(0, Math.round(Number(env('MEGA_FLOORS', 1000)))) || 0,
+    // The region's mission: the whole region builds MISSION_GROWTH % more floors this week than it did
+    // last week (0 turns it off).
+    missionGrowth: Math.max(0, Number(env('MISSION_GROWTH', 10))) || 0,
   },
 
   // Belt program (an optional recognition program): a JSON file with names or e-mails and belts.

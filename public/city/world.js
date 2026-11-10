@@ -340,6 +340,10 @@ export function groundCanvas(world, { grey = false } = {}) {
   for (let gy = 0; gy < GH; gy++) for (let gx = 0; gx < GW; gx++) {
     const t = getT(gx, gy), px = gx * PX, py = gy * PX, v = hash(gx, gy, 4);
     x.fillStyle = C.grass[Math.floor(v * 3)]; x.fillRect(px, py, PX, PX);
+    if (!grey && !isWater(t)) for (let i = 0; i < 5; i++) { // a grain on the grass: a few darker and lighter tufts per lot
+      const u = hash(gx, gy, 20 + i), w = hash(gx, gy, 30 + i), k = Math.max(2, PX / 9);
+      x.fillStyle = i % 2 ? 'rgba(40,96,40,.16)' : 'rgba(214,240,150,.2)'; x.fillRect(px + u * (PX - k), py + w * (PX - k), k, k * 0.7);
+    }
     if (isWater(t)) {
       x.fillStyle = C.water; x.fillRect(px, py, PX, PX);
       for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) { // light bank where it touches land
@@ -361,6 +365,17 @@ export function groundCanvas(world, { grey = false } = {}) {
       if (dir === 'x' || (gold && dir === 'xy')) { x.beginPath(); x.moveTo(px, py + PX / 2); x.lineTo(px + PX, py + PX / 2); x.stroke(); }
       if (dir === 'y' || (gold && dir === 'xy')) { x.beginPath(); x.moveTo(px + PX / 2, py); x.lineTo(px + PX / 2, py + PX); x.stroke(); }
       x.setLineDash([]);
+      if (!hwy && !t.bridge && (dir === 'x' || dir === 'y')) { // a crosswalk at each end that meets a crossing
+        const k = Math.max(2, PX / 8), step = Math.max(2, PX / 10);
+        x.fillStyle = C.line;
+        for (const e of [-1, 1]) {
+          if (roadDir(gx + (dir === 'x' ? e : 0), gy + (dir === 'y' ? e : 0), getT) !== 'xy') continue;
+          for (let a = s + 1; a < PX - s - 1; a += step) {
+            if (dir === 'x') x.fillRect(e > 0 ? px + PX - k - 1 : px + 1, py + a, k, step * 0.55);
+            else x.fillRect(px + a, e > 0 ? py + PX - k - 1 : py + 1, step * 0.55, k);
+          }
+        }
+      }
     }
     if (t.t === 'plaza' || t.t === 'mon') { x.fillStyle = C.walk; x.fillRect(px, py, PX, PX); x.fillStyle = t.t === 'mon' ? C.mon : C.plaza; x.fillRect(px + 2, py + 2, PX - 4, PX - 4); }
     if (t.t === 'lawn') { x.fillStyle = C.walk; x.fillRect(px, py, PX, PX); x.fillStyle = C.lawn; x.fillRect(px + 2, py + 2, PX - 4, PX - 4); }
@@ -368,6 +383,15 @@ export function groundCanvas(world, { grey = false } = {}) {
     if (t.t === 'farm') { const w = Math.max(3, PX / 8); for (let i = 0; i < PX; i += w) { x.fillStyle = C.farm[(Math.round(i / w) + t.alt) % 2]; x.fillRect(px + i, py, w, PX); } }
     if (t.t === 'campus') { x.fillStyle = C.campus; x.fillRect(px, py, PX, PX); } // the district's mown lawn
     if (t.t === 'site') { x.fillStyle = C.walk; x.fillRect(px, py, PX, PX); x.fillStyle = C.site; x.fillRect(px + 2, py + 2, PX - 4, PX - 4); } // a foundation's bare ground
+  }
+  // A soft shadow at the foot of every building and house: it sits them on the ground (painted here, so
+  // it costs nothing per frame).
+  for (const o of world.objs) {
+    if (o.kind !== 'bld') continue;
+    const cx = (o.gx + 0.5) * PX, cy = (o.gy + 0.5) * PX, r = PX * (o.b.floors < 15 ? 0.5 : 0.66);
+    const gr = x.createRadialGradient(cx, cy, r * 0.45, cx, cy, r);
+    gr.addColorStop(0, `rgba(20,30,20,${grey ? 0.16 : 0.3})`); gr.addColorStop(1, 'rgba(20,30,20,0)');
+    x.fillStyle = gr; x.fillRect(cx - r, cy - r, r * 2, r * 2);
   }
   return cv;
 }
