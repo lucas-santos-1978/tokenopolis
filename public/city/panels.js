@@ -5,6 +5,7 @@
 import { t, plural, fmt, cityLabel, displayName } from '../i18n/index.js';
 import { tierOf, BUILDING_TIERS, TEN_BI, monumentsOf, context, mayorOf, raceOf, derby, countdowns, paperHtml, cityTier, buildingTier, monumentText, monthOf, floorsText, htmlCity, ruinOf, megaOf } from './rules.js';
 import { dojoOf } from './world.js';
+import { ageText, readingTime } from '../lib/freshness.js';
 
 const $ = (s) => document.querySelector(s);
 export const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -15,8 +16,16 @@ const closer = (panel) => {
   const label = t(`close.${panel}`);
   return `<button type="button" class="panel-x" data-hide-panel="${panel}" aria-label="${esc(label)}" title="${esc(t('close.title', { label }))}">×</button>`;
 };
-// the stale pill: the data source's error (or no server at all), and that this is the last reading
-export const staleText = (error) => `⚠️ ${error ? t(`error.${error.code}`, error) : t('error.offline')} · ${t('error.stale')}`;
+// the stale pill: the data source's error (or no server at all), and when the reading on screen was made
+export const staleText = (error, at) => `⚠️ ${error ? t(`error.${error.code}`, error) : t('error.offline')} · ${at ? t('error.lastReading', { time: readingTime(at) }) : t('error.stale')}`;
+// How old the reading is: "3 min ago" on a narrow screen (where the date of the bar has no room), and
+// the exact time on hover; main.js calls it again every few seconds, so it keeps counting between readings.
+export function renderAge() {
+  if (!data) return;
+  const el = $('#age'), when = t('age.title', { time: fmt.dateTime(data.generatedAt) });
+  el.textContent = `🕒 ${ageText(data.generatedAt)}`; el.title = when; el.setAttribute('aria-label', when);
+  $('#stat-date').parentElement.title = when;
+}
 
 let api = null, data = null, me = null, mega = null; // mega: rules.js megaOf of the reading (it also marks b.mega)
 export function initPanels(a) { api = a; }
@@ -38,10 +47,11 @@ export function renderPanels(d, view, selected) {
   $('#stat-buildings').textContent = plural(totalB, 'count.building');
   $('#stat-floors').textContent = floorsText(totalF);
   $('#stat-date').textContent = fmt.dateTime(data.generatedAt);
+  renderAge();
   const pill = $('#mode-pill');
   pill.hidden = data.mode !== 'mock' && data.mode !== 'demo';
   if (data.mode === 'demo') pill.textContent = t('header.demoPill');
-  const stale = $('#stale-pill'); stale.hidden = !data.error; if (data.error) stale.textContent = staleText(data.error);
+  const stale = $('#stale-pill'); stale.hidden = !data.error; if (data.error) stale.textContent = stale.title = staleText(data.error, data.generatedAt);
   if (isCity) renderHall(city); else renderRegionPanels();
   renderSheet(city, selected);
 }

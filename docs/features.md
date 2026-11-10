@@ -86,6 +86,14 @@ animations", which some battery savers switch on) keeps the slow everyday life (
 flames and smoke, the Ferris wheel, boats, clouds) and drops the bursts: fireworks, sparkles, confetti,
 rockets, blinking lights and the monster.
 
+**How old the data is.** The bar shows the date and time of the reading on screen; on a narrow screen
+it becomes a short "3 min ago", and the climb shows the same under its clock. When the data source
+fails, the warning says when the last good reading was made.
+
+**The top bar on smaller windows.** It never runs off the screen: up to 1,480 px wide it drops the
+building and floor counts, up to 1,180 px the date gives way to the short "3 min ago", and up to
+1,100 px the tools, the climb link and the language go behind ☰ (the phone's drawer).
+
 **Tools.** 🔍 find a building, 📍 "my building" (a pin that follows you between visits), 🗺️ data
 maps (`?map=now|week|network|model|belts`; ⚡ now, 📈 week, 🚩 network, 🧠 model, 🥋 belts), 📰 newspaper, 🎬 history (a time-lapse since day one,
 the timeline of a building, and a race of the cities week by week), ❔ help with a tab that builds

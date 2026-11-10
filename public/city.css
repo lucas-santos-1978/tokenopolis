@@ -16,10 +16,11 @@ body { font-family: Nunito, "Segoe UI", system-ui, sans-serif; color: var(--ink)
   display: flex; align-items: center; gap: 14px; background: var(--slate); color: #fff; border-bottom: 3px solid var(--green);
 }
 .logo { font-size: 24px; }
-.title { font-size: 22px; font-weight: 900; letter-spacing: .5px; white-space: nowrap; }
+.title { font-size: 22px; font-weight: 900; letter-spacing: .5px; white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .subtitle { flex: 1; min-width: 0; font-size: 14px; color: #b9c6d2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pill { font-size: 12px; font-weight: 800; padding: 3px 10px; border-radius: 99px; background: #ffe08a; color: var(--ink); white-space: nowrap; }
+.pill { font-size: 12px; font-weight: 800; padding: 3px 10px; border-radius: 99px; background: #ffe08a; color: var(--ink); white-space: nowrap; min-width: 0; flex-shrink: 20; overflow: hidden; text-overflow: ellipsis; } /* a long notice gives way (well before the title does) instead of pushing the tools off the bar; its whole text is in the hover tip */
 .pill.warn { background: #ffb4a8; }
+.age { display: none; font-size: 12.5px; font-weight: 700; color: #b9c6d2; white-space: nowrap; } /* how old the reading is: narrow screens only, where the date has no room */
 .stats { display: flex; gap: 22px; font-size: 15px; white-space: nowrap; }
 .stats b { font-weight: 800; }
 .switch { color: #fff; text-decoration: none; font-weight: 800; font-size: 14px; white-space: nowrap; padding: 6px 12px; border-radius: 8px; background: var(--slate-2); }
@@ -457,13 +458,36 @@ kbd { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 5px
 .mepin::after { content: ''; position: absolute; left: 50%; top: 100%; margin-left: -5px; border: 5px solid transparent; border-top-color: #e8463a; }
 @keyframes bounce { 0%, 100% { transform: translateY(-14px); } 50% { transform: translateY(-22px); } }
 
+/* The bar never runs off the right edge (it used to cut the language and the climb link on a laptop):
+   it sheds the counts, then the date (a short "3 min ago" takes its place), then the tools go behind ☰. */
+@media (max-width: 1480px) { .stats span:nth-child(n+2) { display: none; } }
+@media (max-width: 1180px) { .stats { display: none; } .age { display: inline; } }
+@media (max-width: 1100px) {
+  .menu-btn { all: unset; flex: none; cursor: pointer; display: grid; place-items: center; width: 40px; height: 34px; border-radius: 9px; background: var(--slate-2); color: #fff; font-size: 19px; }
+  [data-menu] .menu-btn { background: var(--gold); color: var(--ink); }
+  .menu { display: none; }
+  [data-menu] .menu { position: fixed; top: 60px; right: 8px; width: min(420px, calc(100vw - 16px)); box-sizing: border-box; z-index: 17; display: grid; gap: 10px; padding: 12px; border-radius: 14px; background: var(--slate); box-shadow: 0 12px 30px rgba(0, 0, 0, .4); }
+  .menu .tools { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .menu .tools button { flex-direction: column; justify-content: center; gap: 4px; min-height: 62px; padding: 8px 4px; font-size: 22px; text-align: center; white-space: normal; }
+  .menu .tools button::after { content: attr(aria-label); font-size: 11.5px; font-weight: 800; line-height: 1.15; }
+  .menu .switch { padding: 11px; font-size: 15px; text-align: center; }
+  .menu .lang { justify-content: center; gap: 6px; font-size: 18px; }
+  .menu .lang button { padding: 7px 16px; font-size: 14px; }
+}
+
 /* narrow screens: only the scene, the bar and the card */
 @media (max-width: 900px) {
   .trophies, .mega, .legend, .derby, .countdown, .stats, .subtitle { display: none !important; }
   .rcol { width: 220px; }
   .hall { width: min(340px, calc(100vw - 30px)); }
-  .corner { bottom: 10px; }
+  .corner { left: 20px; bottom: 46px; } /* above the news ticker (the legend that used to stand at its left is hidden here) */
   .sheet { left: 10px; bottom: 10px; width: calc(100% - 20px); }
+  .title { flex: 1; } /* no subtitle here: the title pushes ☰ to the right edge */
+}
+/* between a phone and a full window (a tablet upright, a split window): the 220px column has no room for the bar */
+@media (min-width: 701px) and (max-width: 900px) {
+  .ranking li { grid-template-columns: 22px 1fr auto; }
+  .ranking .bar { display: none; }
 }
 
 /* ───────── phones: the scene first; the tools behind ☰, City Hall and the card as drawers at the bottom ───────── */
@@ -471,19 +495,10 @@ kbd { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 5px
 @media (max-width: 700px) {
   .topbar { padding: 0 10px; gap: 8px; }
   .logo { font-size: 20px; }
-  .title { flex: 1; min-width: 0; font-size: 17px; overflow: hidden; text-overflow: ellipsis; }
+  .title { font-size: 17px; }
   #mode-pill { display: none !important; } /* the title says enough; a stale reading still shows its pill */
   .pill.warn { max-width: 34vw; overflow: hidden; text-overflow: ellipsis; }
-  .menu-btn { all: unset; cursor: pointer; display: grid; place-items: center; width: 40px; height: 34px; border-radius: 9px; background: var(--slate-2); color: #fff; font-size: 19px; }
-  [data-menu] .menu-btn { background: var(--gold); color: var(--ink); }
-  .menu { display: none; }
-  [data-menu] .menu { position: fixed; top: 60px; left: 8px; right: 8px; z-index: 17; display: grid; gap: 10px; padding: 12px; border-radius: 14px; background: var(--slate); box-shadow: 0 12px 30px rgba(0, 0, 0, .4); }
-  .menu .tools { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-  .menu .tools button { flex-direction: column; justify-content: center; gap: 4px; min-height: 62px; padding: 8px 4px; font-size: 22px; text-align: center; white-space: normal; }
-  .menu .tools button::after { content: attr(aria-label); font-size: 11.5px; font-weight: 800; line-height: 1.15; }
-  .menu .switch { padding: 11px; font-size: 15px; text-align: center; }
-  .menu .lang { justify-content: center; gap: 6px; font-size: 18px; }
-  .menu .lang button { padding: 7px 16px; font-size: 14px; }
+  [data-menu] .menu { left: 8px; width: auto; } /* the ☰ drawer (the rules above, up to 900px) takes the whole width */
   .tool-pop, .panels, .sky { top: 60px; left: 8px; right: 8px; width: auto; max-height: calc(100vh - 120px); overflow: auto; }
 
   /* region: this week's builds folds into a chip (tap to open); the camera keeps only spin and reframe */

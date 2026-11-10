@@ -14,6 +14,8 @@ import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { zoneHour } from '../lib/sky.js';
+import { canCopyImages } from '../lib/clipboard.js';
+import { ageText, readingTime, noteServerClock } from '../lib/freshness.js';
 import { t as tr, plural, fmt, config, displayName } from '../i18n/index.js';
 import { buildRock, createCampLedges, baseGround, wallZ, frontZ, groundY, crest, edgeX, grassTime, rockUniforms } from './rock.js';
 import { createEnvironment, lookAt } from './environment.js';
@@ -81,6 +83,7 @@ async function fetchJSON(url, ms) {
   const timer = setTimeout(() => ctl.abort(), ms);
   try {
     const res = await fetch(url, { cache: 'no-store', signal: ctl.signal });
+    noteServerClock(res);
     const data = await res.json().catch(() => null);
     if (!res.ok) throw apiError(data?.code ? data : { code: 'unknown', status: res.status });
     if (data === null) throw apiError({ code: 'unknown', status: res.status });
@@ -5733,6 +5736,8 @@ const dlg = {
   dl: $('#card-dl'), copy: $('#card-copy'), close: $('#card-close'), open: false, back: null, url: null, blob: null, file: '', job: 0,
 };
 // the card canvas stays in the dialog (hidden): it is the preview while the PNG is compressed
+// a panel served over plain http has no clipboard for images: only "Download PNG" is offered there
+if (!canCopyImages()) dlg.copy.remove();
 Object.assign(cardCv, { className: 'card-img', hidden: true });
 cardCv.setAttribute('role', 'img');
 dlg.img.before(cardCv);
@@ -6078,8 +6083,14 @@ function setState(data) {
   applyState(simTime);
   updateHud();
   $('#error').hidden = !state.error;
-  $('#error').textContent = state.error ? `⚠️ ${errorText(state.error)} · ${tr('error.stale')}` : '';
+  $('#error').textContent = state.error ? `⚠️ ${errorText(state.error)} · ${state.generatedAt ? tr('error.lastReading', { time: readingTime(state.generatedAt) }) : tr('error.stale')}` : '';
+  showAge();
 }
+// How old the reading is ("Data: 3 min ago"), counting on between readings.
+function showAge() {
+  if (state?.generatedAt) $('#updated').textContent = `🕒 ${tr('age.label', { age: ageText(state.generatedAt) })}`;
+}
+setInterval(showAge, 20_000);
 
 async function load() {
   let ok = false;

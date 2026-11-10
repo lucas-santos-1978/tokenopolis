@@ -140,6 +140,8 @@ export default {
     since: ({ day, month }) => (day ? `since ${month} ${day}` : 'since the start'),
   },
   clock: { in: 'in {zone}' },
+  // how old the reading on screen is
+  age: { now: 'just now', min: '{n} min ago', hours: '{n} h ago', title: 'Data read: {time}', label: 'Data: {age}' },
 
   // Shared counts, through plural(n, 'count.floor').
   count: {
@@ -165,7 +167,9 @@ export default {
     config: 'The data source is not configured',
     unknown: 'Unexpected error while reading the data',
     offline: 'Could not reach the server',
+    webgl: 'This browser could not start 3D graphics (WebGL), so the city cannot be drawn. Try another browser, or turn on hardware acceleration in its settings.',
     stale: 'showing the last reading',
+    lastReading: 'last reading: {time}',
   },
 
   nav: {

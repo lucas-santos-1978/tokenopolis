@@ -2,6 +2,7 @@
 // language and the TV mode; the link comes out ready to copy or open) and the list of everything the
 // URL accepts. The builder starts from what is on screen now, so nobody needs to remember a parameter.
 import { t, fmt, cityLabel, displayName } from '../i18n/index.js';
+import { copyText } from '../lib/clipboard.js';
 import { MAPKEYS, queueToast } from './panels.js';
 import { CITY_TIERS, cityTier } from './rules.js';
 
@@ -133,10 +134,9 @@ export function initLinks({ root, state }) {
     if (!b) return;
     const url = currentUrl();
     if (b.dataset.lk === 'copy') {
-      navigator.clipboard?.writeText(url).then(
-        () => queueToast({ icon: '🔗', title: t('toast.linkCopied.title'), text: t('links.copied'), ms: 3000, quiet: true }),
-        () => queueToast({ icon: '🔗', title: t('links.copyFailed.title'), text: t('links.copyFailed.text'), ms: 4000, quiet: true }),
-      );
+      copyText(url).then((ok) => queueToast(ok
+        ? { icon: '🔗', title: t('toast.linkCopied.title'), text: t('links.copied'), ms: 3000, quiet: true }
+        : { icon: '🔗', title: t('links.copyFailed.title'), text: t('links.copyFailed.text'), ms: 4000, quiet: true }));
     } else if (b.dataset.lk === 'open') location.assign(url);
     else if (b.dataset.lk === 'tab') window.open(url, '_blank', 'noopener');
   });

@@ -3,6 +3,29 @@
 Dates are the day each version went live on the author's panel. Earlier versions were an internal
 tool with another name; the open-source release renames it Tokenopolis.
 
+## v29 (2026-11-10)
+
+- "Copy link" works on a panel served over plain http (a browser offers no clipboard there, and the
+  button did nothing); when nothing works, the link shows in a box to copy by hand. The climb offers
+  "Copy image" only where the browser can do it.
+- 🌗 "Automatic" goes back to the real time on a page that was opened with `?hour=`.
+- How old the data is: "3 min ago" in the bar of a narrow screen (where the date had no room) and under
+  the climb's clock; a failed reading says when the last good one was made.
+- Choosing a campus, a foundation or a temple no longer covers it with a golden box: an outline, a
+  golden frame on the ground and the ring, sized to the lot. The box on buildings is lighter.
+- The top bar no longer runs off the right edge on a laptop or a tablet (it cut the language switch and
+  the climb link below about 1,400 px): it sheds the counts, then the date, and up to 1,100 px the
+  tools go behind ☰. A long notice shrinks before the title does, with its whole text on hover.
+- Screens 701 to 900 px wide: this week's builds keeps the city names (the bar gives way), and the
+  camera bar no longer sits on top of the news ticker.
+- The notice of a failed reading stays up when the panels are drawn again (it vanished on the next click).
+- The city reads the API as often as the server refreshes (`REFRESH_SECONDS`), no longer every 60 s
+  whatever the setting.
+- A sessions query that fails keeps its last result for up to 30 minutes instead of counting as zero
+  (empty sidewalks, missing session badges).
+- A browser without WebGL gets a message instead of "Building the region…" forever.
+- The 10-billion rocket frees its smoke. `docs/contract.md` and `docs/data-sources.md` match the code.
+
 ## v28 (2026-11-09)
 
 - Mega Builders: whoever builds in 2+ cities and adds up 1,000 floors across them (`MEGA_FLOORS`,

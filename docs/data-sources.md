@@ -22,9 +22,13 @@ With the Datadog agent (or the OTLP endpoint) receiving them, the panel only nee
 - A **Personal or Service Access Token** that can run `POST /api/v1/query` (metrics read), or an
   API key + Application key pair. Nothing else is called; the token stays on the server.
 
-Every refresh runs three queries (season, recent minutes, daily history) with caches so that the
-history and the past seasons are re-read only every 30 minutes. A `429` from Datadog backs the
-server off for at least a minute and keeps the last good state on screen.
+Every refresh runs five queries: three for the climb (the season by person and type, its sessions,
+the last two hours by the minute) and two for the city (today by team and person, who used it in the
+last 15 minutes). The rest is cached: the daily history, the city's past days and the models for 30
+minutes, the hours of use for 15, the open sessions for 5, and a closed season for good. A `429`
+from Datadog backs the server off for at least a minute and keeps the last good state on screen. A
+sessions query that fails any other way keeps its last result for up to 30 minutes, so the sidewalks
+do not empty and the session badges do not vanish over one bad answer.
 
 ## File
 

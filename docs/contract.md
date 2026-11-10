@@ -78,14 +78,15 @@ Unchanged fields are not listed. Changes:
 | `week`, `month`, `lastMonth` | Period (**removed:** `name`) |
 | `today` | `{ day, start }` unchanged |
 | `cities[]` | City + `{ floors, week, people, builders, building, sessions, growth, buildings[] }` |
-| `cities[].buildings[]` | Person identity + `{ belt, beltSince, floors, week, today, month, lastMonth, streak, idle, hours, night, model, modelShare, now, isNew, cities, others }`. `idle` = calendar days since the last day with usage (0 = today; null without usage in the window). `belt ∈ null \| "white" \| "blue" \| "purple" \| "brown" \| "black"` (was `dojo`), `beltSince` ISO day or null (was `dojoDesde`). `model ∈ "opus" \| "sonnet" \| "haiku" \| "fable" \| "other"` (was `outro`) |
+| `cities[].buildings[]` | `{ id, name, anon }` of the Person identity (the city draws no avatars, so `avatar`, `photo` and `body` are not sent) + `{ belt, beltSince, floors, week, today, month, lastMonth, streak, idle, hours, night, model, modelShare, now, isNew, cities, others }`. `idle` = calendar days since the last day with usage (0 = today; null without usage in the window). `belt ∈ "white" \| "blue" \| "purple" \| "brown" \| "black"` (was `dojo`), present only for belt holders; `beltSince` ISO day, present only when the list has it (was `dojoDesde`). `model ∈ "opus" \| "sonnet" \| "haiku" \| "fable" \| "other"` (was `outro`) |
 | `links[]` | `{ a, b, n }` unchanged |
 | `belts` | `{ total, unmatched }` — counts only (was `dojo: { total, semPredio: [...] }`, which leaked e-mails) |
 | `error` | see conventions |
 
 ## `GET /api/history`
 
-Unchanged (`generatedAt, start, days, floorTokens, cities[{ id, people[{ id, d[] }] }]`) plus `mode`.
+Unchanged: `generatedAt, start, days, floorTokens, cities[{ id, people[{ id, d[] }] }]`. `d[i]` is the
+person's floors on day `i` (counted from `start`), in tenths of a floor.
 
 ## `?demo`
 

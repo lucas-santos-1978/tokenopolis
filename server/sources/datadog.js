@@ -108,9 +108,29 @@ export function createDatadogSource({ datadog, season, scoreTypes }) {
     return out;
   }
 
-  // Optional metric (sessions): if it does not exist, the game goes on without its badges.
-  async function totalsByUser(metric, fromMs, toMs) {
+  // An optional query (sessions) never stops the game. When it fails (a timeout, a 5xx), it answers
+  // with its last good result for a while instead of an empty one, which would pass for "nobody": the
+  // sidewalks would empty and the session badges vanish until the next good reading. Empty only when
+  // there is nothing recent to keep. `key` is what the result depends on (the season's start): a
+  // result kept for another key is not reused.
+  const lastGood = new Map(); // name → { key, at, value }
+  const KEEP_MS = 30 * 60_000;
+  async function optional(name, key, run) {
     try {
+      const value = await run();
+      lastGood.set(name, { key, at: Date.now(), value });
+      return value;
+    } catch (err) {
+      if (err.status === 429) throw err; // rate limit exceeded: better to keep the last good state
+      const kept = lastGood.get(name), keep = !!kept && kept.key === key && Date.now() - kept.at < KEEP_MS;
+      console.warn(`[datadog] optional metric ${name} unavailable (${keep ? 'keeping the last reading' : 'nothing to keep'}): ${err.message}`);
+      return keep ? kept.value : new Map();
+    }
+  }
+
+  // Optional metric (sessions): if it does not exist, the game goes on without its badges.
+  function totalsByUser(metric, fromMs, toMs) {
+    return optional(`${metric} by person`, fromMs, async () => {
       const series = await query(
         `sum:${metric}{${filter}} by {${userTag}}.as_count().${dailyRollup()}`, fromMs, toMs);
       const out = new Map();
@@ -119,11 +139,7 @@ export function createDatadogSource({ datadog, season, scoreTypes }) {
         if (user) out.set(user, (out.get(user) ?? 0) + sumPoints(s));
       }
       return out;
-    } catch (err) {
-      if (err.status === 429) throw err; // rate limit exceeded: better to keep the last good state
-      console.warn(`[datadog] optional metric ${metric} unavailable: ${err.message}`);
-      return new Map();
-    }
+    });
   }
 
   // Scoring tokens per person and per bucket: Map(email -> Map(bucket ts -> tokens)).
@@ -239,8 +255,8 @@ export function createDatadogSource({ datadog, season, scoreTypes }) {
     },
 
     // Cities: open sessions per team between fromMs and now (the people on the sidewalks). Optional metric.
-    async orgSessions(fromMs, now) {
-      try {
+    orgSessions(fromMs, now) {
+      return optional(`${metrics.sessions} by team`, 'window', async () => { // a sliding window: any recent result is still about now
         const series = await query(`sum:${metrics.sessions}{${filter}} by {${orgTag}}.as_count().rollup(sum, 600)`, fromMs, now);
         const out = new Map();
         for (const s of series) {
@@ -248,11 +264,7 @@ export function createDatadogSource({ datadog, season, scoreTypes }) {
           if (org && !NO_PERSON.has(org.toLowerCase())) out.set(org, (out.get(org) ?? 0) + sumPoints(s));
         }
         return out;
-      } catch (err) {
-        if (err.status === 429) throw err;
-        console.warn(`[datadog] optional metric ${metrics.sessions} by team unavailable: ${err.message}`);
-        return new Map();
-      }
+      });
     },
 
     // Cities: who used in each team between fromMs and now (the "building now" crane).

@@ -27,11 +27,13 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { skyColorsAt, zoneHour } from '../lib/sky.js';
-import { t, plural, fmt, cityLabel, displayName } from '../i18n/index.js';
+import { copyText } from '../lib/clipboard.js';
+import { noteServerClock } from '../lib/freshness.js';
+import { t, plural, fmt, cityLabel, displayName, config } from '../i18n/index.js';
 import { tierOf, BUILDING_TIERS, TEN_BI, advisors, context, floorsText, cityTier, buildingTier, monthOf, ruinOf } from './rules.js';
 import { L, seed, hash, kind, buildWorld, groundCanvas, dojoOf, megaLinks } from './world.js';
 import { makeKit, craneJib, Batcher, mats, lit, blinkMats, matte, setAnisotropy, sweepSigns, SILVER, DARK, WARM_LIGHT, HOUSE_H, STYLE_PAL } from './buildings.js';
-import { initPanels, renderPanels, countdownKey, queueToast, liveEvents, hasToasts, keyOf, esc, staleText, setMe as panelsSetMe, renderFinder, finderKey, locatePerson, MAPKEYS, mapColorFor, renderMapKey, renderPaper } from './panels.js';
+import { initPanels, renderPanels, countdownKey, queueToast, liveEvents, hasToasts, keyOf, esc, staleText, renderAge, setMe as panelsSetMe, renderFinder, finderKey, locatePerson, MAPKEYS, mapColorFor, renderMapKey, renderPaper } from './panels.js';
 import { makeLife, blimpLines } from './life.js';
 import { makeEffects, launchRocket } from './effects.js';
 import { loadHistory, renderTimeline, startTimelapse, openRace, playRace } from './history.js';
@@ -47,8 +49,9 @@ const API_Q = DEMO ? '?demo' : '';
 // flames and smoke, the Ferris wheel, boats, clouds. It loses only the bursts (ANIM): fireworks,
 // sparkles, confetti, rockets, blinking lights, the monster and its shake.
 const ANIM = !matchMedia('(prefers-reduced-motion: reduce)').matches;
-const REFRESH_MS = 60_000, TOUR_MS = 24_000;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+// a new reading as often as the server makes one (REFRESH_SECONDS: a minute with real data, 15 s with generated data)
+const REFRESH_MS = clamp((Number(config.refreshSeconds) || 60) * 1000, 5_000, 600_000), TOUR_MS = 24_000;
 const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 
 // ───────── a scale that holds giants ─────────
@@ -67,7 +70,14 @@ const hqH = (f) => Math.max(3, scaled(f / MEGA_R) * FLOOR);
 
 // ───────── renderer, scene and camera ─────────
 const stage = $('#stage');
-const renderer = new THREE.WebGLRenderer({ antialias: !LOW_Q, preserveDrawingBuffer: params.has('debug') });
+// no WebGL (switched off by policy, a remote desktop, an old video card): say so instead of loading forever
+const renderer = (() => {
+  try { return new THREE.WebGLRenderer({ antialias: !LOW_Q, preserveDrawingBuffer: params.has('debug') }); } catch (err) {
+    $('#loading')?.remove();
+    const el = $('#error'); el.hidden = false; el.textContent = t('error.webgl');
+    throw err;
+  }
+})();
 // a phone: a lighter canvas (pixel ratio and shadow map), the drawers' framing and the folded panels
 const PHONE = matchMedia('(pointer: coarse)').matches && Math.min(screen.width, screen.height) <= 820;
 const narrow = () => innerWidth <= 700;
@@ -258,7 +268,7 @@ function buildScene() {
     } else if (o.kind === 'hq' || o.kind === 'found') { // the Corporate District: a headquarters or the foundation of the next in line
       const cx = x + L / 2, cz = z + L / 2;
       const { h } = o.kind === 'hq' ? kit.hq(o.p, cx, cz, hqH) : kit.foundation(o.p, cx, cz, world.mega.line, Math.max(2, hqH(world.mega.line / 2) - 0.8));
-      const w = L * 1.6, hit = new THREE.Mesh(new THREE.BoxGeometry(w, h + 2, w), DARK);
+      const w = L * (o.kind === 'hq' ? 1.84 : 1.76), hit = new THREE.Mesh(new THREE.BoxGeometry(w, h + 2, w), DARK); // the campus's pad, the foundation's fence
       hit.position.set(cx, (h + 2) / 2, cz); hit.layers.set(1);
       hit.userData = { [o.kind]: o.p, h, x: cx, z: cz, w, rank: o.rank };
       hitGroup.add(hit); hqHits.set(o.p.id, hit.userData);
@@ -388,7 +398,7 @@ function applyHour(h) {
   $('#sky-btn').classList.toggle('lit', !hourAuto);
   document.querySelectorAll('[data-hour]').forEach((b) => b.classList.toggle('on', b.dataset.hour === 'auto' ? hourAuto : !hourAuto && Number(b.dataset.hour) === h));
 }
-setInterval(() => { if (hourAuto) applyHour(zoneHour()); }, 60_000);
+setInterval(() => { if (hourAuto) applyHour(zoneHour(undefined, { real: true })); }, 60_000);
 
 // ───────── camera: framings and flights ─────────
 let camTween = null, shadowR = 0;
@@ -500,17 +510,21 @@ function tourStep() {
 // ───────── highlight: the building under the mouse (white) and the chosen one (gold, with a beam and a ring) ─────────
 // To find the right building in the city: the outline follows the whole lot, from the ground to the
 // roof; the chosen one's pulses and has a beam of light rising from the roof, visible from afar.
+// A wide lot (a campus, a foundation, a temple, a stadium) gets only the outline and, when chosen, a
+// golden frame on the ground: a filled box that size would hide what it marks.
 function makeHighlight(hex, op, edge = hex) { // white edge on the chosen one: gold vanishes on art deco buildings
   const g = new THREE.Group(), geo = new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0);
   g.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: hex, transparent: true, opacity: op, depthWrite: false })));
   g.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: edge, transparent: true, opacity: 0.95 })));
   g.visible = false; scene.add(g); return g;
 }
-const hoverHi = makeHighlight('#ffffff', 0.22), selHi = makeHighlight('#f2b705', 0.28, '#ffffff');
+const hoverHi = makeHighlight('#ffffff', 0.18), selHi = makeHighlight('#f2b705', 0.2, '#ffffff');
+const WIDE = L * 1.2; // from here on, outline only
+const selFrame = new THREE.Mesh(new THREE.RingGeometry(0.655, Math.SQRT1_2, 4, 1).rotateZ(Math.PI / 4).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#f2b705', transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false }));
 const selBeam = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 2.6, 70, 14, 1, true), new THREE.MeshBasicMaterial({ color: '#ffd36b', transparent: true, opacity: 0.3, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false }));
 const selRing = new THREE.Mesh(new THREE.TorusGeometry(1, 0.12, 8, 40).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#f2b705', transparent: true, opacity: 0.8, depthWrite: false }));
-selBeam.visible = selRing.visible = false; scene.add(selBeam, selRing);
-const placeHi = (g, h) => { const w = (h.w ?? L) * 1.02; g.position.set(h.x, 0, h.z); g.scale.set(w, h.h + 1, w); g.visible = true; };
+selBeam.visible = selRing.visible = selFrame.visible = false; scene.add(selBeam, selRing, selFrame);
+const placeHi = (g, h) => { const w = (h.w ?? L) * 1.02; g.position.set(h.x, 0, h.z); g.scale.set(w, h.h + 1, w); g.children[0].visible = w < WIDE; g.visible = true; return w; };
 const selectedHit = () => (selected?.hq ? hqHits.get(selected.hq) : selected?.dojo ? dojoHits.get(selected.city) : selected && hitByKey.get(keyOf(selected.city, selected.person)));
 const isSelectedHit = (h) => !!selected && (selected.hq ? (h.hq ?? h.found)?.id === selected.hq
   : !!h.c && h.c.id === selected.city && (h.dojo ? !!selected.dojo : h.mon ? false : !selected.dojo && h.b?.id === selected.person));
@@ -518,11 +532,13 @@ function stepHighlights(now) {
   const hh = !tl && hovered && hoveredHit;
   if (hh && !isSelectedHit(hoveredHit)) placeHi(hoverHi, hoveredHit); else hoverHi.visible = false;
   const s = !tl && selectedHit();
-  if (!s) { selHi.visible = selBeam.visible = selRing.visible = false; return; }
+  if (!s) { selHi.visible = selBeam.visible = selRing.visible = selFrame.visible = false; return; }
   const pulse = 0.5 + 0.5 * Math.sin(now / 320);
-  placeHi(selHi, s); selHi.children[0].material.opacity = 0.18 + 0.2 * pulse;
+  const w = placeHi(selHi, s); selHi.children[0].material.opacity = 0.1 + 0.14 * pulse;
+  selFrame.visible = w >= WIDE;
+  if (selFrame.visible) { selFrame.position.set(s.x, 0.62, s.z); selFrame.scale.set(w, 1, w); selFrame.material.opacity = 0.5 + 0.4 * pulse; }
   selBeam.position.set(s.x, s.h + 35, s.z); selBeam.material.opacity = 0.22 + 0.14 * pulse; selBeam.visible = true;
-  const r = 7 + 5 * ((now % 1400) / 1400);
+  const r = Math.max(7, w * 0.72) + 5 * ((now % 1400) / 1400); // the ring starts around the lot, however wide
   selRing.position.set(s.x, 0.5, s.z); selRing.scale.set(r, 1, r); selRing.material.opacity = 0.9 * (1 - (now % 1400) / 1400); selRing.visible = true;
 }
 
@@ -717,7 +733,9 @@ document.addEventListener('click', (e) => {
   if (el.dataset.share) {
     const [c, p] = el.dataset.share.split('|'), u = new URL(location.href), lang = params.get('lang');
     u.search = `?city=${encodeURIComponent(c)}&person=${encodeURIComponent(p)}${DEMO ? '&demo' : ''}${lang ? `&lang=${encodeURIComponent(lang)}` : ''}`;
-    navigator.clipboard?.writeText(u.toString()).then(() => queueToast({ icon: '🔗', title: t('toast.linkCopied.title'), text: t('toast.linkCopied.text'), ms: 3000, quiet: true }));
+    const url = u.toString();
+    // nothing worked (a browser without the copy command): the link in a box, to copy by hand
+    copyText(url).then((ok) => (ok ? queueToast({ icon: '🔗', title: t('toast.linkCopied.title'), text: t('toast.linkCopied.text'), ms: 3000, quiet: true }) : window.prompt(t('links.copyFailed.text'), url)));
     return;
   }
   if (el.dataset.me) return setMe(el.dataset.me);
@@ -730,7 +748,7 @@ document.addEventListener('click', (e) => {
   if (el.dataset.dir) { const v = currentView(); const c = view.kind === 'city' && cityOf(view.id); flyTo({ ...(c ? fitCity(c) : fitRegion()), phi: v.phi, dist: v.dist }, 900, Number(el.dataset.dir) * Math.PI / 2 + 0.55); return; }
   if (el.id === 'spin') { controls.autoRotate = !controls.autoRotate; el.setAttribute('aria-pressed', String(controls.autoRotate)); return; }
   if (el.id === 'refit') return refit();
-  if (el.dataset.hour) { if (el.dataset.hour === 'auto') { hourAuto = true; applyHour(zoneHour()); } else { hourAuto = false; applyHour(Number(el.dataset.hour)); } }
+  if (el.dataset.hour) { if (el.dataset.hour === 'auto') { hourAuto = true; applyHour(zoneHour(undefined, { real: true })); } else { hourAuto = false; applyHour(Number(el.dataset.hour)); } }
 });
 $('#hour').addEventListener('input', (e) => { hourAuto = false; applyHour(Number(e.target.value)); });
 $('#finder-q').addEventListener('input', renderFinder);
@@ -855,16 +873,17 @@ function findCity(d, q) {
 // What changes the drawing: the scene is rebuilt only when something here differs (a reading comes every minute)
 const signature = (d) => d.cities.map((c) => `${c.id}:${Math.round(c.floors)}:${c.sessions}:${c.buildings.map((b) => `${b.id}|${Math.floor(b.floors)}|${Math.round(b.week)}|${+b.now}|${+b.isNew}|${b.heli}|${b.streak}|${+(b.today > 0)}|${b.night}|${b.cities}|${b.hours}|${b.belt}`).join(',')}`).join(';');
 let dataAt = 0, dataSig = '', pending = null;
-const showStale = (error) => { const s = $('#stale-pill'); s.hidden = !error; if (error) s.textContent = staleText(error); };
+const showStale = (error) => { const s = $('#stale-pill'); s.hidden = !error; if (error) s.textContent = s.title = staleText(error, dataAt); };
 async function load() {
   try {
     let res;
     try { res = await fetch(`api/cities${API_Q}`, { cache: 'no-store' }); } catch (e) { throw Object.assign(new Error('offline', { cause: e }), { offline: true }); }
+    noteServerClock(res);
     const json = await res.json().catch(() => ({}));
     // a failed reading answers with the error object ({ code, status, retryAfter, at }) or carries it in `error`
     if (!res.ok || !json.cities) throw Object.assign(new Error(`HTTP ${res.status}`), { info: json.code ? json : json.error ?? { code: 'unknown' } });
     if (tl) { pending = json; return; } // in the middle of the time-lapse: the new reading comes in when it ends
-    if (data && json.generatedAt === dataAt) { showStale(json.error); return; }
+    if (data && json.generatedAt === dataAt) { data.error = json.error; showStale(json.error); return; } // the same reading: only the notice may have changed
     if (params.has('giant')) { const c = json.cities[0], b = c?.buildings[0]; if (b) { const n = Number(params.get('giant')) || TEN_BI; c.floors += n - b.floors; b.floors = n; } }
     const prev = data;
     data = json; dataAt = json.generatedAt;
@@ -910,7 +929,7 @@ async function load() {
     if (!data) {
       const el = $('#error'), why = err.info ? t(`error.${err.info.code}`, err.info) : t('error.offline');
       el.hidden = false; el.textContent = t('load.failed', { error: why });
-    } else { const s = $('#stale-pill'); s.hidden = false; s.textContent = staleText(err.info); } // no info: the server did not answer
+    } else { data.error = err.info ?? { code: 'offline' }; showStale(data.error); } // kept on the reading, so the notice survives the panels being drawn again (no info: the server did not answer)
     console.error('[city] loading failed:', err);
     throw err;
   }
@@ -924,6 +943,7 @@ setInterval(() => {
   queueToast({ icon: tip.icon, title: tip.who, text: tip.text, city: tip.city, person: tip.person, tip: true, ms: 9000 });
 }, 150_000);
 setInterval(updateRing, 12_500);
+setInterval(renderAge, 20_000); // "3 min ago" keeps counting between readings
 
 initPanels({ goCity, goPerson, goRegion, select, closeModals, celebrate, timeline: (c, b) => loadHistory().then(() => renderTimeline(c, b), () => { const el = $('#timeline'); if (el) el.innerHTML = `<small>${t('sheet.timelineFailed')}</small>`; }) });
 // the help's "Links, TV and parameters" tab: the builder starts from what is on screen now
@@ -942,4 +962,4 @@ applyHour(hour);
 load().then(() => { const el = $('#loading'); el.style.opacity = 0; setTimeout(() => el.remove(), 700); requestAnimationFrame(frame); })
   .catch(() => { $('#loading').remove(); requestAnimationFrame(frame); });
 setInterval(() => { if (pending && !tl) { const p = pending; pending = null; dataAt = 0; load().catch(() => {}); return; } load().catch(() => {}); }, REFRESH_MS);
-window.city = { scene, camera, controls, renderer, applyHour, goCity, goPerson, goRegion, select, selectDojo, selectHq, goDistrict, fitDistrict, flyTo, fitCity, fitRegion, reload: load, rebuild: buildScene, setMapMode, startFilm, stopFilm, summonMonster, celebrate, fx, hi: { hoverHi, selHi, selBeam, selRing }, get life() { return life; }, get data() { return data; }, get world() { return world; }, get view() { return view; }, get selected() { return selected; } };
+window.city = { scene, camera, controls, renderer, applyHour, goCity, goPerson, goRegion, select, selectDojo, selectHq, goDistrict, fitDistrict, flyTo, fitCity, fitRegion, reload: load, rebuild: buildScene, setMapMode, startFilm, stopFilm, summonMonster, celebrate, fx, hi: { hoverHi, selHi, selBeam, selRing, selFrame }, get life() { return life; }, get data() { return data; }, get world() { return world; }, get view() { return view; }, get selected() { return selected; } };

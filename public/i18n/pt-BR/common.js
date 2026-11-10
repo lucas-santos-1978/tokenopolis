@@ -147,6 +147,8 @@ export default {
     since: ({ day, month }) => (day ? `desde ${day === 1 ? '1º' : day} de ${month}` : 'desde o início'),
   },
   clock: { in: 'em {zone}' },
+  // a idade da leitura que está na tela
+  age: { now: 'agora', min: 'há {n} min', hours: 'há {n} h', title: 'Leitura dos dados: {time}', label: 'Dados: {age}' },
 
   // Contagens comuns, via plural(n, 'count.floor').
   count: {
@@ -172,7 +174,9 @@ export default {
     config: 'A fonte de dados não está configurada',
     unknown: 'Erro inesperado ao ler os dados',
     offline: 'Não deu para falar com o servidor',
+    webgl: 'Este navegador não conseguiu iniciar os gráficos 3D (WebGL), então a cidade não pode ser desenhada. Tente outro navegador ou ligue a aceleração de hardware nas configurações dele.',
     stale: 'mostrando a última leitura',
+    lastReading: 'última leitura: {time}',
   },
 
   nav: {

@@ -19,9 +19,10 @@ const SKY = [
 export const SUNRISE = 6;
 export const SUNSET = 18;
 
-// Decimal hour in `timeZone` (the configured one by default). `?hour=14.5` in the URL simulates a time.
-export function zoneHour(timeZone = config.timeZone) {
-  const forced = new URLSearchParams(location.search).get('hour');
+// Decimal hour in `timeZone` (the configured one by default). `?hour=14.5` in the URL simulates a time;
+// `real: true` ignores it (the "automatic" choice of a page that was opened with a fixed hour).
+export function zoneHour(timeZone = config.timeZone, { real = false } = {}) {
+  const forced = real ? null : new URLSearchParams(location.search).get('hour');
   if (forced !== null && forced !== '' && !Number.isNaN(Number(forced))) return ((Number(forced) % 24) + 24) % 24;
   const parts = new Intl.DateTimeFormat('en-GB', {
     timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23',

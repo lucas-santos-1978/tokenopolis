@@ -73,12 +73,12 @@ export function launchRocket(scene, at, matte) {
   let lastPuff = 0;
   return function step(now) {
     const u = (now - t0) / dur;
-    if (u >= 1) { scene.remove(g); scene.remove(smoke); return false; }
+    if (u >= 1) { scene.remove(g); scene.remove(smoke); for (const s of smoke.children) s.material.dispose(); puffMat.dispose(); return false; }
     const k = u < 0.12 ? 0 : ((u - 0.12) / 0.88) ** 2;
     g.position.y = at.y + k * 900; g.position.x = at.x + (u < 0.12 ? Math.sin(now / 30) * 0.4 : 0);
     flame.scale.y = 0.8 + Math.random() * 0.6;
     if (now - lastPuff > 60) { lastPuff = now; const s = new THREE.Sprite(puffMat.clone()); const sz = 3 + Math.random() * 3; s.scale.set(sz, sz, 1); s.position.set(g.position.x + (Math.random() - 0.5) * 2, g.position.y - 3, at.z + (Math.random() - 0.5) * 2); s.userData.t0 = now; smoke.add(s); }
-    for (const s of [...smoke.children]) { const a = (now - s.userData.t0) / 2500; if (a >= 1) smoke.remove(s); else { s.material.opacity = 0.6 * (1 - a); s.scale.multiplyScalar(1.01); } }
+    for (const s of [...smoke.children]) { const a = (now - s.userData.t0) / 2500; if (a >= 1) { smoke.remove(s); s.material.dispose(); } else { s.material.opacity = 0.6 * (1 - a); s.scale.multiplyScalar(1.01); } }
     return true;
   };
 }
