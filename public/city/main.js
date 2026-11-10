@@ -14,7 +14,8 @@
 // fixes the time; ?spin turns the camera; ?map=now|week|network|model|belts opens a data map;
 // ?monuments=all raises every monument; ?style= forces a style; ?giant=N gives N floors to the
 // tallest building; ?monster calls the monster; ?quality=low turns off shadows and glow; ?panels=0
-// and ?names=0 hide the panels and the signs; ?ruins=0 keeps the abandoned buildings standing.
+// and ?names=0 hide the panels and the signs; ?ruins=0 keeps the abandoned buildings standing;
+// ?mega=<floors> moves the Mega Builders' line (0 hides the Corporate District).
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -28,8 +29,8 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { skyColorsAt, zoneHour } from '../lib/sky.js';
 import { t, plural, fmt, cityLabel, displayName } from '../i18n/index.js';
 import { tierOf, BUILDING_TIERS, TEN_BI, advisors, context, floorsText, cityTier, buildingTier, monthOf, ruinOf } from './rules.js';
-import { L, seed, hash, kind, buildWorld, groundCanvas, dojoOf } from './world.js';
-import { makeKit, craneJib, Batcher, mats, lit, blinkMats, matte, setAnisotropy, SILVER, DARK, WARM_LIGHT, HOUSE_H, STYLE_PAL } from './buildings.js';
+import { L, seed, hash, kind, buildWorld, groundCanvas, dojoOf, megaLinks } from './world.js';
+import { makeKit, craneJib, Batcher, mats, lit, blinkMats, matte, setAnisotropy, sweepSigns, SILVER, DARK, WARM_LIGHT, HOUSE_H, STYLE_PAL } from './buildings.js';
 import { initPanels, renderPanels, countdownKey, queueToast, liveEvents, hasToasts, keyOf, esc, staleText, setMe as panelsSetMe, renderFinder, finderKey, locatePerson, MAPKEYS, mapColorFor, renderMapKey, renderPaper } from './panels.js';
 import { makeLife, blimpLines } from './life.js';
 import { makeEffects, launchRocket } from './effects.js';
@@ -59,6 +60,10 @@ const scaled = (f) => (f <= CLOUD ? f : CLOUD + SQUEEZE * CLOUD * Math.log1p((f 
 const hOfFloors = (f) => (f < 15 ? HOUSE_H[kind(f)] : Math.max(4.2, scaled(f) * FLOOR));
 const heightOf = (b) => hOfFloors(b.floors);
 const wkOf = (b) => (scaled(b.floors) - scaled(Math.max(0, b.floors - b.week))) * FLOOR;
+// The Corporate District's scale: MEGA_R floors in the cities make one in the headquarters (the same
+// FLOOR and squeeze, without the houses' minimum), so a campus grows ten times slower than the buildings
+const MEGA_R = 10;
+const hqH = (f) => Math.max(3, scaled(f / MEGA_R) * FLOOR);
 
 // ───────── renderer, scene and camera ─────────
 const stage = $('#stage');
@@ -166,6 +171,7 @@ const bldGroup = new THREE.Group(); cityGroup.add(bldGroup); // only the buildin
 const hitGroup = new THREE.Group(); scene.add(hitGroup);
 const hitByKey = new Map(); // city|person → { x, z, h, b, c }
 const dojoHits = new Map(); // city → { x, z, h, w, dojo, c } of the city's Dojo
+const hqHits = new Map(); // person → { x, z, h, w, hq | found } in the Corporate District (a headquarters or a foundation)
 const MON_H = { obelisk: 31, airport: 12, stadium: 14, ferrisWheel: 20, centralPark: 6, tvTower: 53, leadershipStatue: 12, fountainSquare: 5, mayor: 8 }; // hit box heights
 const MON_W = { obelisk: 5, tvTower: 6, leadershipStatue: 5 }; // the thin ones get a narrow hit box, so they do not hide what stands behind them
 let anims = [], cars = null, kit = null, groundTex = null, life = null, rockets = [];
@@ -177,7 +183,7 @@ let me = (() => { try { return localStorage.getItem('city.me'); } catch { return
 panelsSetMe(me);
 
 // panels hidden by the 👁️ (or by each one's ×), and 'names', the cities' signs.
-const PANELS = ['trophies', 'ranking', 'derby', 'countdown', 'legend', 'hall', 'news'];
+const PANELS = ['trophies', 'mega', 'ranking', 'derby', 'countdown', 'legend', 'hall', 'news'];
 const hiddenPanels = (() => {
   let saved = [];
   try { saved = JSON.parse(localStorage.getItem('city.hiddenPanels') || '[]'); } catch {}
@@ -195,7 +201,7 @@ function clearScene() {
   bldGroup.clear(); cityGroup.add(bldGroup);
   groundTex?.dispose(); groundTex = null;
   life?.dispose(); life = null;
-  hitByKey.clear(); dojoHits.clear(); anims = []; cars = null;
+  hitByKey.clear(); dojoHits.clear(); hqHits.clear(); anims = []; cars = null;
 }
 function buildScene() {
   clearScene();
@@ -249,10 +255,19 @@ function buildScene() {
       hit.userData = o.m.key === 'dojo' ? { dojo: o.m, c: o.c, h, x: mx, z: mz, w } : { mon: o.m, c: o.c, h, x: mx, z: mz, w };
       hitGroup.add(hit); if (o.m.key === 'dojo') dojoHits.set(o.c.id, hit.userData);
       if (o.m.key === 'airport') airports.push({ x0: mx - o.size * L * 0.5, x1: mx + o.size * L * 0.5, z: mz - 4 });
-    } else if (o.kind === 'tree') trees.push({ x: x - L / 2 + o.u * L, z: z - L / 2 + o.v * L, s: o.s });
+    } else if (o.kind === 'hq' || o.kind === 'found') { // the Corporate District: a headquarters or the foundation of the next in line
+      const cx = x + L / 2, cz = z + L / 2;
+      const { h } = o.kind === 'hq' ? kit.hq(o.p, cx, cz, hqH) : kit.foundation(o.p, cx, cz, world.mega.line, Math.max(2, hqH(world.mega.line / 2) - 0.8));
+      const w = L * 1.6, hit = new THREE.Mesh(new THREE.BoxGeometry(w, h + 2, w), DARK);
+      hit.position.set(cx, (h + 2) / 2, cz); hit.layers.set(1);
+      hit.userData = { [o.kind]: o.p, h, x: cx, z: cz, w, rank: o.rank };
+      hitGroup.add(hit); hqHits.set(o.p.id, hit.userData);
+    } else if (o.kind === 'diamond') kit.diamond(x, z);
+    else if (o.kind === 'tree') trees.push({ x: x - L / 2 + o.u * L, z: z - L / 2 + o.v * L, s: o.s });
     else if (o.kind === 'lamp') lamps.push({ x: x + L * 0.36, z: z + L * 0.36 });
   }
   for (const m of batch.build()) bldGroup.add(m);
+  sweepSigns(); // frees the canvas signs this reading no longer draws
   for (const m of scen.build()) cityGroup.add(m);
   for (const a of kit.anims) bldGroup.add(a.obj);
   anims = kit.anims;
@@ -273,7 +288,14 @@ function buildScene() {
     el.className = 'route'; el.textContent = t('sign.route', { n: fmt.int(r.n) });
     const lab = new CSS2DObject(el); lab.position.set(wx(Math.floor(mid / 10000)), 5, wz(mid % 10000)); cityGroup.add(lab);
   }
-  world.maxH = Math.max(0, ...src.cities.map((c) => c.maxH));
+  $('#legend-mega').hidden = !world.mega.line; // ?mega=0 or MEGA_FLOORS=0: no Mega Builders, no legend line
+  const dt = world.district;
+  if (dt) { // the district's sign, at the end of the bridge
+    const wrap = document.createElement('div'), n = world.mega.members.length;
+    wrap.innerHTML = `<div class="sign district" data-district="1">💎 ${esc(t('mega.district'))}<small>${esc(n ? plural(n, 'mega.count') : t('mega.none'))}</small></div>`;
+    const sign = new CSS2DObject(wrap); sign.position.set(wx(dt.sign[0]), 5, wz(dt.sign[1])); cityGroup.add(sign);
+  }
+  world.maxH = Math.max(0, ...src.cities.map((c) => c.maxH), ...[...hqHits.values()].map((h) => h.h)); // and the district's campuses, in case one stands above the buildings
   if (!hills) makeHills(terrainSize);
   // life: people, boats, planes, helicopter, airship, beacon, elevator
   life = makeLife({ scene, world, data: src, wx, wz, marks: kit.marks, airports, size: terrainSize });
@@ -433,6 +455,21 @@ function selectDojo(cityId) {
   const h = dojoHits.get(cityId);
   if (h) { const v = currentView(); flyTo({ target: new THREE.Vector3(h.x, 6, h.z), phi: v.phi, dist: clamp(v.dist, 80, 240) }, 900); }
 }
+// The Corporate District: a headquarters' (or foundation's) card with the camera on it; the view
+// goes back to the region (the district is outside every city)
+function fitDistrict() {
+  const d = world?.district; if (!d) return fitRegion();
+  const top = Math.max(10, ...[...hqHits.values()].map((h) => h.h));
+  return { target: new THREE.Vector3(wx((d.x0 + d.x1) / 2), top * 0.3, wz(d.DH / 2)), phi: 0.48, dist: Math.max((d.x1 - d.x0) * L * 0.7, top * 2.2) }; // from above: the campuses are low, behind the cities
+}
+function toRegion() { view = { kind: 'region', id: null }; renderPanels(data, view, selected); $('#hall').classList.remove('open'); frameForDrawers(); updateHeli(); updateRing(); }
+function selectHq(id) {
+  const h = hqHits.get(id); if (!h) return;
+  closeModals(); selected = { hq: id }; toRegion();
+  const v = currentView();
+  flyTo({ target: new THREE.Vector3(h.x, h.h * 0.4, h.z), phi: clamp(v.phi, 0.2, 0.5), dist: clamp(h.h * 2.6, 60, 800) }, 1200); // the whole campus, crown included
+}
+function goDistrict() { if (!world?.district) return; closeModals(); selected = null; toRegion(); flyTo(fitDistrict(), 1500); }
 function goRegion() { if (view.kind !== 'region') setView({ kind: 'region', id: null }); else refit(); }
 function goCity(id, person = null) { if (!cityOf(id)) return; closeModals(); setView({ kind: 'city', id }, person); }
 function goPerson(cityId, personId) { goCity(cityId, personId); }
@@ -453,9 +490,11 @@ function celebrate(cityId, n = 3) {
 let tourIdx = -1, tourTimer = null;
 function tourStep() {
   if (tl) return;
-  const ids = data.cities.map((c) => c.id);
-  tourIdx = (tourIdx + 1) % (ids.length + 1);
-  if (tourIdx === 0) setView({ kind: 'region', id: null }); else setView({ kind: 'city', id: ids[tourIdx - 1] });
+  const ids = data.cities.map((c) => c.id), stops = ids.length + 1 + (world?.district ? 1 : 0); // the region, each city and the Corporate District
+  tourIdx = (tourIdx + 1) % stops;
+  if (tourIdx === 0) setView({ kind: 'region', id: null });
+  else if (tourIdx > ids.length) goDistrict();
+  else setView({ kind: 'city', id: ids[tourIdx - 1] });
 }
 
 // ───────── highlight: the building under the mouse (white) and the chosen one (gold, with a beam and a ring) ─────────
@@ -472,8 +511,9 @@ const selBeam = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 2.6, 70, 14, 1, t
 const selRing = new THREE.Mesh(new THREE.TorusGeometry(1, 0.12, 8, 40).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#f2b705', transparent: true, opacity: 0.8, depthWrite: false }));
 selBeam.visible = selRing.visible = false; scene.add(selBeam, selRing);
 const placeHi = (g, h) => { const w = (h.w ?? L) * 1.02; g.position.set(h.x, 0, h.z); g.scale.set(w, h.h + 1, w); g.visible = true; };
-const selectedHit = () => (selected?.dojo ? dojoHits.get(selected.city) : selected && hitByKey.get(keyOf(selected.city, selected.person)));
-const isSelectedHit = (h) => !!selected && h.c.id === selected.city && (h.dojo ? !!selected.dojo : h.mon ? false : !selected.dojo && h.b.id === selected.person);
+const selectedHit = () => (selected?.hq ? hqHits.get(selected.hq) : selected?.dojo ? dojoHits.get(selected.city) : selected && hitByKey.get(keyOf(selected.city, selected.person)));
+const isSelectedHit = (h) => !!selected && (selected.hq ? (h.hq ?? h.found)?.id === selected.hq
+  : !!h.c && h.c.id === selected.city && (h.dojo ? !!selected.dojo : h.mon ? false : !selected.dojo && h.b?.id === selected.person));
 function stepHighlights(now) {
   const hh = !tl && hovered && hoveredHit;
   if (hh && !isSelectedHit(hoveredHit)) placeHi(hoverHi, hoveredHit); else hoverHi.visible = false;
@@ -484,6 +524,56 @@ function stepHighlights(now) {
   selBeam.position.set(s.x, s.h + 35, s.z); selBeam.material.opacity = 0.22 + 0.14 * pulse; selBeam.visible = true;
   const r = 7 + 5 * ((now % 1400) / 1400);
   selRing.position.set(s.x, 0.5, s.z); selRing.scale.set(r, 1, r); selRing.material.opacity = 0.9 * (1 - (now % 1400) / 1400); selRing.visible = true;
+}
+
+// ───────── a Mega Builder's links: golden lines along the streets from each building to the campus ─────────
+// While the person is chosen (on the campus or foundation, or on one of their buildings); a light runs
+// along them from the buildings to the district (standing still with reduced motion).
+const linkMat = new THREE.ShaderMaterial({
+  uniforms: { uT: { value: 0 } }, transparent: true, depthWrite: false, side: THREE.DoubleSide,
+  vertexShader: `attribute float aS; attribute vec3 aOff; varying float vS;
+    void main() {
+      vec4 wp = modelMatrix * vec4(position, 1.0);
+      wp.xyz += aOff * clamp(distance(wp.xyz, cameraPosition) * 0.003, 0.6, 6.0); // as wide as a few pixels
+      vS = aS; gl_Position = projectionMatrix * viewMatrix * wp;
+    }`,
+  fragmentShader: 'uniform float uT; varying float vS; void main() { float k = fract((vS - uT) / 30.0); float p = smoothstep(0.0, 0.1, k) * (1.0 - smoothstep(0.1, 0.5, k)); gl_FragColor = vec4(mix(vec3(0.95, 0.72, 0.02), vec3(1.0, 0.95, 0.65), p), 0.5 + 0.5 * p); }',
+});
+let linkMesh = null, linkKey = '';
+// Flat ribbons, one per straight stretch: the vertices sit on the line and aOff pushes them across
+// (and past the ends, so the corners close) by the width the shader picks; aS: the way from the building.
+function linkGeo(list) {
+  const pos = [], off = [], ss = [], Y = 0.55, at = (k) => [Math.floor(k / 10000), k % 10000];
+  const elbow = (p, q) => (p[0] !== q[0] && p[1] !== q[1] ? [[p[0], q[1]]] : []); // a right angle between a lot and its road
+  for (const { from, to, path } of list) {
+    const tiles = path.map(at), first = tiles[0], last = tiles[tiles.length - 1];
+    const pts = [from, ...elbow(from, first), ...tiles, ...elbow(last, to), to].map(([x, y]) => [wx(x), wz(y)]);
+    const cs = pts.filter((p, i) => i === 0 || i === pts.length - 1 || (p[0] - pts[i - 1][0]) * (pts[i + 1][1] - p[1]) !== (p[1] - pts[i - 1][1]) * (pts[i + 1][0] - p[0]));
+    let s0 = 0;
+    for (let i = 1; i < cs.length; i++) {
+      const [x0, z0] = cs[i - 1], [x1, z1] = cs[i], len = Math.hypot(x1 - x0, z1 - z0);
+      if (!len) continue;
+      const ux = (x1 - x0) / len, uz = (z1 - z0) / len;
+      const q = [[x0, z0, -ux - uz, -uz + ux, s0], [x0, z0, -ux + uz, -uz - ux, s0], [x1, z1, ux - uz, uz + ux, s0 + len], [x1, z1, ux + uz, uz - ux, s0 + len]];
+      for (const j of [0, 1, 2, 2, 1, 3]) { pos.push(q[j][0], Y, q[j][1]); off.push(q[j][2], 0, q[j][3]); ss.push(q[j][4]); }
+      s0 += len;
+    }
+  }
+  if (!pos.length) return null;
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('aOff', new THREE.Float32BufferAttribute(off, 3)); g.setAttribute('aS', new THREE.Float32BufferAttribute(ss, 1));
+  return g;
+}
+function stepLinks(now) {
+  const id = tl || !world ? null : selected?.hq ?? (selected?.person && !selected.dojo && hqHits.has(selected.person) ? selected.person : null);
+  const key = id ? `${id}|${dataSig}` : '';
+  if (key !== linkKey) {
+    linkKey = key;
+    if (linkMesh) { scene.remove(linkMesh); linkMesh.geometry.dispose(); linkMesh = null; }
+    const g = key && linkGeo(megaLinks(world, id));
+    if (g) { linkMesh = new THREE.Mesh(g, linkMat); linkMesh.renderOrder = 2; linkMesh.frustumCulled = false; scene.add(linkMesh); }
+  }
+  if (linkMesh) linkMat.uniforms.uT.value = ANIM ? now * 0.02 : 0;
 }
 
 // ───────── mouse: the building under the cursor and the click ─────────
@@ -503,6 +593,7 @@ renderer.domElement.addEventListener('pointerup', (e) => {
   const hit = pick();
   closePopovers();
   if (!hit) { if (selected) select(null); return; }
+  if (hit.hq || hit.found) return selectHq((hit.hq ?? hit.found).id);
   if (hit.dojo) { if (view.kind === 'city' && hit.c.id === view.id) selectDojo(hit.c.id); else goCity(hit.c.id, { dojo: true }); return; }
   if (hit.mon) { // the rally opens the mayor's building; the other monuments only take you to their city
     const person = hit.mon.key === 'mayor' ? hit.mon.person.id : null;
@@ -513,12 +604,16 @@ renderer.domElement.addEventListener('pointerup', (e) => {
 });
 function pick() { ray.setFromCamera(ptr, camera); return ray.intersectObjects(hitGroup.children, false)[0]?.object.userData ?? null; }
 function pickHover() {
-  const h = ptr.x < -1 || tl ? null : pick(), b = h ? h.b ?? h.dojo ?? h.mon : null;
+  const h = ptr.x < -1 || tl ? null : pick(), b = h ? h.b ?? h.dojo ?? h.mon ?? h.hq ?? h.found : null;
   renderer.domElement.style.cursor = b ? 'pointer' : '';
   if (b === hovered) return;
   hovered = b; hoveredHit = h;
   if (!b) { tipEl.classList.add('off'); return; }
   if (h.dojo) tipEl.innerHTML = `🥋 ${esc(t(`dojoLevel.${h.dojo.levelKey}`).name)}${view.kind === 'region' ? ` · ${esc(cityLabel(h.c))}` : ''}<small>${plural(h.dojo.count, 'tip.dojo')}</small>`;
+  else if (h.hq) { // the Corporate District: a Mega Builder's headquarters (the floors added up) or the next one's foundation
+    const p = h.hq, ruin = ruinOf(p);
+    tipEl.innerHTML = `💎 ${esc(displayName(p).full)}<small>${ruin ? `${t(`ruin.${ruin}`, { days: plural(p.idle, 'count.day') })} · ` : ''}${esc(t('mega.tipHq', { floors: floorsText(p.floors), cities: plural(p.cities, 'count.city') }))}</small>`;
+  } else if (h.found) tipEl.innerHTML = `🚧 ${esc(displayName(h.found).full)}<small>${esc(t('mega.tipFound', { floors: fmt.int(Math.floor(h.found.floors)), line: fmt.int(world.mega.line) }))}</small>`;
   else if (h.mon) { // a monument: its name and what earns it (the rally: the mayor and last month's floors)
     const where = view.kind === 'region' ? `${esc(cityLabel(h.c))} · ` : '', m = h.mon;
     tipEl.innerHTML = m.key === 'mayor'
@@ -563,7 +658,8 @@ function paintMe() {
   mePins = [];
   $('#me-btn').hidden = !me || !data?.cities.some((c) => c.buildings.some((x) => x.id === me));
   if (!me) return;
-  for (const h of hitByKey.values()) if (h.b.id === me) { const o = new CSS2DObject(wrapped('mepin', t('me.pin'))); o.position.set(h.x, h.h + 2, h.z); scene.add(o); mePins.push(o); }
+  const mine = [...[...hitByKey.values()].filter((h) => h.b.id === me), ...[...hqHits.values()].filter((h) => (h.hq ?? h.found).id === me)]; // and the headquarters (or foundation) in the district
+  for (const h of mine) { const o = new CSS2DObject(wrapped('mepin', t('me.pin'))); o.position.set(h.x, h.h + 2, h.z); scene.add(o); mePins.push(o); }
 }
 function setMe(id) {
   me = me === id ? null : id;
@@ -604,11 +700,13 @@ function setMapMode(m) {
   if (data) { buildScene(); updateRing(); }
 }
 document.addEventListener('click', (e) => {
-  const el = e.target.closest('[data-menu], [data-hide-panel], [data-panel], [data-panels], [data-tool], [data-back], [data-close], [data-close-modal], [data-share], [data-me], [data-building], [data-dojo], [data-city], [data-dir], [data-map-mode], [data-film], [data-race], [data-tl-stop], #spin, #refit, [data-hour], .sign');
+  const el = e.target.closest('[data-menu], [data-hide-panel], [data-panel], [data-panels], [data-tool], [data-back], [data-close], [data-close-modal], [data-share], [data-me], [data-building], [data-dojo], [data-hq], [data-district], [data-city], [data-dir], [data-map-mode], [data-film], [data-race], [data-tl-stop], #spin, #refit, [data-hour], .sign');
   if (el?.hasAttribute('data-menu')) return setMenu(!('menu' in document.documentElement.dataset));
   if (!e.target.closest('#menu')) setMenu(false);
   if (!el) { if (e.target.classList.contains('modal')) closeModals(); else if (!e.target.closest('.popover')) closePopovers(); return; }
   if (el.dataset.dojo) { const id = el.dataset.dojo; if (view.kind === 'city' && view.id === id) selectDojo(id); else goCity(id, { dojo: true }); return; }
+  if (el.dataset.hq) return selectHq(el.dataset.hq);
+  if (el.dataset.district) return goDistrict();
   if (el.dataset.hidePanel) return setPanels([el.dataset.hidePanel], false);
   if (el.dataset.panel) return setPanels([el.dataset.panel], hiddenPanels.has(el.dataset.panel));
   if (el.dataset.panels) return setPanels(PANELS, el.dataset.panels === 'show');
@@ -656,9 +754,10 @@ document.addEventListener('keydown', (e) => {
   else if (e.key === 'g' || e.key === 'G') { controls.autoRotate = !controls.autoRotate; $('#spin').setAttribute('aria-pressed', String(controls.autoRotate)); }
 });
 addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; frameForDrawers(); camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight); labels.setSize(innerWidth, innerHeight); });
-// the folded panels of a narrow screen: this week's builds opens on its title; City Hall opens on any
+// the folded panels of a narrow screen: this week's builds and the Mega Builders open on their title; City Hall opens on any
 // touch and folds again on its top (the buttons and names inside keep working as usual)
 $('#ranking h2').addEventListener('click', () => { if (narrow()) $('#ranking').classList.toggle('open'); });
+$('#mega').addEventListener('click', (e) => { if (narrow() && e.target.closest('h2')) $('#mega').classList.toggle('open'); }); // the Mega Builders too (the panel is drawn again on every reading, its box stays)
 $('#hall').addEventListener('click', (e) => {
   if (!narrow() || e.target.closest('button, a, [data-building], [data-dojo], [data-city]')) return;
   const hall = $('#hall');
@@ -738,7 +837,7 @@ function frame(now) {
   fx.step(now);
   tl?.film.step(now);
   pickHover();
-  stepHighlights(now);
+  stepHighlights(now); stepLinks(now);
   updateNames(now, dist);
   if (useBloom) composer.render(); else renderer.render(scene, camera);
   labels.render(scene, camera);
@@ -843,4 +942,4 @@ applyHour(hour);
 load().then(() => { const el = $('#loading'); el.style.opacity = 0; setTimeout(() => el.remove(), 700); requestAnimationFrame(frame); })
   .catch(() => { $('#loading').remove(); requestAnimationFrame(frame); });
 setInterval(() => { if (pending && !tl) { const p = pending; pending = null; dataAt = 0; load().catch(() => {}); return; } load().catch(() => {}); }, REFRESH_MS);
-window.city = { scene, camera, controls, renderer, applyHour, goCity, goPerson, goRegion, select, selectDojo, flyTo, fitCity, fitRegion, reload: load, rebuild: buildScene, setMapMode, startFilm, stopFilm, summonMonster, celebrate, fx, hi: { hoverHi, selHi, selBeam, selRing }, get life() { return life; }, get data() { return data; }, get world() { return world; }, get view() { return view; }, get selected() { return selected; } };
+window.city = { scene, camera, controls, renderer, applyHour, goCity, goPerson, goRegion, select, selectDojo, selectHq, goDistrict, fitDistrict, flyTo, fitCity, fitRegion, reload: load, rebuild: buildScene, setMapMode, startFilm, stopFilm, summonMonster, celebrate, fx, hi: { hoverHi, selHi, selBeam, selRing }, get life() { return life; }, get data() { return data; }, get world() { return world; }, get view() { return view; }, get selected() { return selected; } };

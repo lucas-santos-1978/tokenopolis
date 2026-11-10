@@ -1,5 +1,5 @@
 // Static text of city.html (data-i18n* attributes). The "How to read" help pane is the partial
-// help-city.html. {appName}, {appNameUpper}, {zone}, {since}, {floor}, {idleFire} and {idleRubble} are filled by index.js.
+// help-city.html. {appName}, {appNameUpper}, {zone}, {since}, {floor}, {idleFire}, {idleRubble} and {megaFloors} are filled by index.js.
 
 export default {
   html: {
@@ -40,6 +40,7 @@ export default {
       neon: '🦉 Pink neon: works at night · 📡 used today',
       road: '🟡 Golden road: people in common',
       network: '🚩 Network (2 cities) · 👑 3+ · 🎩 mayor of the month',
+      mega: '💎 Mega Builder: {megaFloors} floors in 2+ cities · a campus in the Corporate District',
       pagoda: '🥋 Black pagoda: Dojo black belt · the city’s Dojo grows with every belt',
       ruins: '🔥 On fire: more than {idleFire} days without Claude · 🧱 rubble: more than {idleRubble}',
       more: '❔ See all the meanings',
@@ -70,6 +71,7 @@ export default {
       countdown: 'Countdown', countdownDesc: 'the milestone closest to falling',
       legend: 'Legend', legendDesc: 'what each mark means',
       hall: 'City Hall', hallDesc: 'in the city view',
+      mega: 'Mega Builders', megaDesc: 'the Corporate District’s headquarters',
       news: 'News ticker', newsDesc: 'the footer',
       onMap: 'ON THE MAP',
       names: 'City names', namesDesc: 'the signs over each city',

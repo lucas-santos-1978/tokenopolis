@@ -1,9 +1,10 @@
-// The region's terrain (buildWorld, buildLanes and goldRoutes). One region plot per city: blocks of
+// The region's terrain (buildWorld, buildLanes, goldRoutes and megaLinks). One region plot per city: blocks of
 // 4×4 lots with streets between them, highways on the borders, the river between the 1st and 2nd
 // rows (with bridges), monuments in the fields around, farms and woods. The tallest buildings stand
 // in the middle of each city, like in a real city: in 3D the camera turns and nobody hides anybody.
+// At the back, across a channel, the Corporate District with the Mega Builders' headquarters.
 
-import { context, monumentsOf, tierOf, mayorOf, BUILDING_TIERS } from './rules.js';
+import { context, monumentsOf, tierOf, mayorOf, megaOf, BUILDING_TIERS } from './rules.js';
 
 export const L = 10; // a lot, in world units
 export const BLOCK = 4; // a block of 4×4 lots
@@ -40,7 +41,13 @@ export function buildWorld(d, { allMonuments = false } = {}) {
   const PLOT = kmax * (BLOCK + 1) + 3;
   const mx = context(d);
   const PX = Math.max(1, Math.ceil(Math.sqrt(cities.length * 4 / 3))), PY = Math.max(1, Math.ceil(cities.length / PX));
-  const GW = PLOT * PX, GH = PLOT * PY;
+  const GW = PLOT * PX;
+  // the Corporate District (the Mega Builders' headquarters) takes a band at the back, across a
+  // channel; the cities' grid starts OY rows down
+  const mega = megaOf(d), dLots = [...mega.members.map((p) => ({ p, hq: true })), ...mega.queue.map((p) => ({ p, hq: false }))];
+  const bridgeX = PX > 1 ? Math.round(PX / 2) * PLOT : Math.floor(GW / 2); // a highway column of the grid, near the middle
+  const dist = dLots.length ? districtLayout(dLots.length, GW, bridgeX) : null;
+  const OY = dist ? dist.DH + 2 : 0, GH = PLOT * PY + OY;
   const slots = [];
   for (let px = 0; px < PX; px++) for (let py = 0; py < PY; py++) slots.push([px, py]);
   slots.sort((a, b) => (a[0] + a[1]) - (b[0] + b[1]) || a[1] - b[1]);
@@ -57,16 +64,17 @@ export function buildWorld(d, { allMonuments = false } = {}) {
   const tiles = new Map(), objs = [];
   const getT = (x, y) => tiles.get(K(x, y));
   // river between the 1st and 2nd rows of plots; highways on the other borders
-  for (let gx = 0; gx < GW; gx++) for (let gy = 0; gy < GH; gy++) {
-    const lx = gx % PLOT, ly = gy % PLOT, row = Math.floor(gy / PLOT);
+  for (let gx = 0; gx < GW; gx++) for (let gy = OY; gy < GH; gy++) {
+    const lx = gx % PLOT, ry = gy - OY, ly = ry % PLOT, row = Math.floor(ry / PLOT);
     let t = { t: 'grass' };
-    if (PY > 1 && (gy === PLOT - 1 || gy === PLOT)) t = lx === 0 && gx > 0 ? { t: 'hwy', dir: 'y', bridge: true } : { t: 'water' };
+    if (PY > 1 && (ry === PLOT - 1 || ry === PLOT)) t = lx === 0 && gx > 0 ? { t: 'hwy', dir: 'y', bridge: true } : { t: 'water' };
     else if (lx === 0 && gx > 0) t = { t: 'hwy', dir: 'y' };
     else if (ly === 0 && row >= 2) t = { t: 'hwy', dir: 'x' };
     tiles.set(K(gx, gy), t);
   }
+  const district = dist ? placeDistrict(dist, dLots, { tiles, objs, GW, OY }) : null;
   for (const c of cities) {
-    const [px, py] = c.slot, ox0 = px * PLOT, oy0 = py * PLOT;
+    const [px, py] = c.slot, ox0 = px * PLOT, oy0 = OY + py * PLOT;
     const cw = c.k * (BLOCK + 1) - 1, ch = c.m * (BLOCK + 1) - 1, inner = PLOT - 2;
     const sx = ox0 + 1 + Math.floor((inner - cw) / 2), sy = oy0 + 1 + Math.floor((inner - ch) / 2);
     c.box = { ox0, oy0, sx, sy, cw, ch };
@@ -132,7 +140,7 @@ export function buildWorld(d, { allMonuments = false } = {}) {
   }
   // the river bends: on the banks, where there is still field, it takes a lot here and there
   if (PY > 1) for (let gx = 0; gx < GW; gx++) {
-    for (const [gy, ph] of [[PLOT - 2, 0], [PLOT + 1, 2.1]]) {
+    for (const [gy, ph] of [[OY + PLOT - 2, 0], [OY + PLOT + 1, 2.1]]) {
       if (getT(gx, gy)?.t === 'grass' && Math.sin(gx * 0.37 + ph) + hash(gx, gy, 21) * 0.6 > 0.75) tiles.set(K(gx, gy), { t: 'water' });
     }
   }
@@ -155,7 +163,60 @@ export function buildWorld(d, { allMonuments = false } = {}) {
     Ln.gold = n >= 2;
   }
   const maxWeek = Math.max(1, ...cities.flatMap((c) => c.buildings.map((b) => b.week)));
-  return { PLOT, PX, PY, GW, GH, tiles, objs, getT, cities, maxWeek, lanes, routes, onRoute };
+  return { PLOT, PX, PY, GW, GH, OY, tiles, objs, getT, cities, maxWeek, lanes, routes, onRoute, mega, district };
+}
+
+// ───────── the Corporate District ─────────
+// The Mega Builders' headquarters (rules.js megaOf) on 2×2 lots along a boulevard, the tallest next
+// to the bridge that comes from the region's highway, alternating right and left; the next in line
+// get a foundation after them. Up to 8 lots in one row; beyond that, rows in pairs facing a
+// boulevard (the headquarters at the back, the foundations in front).
+function districtLayout(n, GW, bridge) {
+  const perMax = Math.max(2, Math.floor((GW - 6) / 3));
+  const rows = n <= Math.min(8, perMax) ? 1 : Math.max(2, Math.ceil(n / perMax)), per = Math.ceil(n / rows);
+  const pos = [];
+  for (let i = 0; pos.length < per; i++) { pos.push(bridge + 2 + 3 * i); if (pos.length < per) pos.push(bridge - 3 - 3 * i); }
+  const rowList = [], blvds = [];
+  let gy = 1; // a row of lawn at the far edge
+  for (let r = 0; r < rows; r += 2) {
+    rowList.push(gy); gy += 2; blvds.push(gy); gy += 1;
+    if (r + 1 < rows) { rowList.push(gy); gy += 2; }
+    gy += 1;
+  }
+  const xs = pos.flatMap((x) => [x, x + 1]);
+  return { DH: gy, bridge, pos, rows: rowList, blvds, x0: Math.max(0, Math.min(...xs, bridge) - 2), x1: Math.min(GW - 1, Math.max(...xs, bridge) + 2) };
+}
+// The district's tiles and objects: lawn, boulevards, the bridge over the channel, the lots (paved
+// for a headquarters, bare for a foundation), trees between the lots, lamps and the diamond on the
+// square at the end of the bridge. Returns where everything went, for main.js.
+function placeDistrict(dist, lots, { tiles, objs, GW, OY }) {
+  const { DH, bridge, pos, rows, blvds, x0, x1 } = dist;
+  for (let gx = 0; gx < GW; gx++) {
+    for (let gy = 0; gy < DH; gy++) tiles.set(K(gx, gy), { t: gx >= x0 && gx <= x1 ? 'campus' : 'grass' });
+    for (let gy = DH; gy < OY; gy++) tiles.set(K(gx, gy), gx === bridge ? { t: 'hwy', dir: 'y', bridge: true } : { t: 'water' });
+  }
+  for (const gy of blvds) for (let gx = x0 + 1; gx < x1; gx++) tiles.set(K(gx, gy), { t: 'road', district: true });
+  for (let gy = blvds[0]; gy < DH; gy++) tiles.set(K(bridge, gy), { t: 'road', district: true }); // from the first boulevard down to the bridge
+  const placed = [];
+  lots.forEach((lot, i) => {
+    const per = pos.length, gy = rows[Math.floor(i / per)], gx = pos[i % per];
+    for (let u = 0; u < 2; u++) for (let v = 0; v < 2; v++) tiles.set(K(gx + u, gy + v), { t: lot.hq ? 'plaza' : 'site', district: true });
+    const o = { kind: lot.hq ? 'hq' : 'found', p: lot.p, gx, gy, size: 2, rank: i + 1 };
+    objs.push(o); placed.push(o);
+  });
+  // trees in the gaps between the lots and along the far edge; lamps along the boulevards
+  const gaps = new Set();
+  for (const gy of rows) for (const gx of pos) for (const tx of [gx - 1, gx + 2]) {
+    if (tx === bridge || gaps.has(K(tx, gy)) || tiles.get(K(tx, gy))?.t !== 'campus') continue;
+    gaps.add(K(tx, gy));
+    for (const v of [0, 1]) objs.push({ gx: tx, gy: gy + v, kind: 'tree', s: 0.9, u: 0.5, v: 0.5 });
+  }
+  for (let gx = x0; gx <= x1; gx += 2) if (tiles.get(K(gx, 0))?.t === 'campus') objs.push({ gx, gy: 0, kind: 'tree', s: 1, u: 0.5, v: 0.6 });
+  for (const gy of blvds) for (let gx = x0 + 2; gx < x1 - 1; gx += 3) objs.push({ gx, gy, kind: 'lamp' });
+  const square = [bridge, blvds[0] - 1]; // the diamond: where the bridge's road meets the district
+  tiles.set(K(square[0], square[1]), { t: 'mon', district: true });
+  objs.push({ kind: 'diamond', gx: square[0], gy: square[1] });
+  return { ...dist, OY, lots: placed, square, sign: [bridge, DH - 1] };
 }
 
 // a street's direction from its neighbors (highways carry their own)
@@ -167,11 +228,31 @@ export function roadDir(gx, gy, getT) {
   return h && v ? 'xy' : v ? 'y' : 'x';
 }
 
+// Breadth-first search along streets, highways and bridges from a road tile: prev[key] = the tile
+// before it on the way (-1 at the start). pathTo reads the way from the start to any tile it reached.
+export function roadTree(getT, x, y) {
+  const isRoad = (a, b) => { const t = getT(a, b); return t && (t.t === 'road' || t.t === 'hwy'); };
+  const prev = new Map([[K(x, y), -1]]), queue = [[x, y]];
+  for (let i = 0; i < queue.length; i++) {
+    const [qx, qy] = queue[i];
+    for (const [nx, ny] of [[qx + 1, qy], [qx - 1, qy], [qx, qy + 1], [qx, qy - 1]]) {
+      const k = K(nx, ny);
+      if (!prev.has(k) && isRoad(nx, ny)) { prev.set(k, K(qx, qy)); queue.push([nx, ny]); }
+    }
+  }
+  return prev;
+}
+export function pathTo(prev, x, y) {
+  if (!prev.has(K(x, y))) return null;
+  const path = [];
+  for (let k = K(x, y); k !== -1; k = prev.get(k)) path.push(k);
+  return path.reverse();
+}
+
 // Golden roads: the path along streets, highways and bridges between the cities that share the
 // most people (up to 4 pairs, with 2 people or more). The golden cars carry the people in common.
 export function goldRoutes(d, cities, getT) {
   const byId = new Map(cities.map((c) => [c.id, c])), out = [];
-  const isRoad = (x, y) => { const t = getT(x, y); return t && (t.t === 'road' || t.t === 'hwy'); };
   const door = (c) => {
     let best = null;
     for (let x = c.box.ox0; x < c.box.ox0 + 40; x++) for (let y = c.box.oy0; y < c.box.oy0 + 40; y++) {
@@ -185,19 +266,32 @@ export function goldRoutes(d, cities, getT) {
   for (const { a, b, n } of (d.links ?? []).filter((l) => l.n >= 2 && byId.has(l.a) && byId.has(l.b)).slice(0, 4)) {
     const A = door(byId.get(a)), B = door(byId.get(b));
     if (!A || !B) continue;
-    const prev = new Map([[K(A.x, A.y), -1]]), queue = [[A.x, A.y]];
-    for (let i = 0; i < queue.length; i++) {
-      const [x, y] = queue[i];
-      if (x === B.x && y === B.y) break;
-      for (const [nx, ny] of [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]]) {
-        const k = K(nx, ny);
-        if (!prev.has(k) && isRoad(nx, ny)) { prev.set(k, K(x, y)); queue.push([nx, ny]); }
-      }
-    }
-    if (!prev.has(K(B.x, B.y))) continue;
-    const path = [];
-    for (let k = K(B.x, B.y); k !== -1; k = prev.get(k)) path.push(k);
-    out.push({ a, b, n, path: path.reverse() });
+    const path = pathTo(roadTree(getT, A.x, A.y), B.x, B.y);
+    if (path) out.push({ a, b, n, path });
+  }
+  return out;
+}
+
+// A Mega Builder's links (main.js draws them golden while the person is chosen): the way along the
+// streets from each of their buildings to their lot in the Corporate District (a campus or a
+// foundation), as [{ from, to: the edges of the building's lot and of the district lot facing their
+// roads (in tiles), path: the road tiles, from the building }].
+export function megaLinks(world, id) {
+  const lot = world.district?.lots.find((o) => o.p.id === id);
+  if (!lot) return [];
+  const { getT } = world, isRoad = (x, y) => { const t = getT(x, y); return t && (t.t === 'road' || t.t === 'hwy'); };
+  const near = (x0, y0, x1, y1, cx, cy) => { // the road tile in the box closest to (cx, cy)
+    let best = null;
+    for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) if (isRoad(x, y)) { const d = Math.hypot(x - cx, y - cy); if (!best || d < best.d) best = { x, y, d }; }
+    return best;
+  };
+  const gate = near(lot.gx - 1, lot.gy - 1, lot.gx + 2, lot.gy + 2, lot.gx + 0.5, lot.gy + 0.5);
+  if (!gate) return [];
+  const prev = roadTree(getT, gate.x, gate.y), out = [], edge = (r, x0, y0, n) => [Math.min(x0 + n - 0.5, Math.max(x0 - 0.5, r.x)), Math.min(y0 + n - 0.5, Math.max(y0 - 0.5, r.y))]; // a lot's edge, toward its road
+  for (const { b } of lot.p.parts) {
+    const o = world.objs.find((q) => q.kind === 'bld' && q.b === b);
+    const door = o && near(o.gx - 2, o.gy - 2, o.gx + 2, o.gy + 2, o.gx, o.gy), path = door && pathTo(prev, door.x, door.y);
+    if (path) out.push({ from: edge(door, o.gx, o.gy, 1), to: edge(gate, lot.gx, lot.gy, 2), path: path.reverse() });
   }
   return out;
 }
@@ -240,8 +334,8 @@ export function groundCanvas(world, { grey = false } = {}) {
   const cv = document.createElement('canvas'); cv.width = GW * PX; cv.height = GH * PX;
   const x = cv.getContext('2d');
   const C = grey
-    ? { grass: ['#b3b8ae', '#afb4aa', '#b7bcb2'], road: '#76787c', hwy: '#686a6e', walk: '#c6c5bf', lawn: '#b8bdb4', plaza: '#c6c5bf', park: '#adb3a6', water: '#8ea3b5', shore: '#aebcc8', farm: ['#bdbcb0', '#b5b7ab'], mon: '#c6c5bf', line: 'rgba(255,255,255,.6)', gold: 'rgba(242,183,5,.7)' }
-    : { grass: ['#86c05f', '#7fb95a', '#8cc566'], road: '#5b5e63', hwy: '#4c4f54', walk: '#b8b4a8', lawn: '#93c96c', plaza: '#cdc8b8', park: '#7cc35c', water: '#3f8fd0', shore: '#8fd0f0', farm: ['#d4bd63', '#9cc251'], mon: '#d6d0c2', line: 'rgba(255,255,255,.8)', gold: 'rgba(242,183,5,.85)' };
+    ? { grass: ['#b3b8ae', '#afb4aa', '#b7bcb2'], road: '#76787c', hwy: '#686a6e', walk: '#c6c5bf', lawn: '#b8bdb4', plaza: '#c6c5bf', park: '#adb3a6', water: '#8ea3b5', shore: '#aebcc8', farm: ['#bdbcb0', '#b5b7ab'], mon: '#c6c5bf', campus: '#bcc1b8', site: '#bdb9ae', line: 'rgba(255,255,255,.6)', gold: 'rgba(242,183,5,.7)' }
+    : { grass: ['#86c05f', '#7fb95a', '#8cc566'], road: '#5b5e63', hwy: '#4c4f54', walk: '#b8b4a8', lawn: '#93c96c', plaza: '#cdc8b8', park: '#7cc35c', water: '#3f8fd0', shore: '#8fd0f0', farm: ['#d4bd63', '#9cc251'], mon: '#d6d0c2', campus: '#97d070', site: '#a88e66', line: 'rgba(255,255,255,.8)', gold: 'rgba(242,183,5,.85)' };
   const isWater = (t) => t && (t.t === 'water' || t.bridge);
   for (let gy = 0; gy < GH; gy++) for (let gx = 0; gx < GW; gx++) {
     const t = getT(gx, gy), px = gx * PX, py = gy * PX, v = hash(gx, gy, 4);
@@ -272,6 +366,8 @@ export function groundCanvas(world, { grey = false } = {}) {
     if (t.t === 'lawn') { x.fillStyle = C.walk; x.fillRect(px, py, PX, PX); x.fillStyle = C.lawn; x.fillRect(px + 2, py + 2, PX - 4, PX - 4); }
     if (t.t === 'park') { x.fillStyle = C.walk; x.fillRect(px, py, PX, PX); x.fillStyle = C.park; x.fillRect(px + 2, py + 2, PX - 4, PX - 4); }
     if (t.t === 'farm') { const w = Math.max(3, PX / 8); for (let i = 0; i < PX; i += w) { x.fillStyle = C.farm[(Math.round(i / w) + t.alt) % 2]; x.fillRect(px + i, py, w, PX); } }
+    if (t.t === 'campus') { x.fillStyle = C.campus; x.fillRect(px, py, PX, PX); } // the district's mown lawn
+    if (t.t === 'site') { x.fillStyle = C.walk; x.fillRect(px, py, PX, PX); x.fillStyle = C.site; x.fillRect(px + 2, py + 2, PX - 4, PX - 4); } // a foundation's bare ground
   }
   return cv;
 }

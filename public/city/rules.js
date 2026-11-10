@@ -25,6 +25,43 @@ export function ruinOf(b) {
   return null;
 }
 
+// ───────── Mega Builders ─────────
+// Whoever builds in 2+ cities and adds up config.mega.floors floors across them (1,000 by default:
+// 1 billion tokens) is a Mega Builder, with a headquarters in the Corporate District as tall as the
+// floors added up. The next in line (2+ cities, half the line or more) get a foundation with their
+// progress. The server sets the line (MEGA_FLOORS, 0 = off); ?mega=<floors> changes it, ?mega=0 hides it.
+const MEGA_Q = new URLSearchParams(location.search).get('mega');
+export const MEGA_QUEUE = 6;
+export function megaLine() {
+  const q = MEGA_Q == null || MEGA_Q.trim() === '' ? NaN : Number(MEGA_Q);
+  return Number.isFinite(q) && q >= 0 ? Math.round(q) : Math.max(0, config.mega?.floors ?? 1000);
+}
+// { line, members, queue }; each one: the person's numbers added up across the cities (floors,
+// week, month, today, the freshest idle, the hours of use, building now) and `parts`, their
+// buildings ({ b, c }, the tallest first). Marks b.mega on the members' buildings.
+export function megaOf(data) {
+  const line = megaLine(), byId = new Map();
+  for (const c of data.cities) for (const b of c.buildings) {
+    delete b.mega;
+    let p = byId.get(b.id);
+    if (!p) byId.set(b.id, (p = { id: b.id, parts: [], floors: 0, week: 0, month: 0, today: 0, idle: Infinity, hours: 0, now: false }));
+    p.parts.push({ b, c });
+    p.floors += b.floors; p.week += b.week; p.month += b.month; p.today += b.today;
+    p.idle = Math.min(p.idle, b.idle ?? Infinity); p.hours |= b.hours || 0; p.now ||= !!b.now;
+  }
+  if (!line) return { line: 0, members: [], queue: [] };
+  const multi = [...byId.values()].filter((p) => p.parts.length >= 2).sort((a, b) => b.floors - a.floors || a.id.localeCompare(b.id));
+  for (const p of multi) {
+    p.parts.sort((a, b) => b.b.floors - a.b.floors);
+    const top = p.parts[0].b; // the identity (name, nickname, belt) comes from the tallest building
+    Object.assign(p, { name: top.name, anon: top.anon, belt: top.belt, cities: p.parts.length, idle: Number.isFinite(p.idle) ? p.idle : null });
+  }
+  const members = multi.filter((p) => p.floors >= line);
+  const queue = multi.filter((p) => p.floors < line && p.floors >= line / 2).slice(0, MEGA_QUEUE);
+  for (const p of members) { p.mega = true; for (const { b } of p.parts) b.mega = true; }
+  return { line, members, queue };
+}
+
 // ───────── milestones ─────────
 // Like the population in SimCity: the city changes its title with the accumulated floors, and each
 // title changes the look of all its buildings (style) and unlocks an extra on the map (perk).

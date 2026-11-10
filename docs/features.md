@@ -38,6 +38,18 @@ beams. Using Claude again puts it back up the same day. The card and the hover t
 `0` turns either stage off and `?ruins=0` hides both on one screen. Someone whose last use is older than
 `CITIES_START` has no tokens in the window and no building at all.
 
+**Mega Builders and the Corporate District.** Whoever builds in 2 or more cities and adds up
+`MEGA_FLOORS` (1,000) floors across them is a Mega Builder: a 💎 badge on the card ("1 billion tokens
+in 2+ cities"), a black and gold banner instead of the network flag on their buildings, and a
+**campus** in the Corporate District, a remote quarter across a channel behind the cities, reached by
+a bridge from the highway. The campus has one wing per city, each rising 1 floor for every 10 floors
+there (on the same scale as the buildings, so it grows ten times slower), with the city's name at its
+door, a lobby with the person's name, and a golden crown with a diamond on the tallest wing. Choosing a
+Mega Builder (on the campus or on one of their buildings) draws golden lines along the streets from
+each of their buildings to the campus. The next in line (2+ cities and at least half the line, up to
+6) get a foundation with a board showing how far they are. A campus burns and falls into rubble with
+its owner, like any building. `?mega=<floors>` moves the line on one screen; `0` hides the district.
+
 **Monuments.** Rewards the city earns, placed on its plots in this order of priority:
 
 | Monument | Requirement |
@@ -59,12 +71,12 @@ towing the news, the mayor's rally (a speech on a stage, a crowd and confetti), 
 and a countdown ring when a city reaches a milestone.
 
 **Panels.** Trophies, this week's builds, the weekly derby (two cities neck and neck), countdowns to
-the next milestones, the mayor of the month (most floors last month, with a statue and a rally in front of it), advisors, the
+the next milestones, the Mega Builders (with who is next in line), the mayor of the month (most floors last month, with a statue and a rally in front of it), advisors, the
 regional newspaper with classifieds, a live ticker of events, the legend, and the city hall sheet
 with everyone in the city. Panels hide with 👁️ or the `P` key (`?panels=0`).
 
 **On a phone** (up to 700 px wide) the scene comes first: the tools, the climb link and the language
-move behind ☰, this week's builds folds into a chip, City Hall and the building card are drawers at
+move behind ☰, this week's builds and the Mega Builders fold into chips, City Hall and the building card are drawers at
 the bottom (the touched building is framed above them), the camera bar keeps spin and reframe
 (drag to turn, pinch to zoom), and from afar only the city names show. Phones also get a lighter
 canvas (pixel ratio 1.25, a 2,048 shadow map).
@@ -88,7 +100,7 @@ The `belts` map paints each building with its belt color and the rest grey.
 **URL parameters.** `city`, `person`, `hour` (0–24, fixes the sun), `map`, `style`
 (`brick|concrete|glass|deco|neon`), `panels=0`, `names=0`, `quality=low`, `ruins=0`, `monuments=all`,
 `monster`, `spin`, `tour` (flies from region to city to city, for TVs), `cam=angle,tilt,distance`,
-`giant=N` (test tall buildings), `demo`, `lang`, `debug`. The help modal documents all of them.
+`giant=N` (test tall buildings), `mega=<floors>` (the Mega Builders' line), `demo`, `lang`, `debug`. The help modal documents all of them.
 
 ## The climb
 
@@ -147,7 +159,7 @@ jersey).
 
 `?demo` serves a fictional region next to your data: a hundred cities, about three thousand
 buildings, every milestone, building type and monument, Dojos at all three levels, mayors, newcomers,
-night owls, people in two or three cities, an overtake and a derby this week, countdowns, and 96
+night owls, people in two or three cities (seven of them Mega Builders), an overtake and a derby this week, countdowns, and 96
 days of history. The pill "demo · fictional data" shows while it is on.
 
 ## Keyboard

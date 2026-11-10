@@ -99,7 +99,7 @@ export default {
     default: { name: 'Normal', title: 'Normal', desc: 'the city as it is' },
     now: { name: 'Now', title: 'Now', desc: 'who is building right now', legend: ['building now', 'worked today', 'idle'] },
     week: { name: 'This week’s builds', title: 'This week’s builds', desc: 'from cold (nothing) to hot (biggest build)', legend: ['nothing', 'a little', 'average', 'a lot', 'the biggest'] },
-    network: { name: 'Network', title: 'Network', desc: 'who builds in more than one city', legend: ['3 cities or more', '2 cities', '1 city'] },
+    network: { name: 'Network', title: 'Network', desc: 'who builds in more than one city', legend: ['💎 Mega Builder', '3 cities or more', '2 cities', '1 city'] },
     model: { name: 'Model', title: 'Most used model (7 days)', desc: 'the model each person used most this week', legend: ['Opus', 'Sonnet', 'Haiku', 'Fable', 'other or no data'] },
     belts: { name: 'Dojo', title: 'Dojo', desc: 'everyone’s belt in the Dojo', legend: ['black', 'brown', 'purple', 'blue', 'white', 'no belt'] },
   },

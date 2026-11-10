@@ -106,7 +106,7 @@ export default {
     default: { name: 'Normal', title: 'Normal', desc: 'a cidade como ela é' },
     now: { name: 'Agora', title: 'Agora', desc: 'quem está construindo neste momento', legend: ['construindo agora', 'trabalhou hoje', 'parado'] },
     week: { name: 'Obras da semana', title: 'Obras da semana', desc: 'do frio (nada) ao quente (maior obra)', legend: ['nada', 'pouca', 'média', 'muita', 'as maiores'] },
-    network: { name: 'Rede', title: 'Rede', desc: 'quem constrói em mais de uma cidade', legend: ['3 cidades ou mais', '2 cidades', '1 cidade'] },
+    network: { name: 'Rede', title: 'Rede', desc: 'quem constrói em mais de uma cidade', legend: ['💎 Mega Builder', '3 cidades ou mais', '2 cidades', '1 cidade'] },
     model: { name: 'Modelo', title: 'Modelo mais usado (7 dias)', desc: 'o modelo que cada um mais usou na semana', legend: ['Opus', 'Sonnet', 'Haiku', 'Fable', 'outros ou sem dado'] },
     belts: { name: 'Dojo', title: 'Dojo', desc: 'a faixa de cada um no Dojo', legend: ['preta', 'marrom', 'roxa', 'azul', 'branca', 'sem faixa'] },
   },

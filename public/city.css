@@ -53,7 +53,8 @@ body { font-family: Nunito, "Segoe UI", system-ui, sans-serif; color: var(--ink)
 .trophy .what { font-size: 13px; color: #55626e; }
 .trophy.lead { outline: 2px solid var(--gold); }
 .trophy.lead .what { color: var(--green-ink); font-weight: 800; }
-.ranking { position: fixed; right: 20px; top: 72px; width: 330px; padding: 14px 16px 10px; z-index: 4; }
+.rcol { position: fixed; right: 20px; top: 72px; width: 330px; display: grid; gap: 10px; align-content: start; z-index: 4; }
+.ranking { position: relative; padding: 14px 16px 10px; }
 .ranking ol { list-style: none; margin: 0; padding: 0; }
 .ranking li { display: grid; grid-template-columns: 22px 1fr 96px 58px; align-items: center; gap: 6px; height: 23px; font-size: 15px; cursor: pointer; border-radius: 6px; }
 .ranking li:hover { background: #eef4ea; }
@@ -195,6 +196,32 @@ body { font-family: Nunito, "Segoe UI", system-ui, sans-serif; color: var(--ink)
 .error { position: fixed; left: 50%; top: 45%; transform: translate(-50%, -50%); z-index: 9; max-width: 640px; padding: 18px 22px; background: #fff; border-left: 5px solid #e8434b; border-radius: 10px; font-size: 15px; box-shadow: 0 6px 18px rgba(0, 0, 0, .2); }
 #loading { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; background: #0b0f1e; color: #f6f1ea; font-size: 18px; font-weight: 700; transition: opacity .6s; }
 
+/* Mega Builders: the headquarters in the Corporate District (the floors added up in 2+ cities) and the next in line */
+.mega { position: relative; padding: 11px 14px 9px; border-top: 3px solid #16181d; }
+.mega.empty { display: none; }
+.mega h2 small { color: var(--gold-ink); }
+.mega ol { list-style: none; margin: 0; padding: 0; }
+.mega li { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto auto; align-items: center; gap: 6px; height: 23px; padding: 0 4px; border-radius: 6px; cursor: pointer; }
+.mega li:hover { background: #f4efdf; }
+.mega li.none { display: block; cursor: default; color: var(--mute); font-size: 13px; }
+.mega .pos { font-weight: 900; color: var(--gold-ink); text-align: center; font-size: 14px; }
+.mega .name { font-weight: 800; font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mega .cities { font-size: 11.5px; font-weight: 800; color: var(--mute); white-space: nowrap; }
+.mega .val { font-weight: 900; font-size: 14px; text-align: right; }
+.mega h3 { margin: 7px 0 3px; font-size: 11px; font-weight: 900; letter-spacing: .3px; color: var(--mute); text-transform: uppercase; }
+.mega .q li { grid-template-columns: 22px minmax(0, 1fr) 64px auto; height: 21px; }
+.mega .q .name { font-size: 13px; font-weight: 700; }
+.mega .q .pos { font-size: 12px; }
+.mega .bar { height: 8px; border-radius: 4px; background: #ebe5d4; overflow: hidden; }
+.mega .bar i { display: block; height: 100%; width: calc(var(--w) * 100%); background: var(--gold); }
+.mega .more { all: unset; cursor: pointer; display: block; padding: 1px 4px 0 32px; color: var(--mute); font-size: 11.5px; font-weight: 800; }
+.mega .foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 5px; padding-top: 5px; border-top: 1px solid #edf0f3; font-size: 12px; }
+.mega .foot button { all: unset; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mega .next { min-width: 0; font-weight: 700; color: #55626e; }
+.mega .go { flex: none; font-weight: 900; color: #2b6cb0; }
+.mega .foot button:hover { text-decoration: underline; }
+.sheet .badge.mega { cursor: pointer; background: #16181d; color: #e3c25a; }
+
 /* camera: fixed views, spin on its own and back to the default framing */
 /* bottom-left corner: the camera bar stacked above the map key (when a data map is on), so neither covers the other */
 .corner { position: fixed; left: 330px; bottom: 54px; z-index: 4; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
@@ -211,6 +238,8 @@ body:has(#sheet:not([hidden])) .cam { display: none; }
 .sign small { display: block; font-size: 10.5px; letter-spacing: .3px; text-transform: none; color: #c9d4de; font-weight: 700; }
 .sign em { display: block; margin-top: 2px; font-style: normal; font-size: 11px; letter-spacing: .3px; text-transform: none; color: var(--gold); font-weight: 800; }
 .sign:hover { background: rgba(60, 75, 90, .95); }
+.sign.district { background: rgba(22, 24, 29, .92); border-color: #e3c25a; color: #e3c25a; }
+.sign.district small { color: #e9e2c6; }
 [data-hidden~=names] .sign, [data-view=city] .sign { display: none; }
 .rally { padding: 3px 10px 4px; border-radius: 8px; background: rgba(38, 49, 59, .9); border: 2px solid var(--gold); color: #fff; font-size: 12px; font-weight: 900; white-space: nowrap; text-align: center; pointer-events: none; transform: scale(var(--signk, 1)); transform-origin: 50% 100%; }
 .rally small { display: block; font-size: 10px; font-weight: 700; color: var(--gold); }
@@ -226,7 +255,7 @@ body:has(#sheet:not([hidden])) .cam { display: none; }
 
 /* hidden panels (👁️, each one's × or the P key) */
 [data-hidden~=trophies] #trophies, [data-hidden~=ranking] #ranking, [data-hidden~=derby] #derby,
-[data-hidden~=countdown] #countdown, [data-hidden~=legend] .legend, [data-hidden~=hall] #hall { display: none !important; }
+[data-hidden~=countdown] #countdown, [data-hidden~=legend] .legend, [data-hidden~=hall] #hall, [data-hidden~=mega] #mega { display: none !important; }
 .panel-x { all: unset; cursor: pointer; position: absolute; z-index: 3; top: -9px; right: -9px; width: 22px; height: 22px; border-radius: 50%; background: #fff; color: var(--mute); font: 900 16px/22px Nunito, "Segoe UI", sans-serif; text-align: center; box-shadow: 0 2px 6px rgba(0, 0, 0, .28); opacity: 0; transition: opacity .15s; }
 .panel-x:hover { background: var(--slate); color: #fff; }
 @media (hover: hover) { .card:hover > .panel-x, .trophies:hover > .panel-x, .hall:hover .panel-x { opacity: 1; } }
@@ -430,8 +459,8 @@ kbd { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 5px
 
 /* narrow screens: only the scene, the bar and the card */
 @media (max-width: 900px) {
-  .trophies, .legend, .derby, .countdown, .stats, .subtitle { display: none !important; }
-  .ranking { width: 220px; }
+  .trophies, .mega, .legend, .derby, .countdown, .stats, .subtitle { display: none !important; }
+  .rcol { width: 220px; }
   .hall { width: min(340px, calc(100vw - 30px)); }
   .corner { bottom: 10px; }
   .sheet { left: 10px; bottom: 10px; width: calc(100% - 20px); }
@@ -458,7 +487,8 @@ kbd { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 5px
   .tool-pop, .panels, .sky { top: 60px; left: 8px; right: 8px; width: auto; max-height: calc(100vh - 120px); overflow: auto; }
 
   /* region: this week's builds folds into a chip (tap to open); the camera keeps only spin and reframe */
-  .ranking { top: 62px; right: 8px; width: min(320px, calc(100vw - 16px)); padding: 9px 12px 8px; box-sizing: border-box; }
+  .rcol { top: 62px; right: 8px; width: min(320px, calc(100vw - 16px)); justify-items: end; }
+  .ranking { width: 100%; padding: 9px 12px 8px; box-sizing: border-box; }
   .ranking h2 { margin: 0; cursor: pointer; gap: 8px; }
   .ranking h2::after { content: '▾'; font-size: 12px; }
   .ranking.open h2 { margin-bottom: 8px; }
@@ -467,6 +497,16 @@ kbd { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 5px
   .ranking:not(.open) ol, .ranking:not(.open) h2 small, .ranking .panel-x { display: none; }
   [data-map] .ranking { display: none; }
   body:has(.ranking.open) .corner { display: none; } /* the open list takes the top */
+  /* the Mega Builders: a chip under this week's builds, opened the same way */
+  .rcol .mega:not(.empty) { display: block !important; width: 100%; padding: 9px 12px 8px; box-sizing: border-box; }
+  .mega h2 { margin: 0; cursor: pointer; gap: 8px; }
+  .mega h2::after { content: '▾'; font-size: 12px; }
+  .mega.open h2 { margin-bottom: 8px; }
+  .mega.open h2::after { content: '▴'; }
+  .rcol .mega:not(.open) { width: auto; }
+  .mega:not(.open) ol, .mega:not(.open) .foot, .mega:not(.open) h2 small, .mega .panel-x { display: none; }
+  [data-map] .rcol .mega { display: none !important; }
+  body:has(.mega.open) .corner { display: none; }
   .corner, [data-view=city] .corner, [data-hidden~=legend] .corner, [data-map] .corner, [data-hidden~=news] .corner { top: 62px; bottom: auto; left: 8px; }
   .cam button[data-dir] { display: none; }
   .mapkey { max-width: calc(100vw - 16px); box-sizing: border-box; }

@@ -1,5 +1,5 @@
 // Texto estático de city.html (atributos data-i18n*). A aba "Como ler" da ajuda é o parcial
-// help-city.html. {appName}, {appNameUpper}, {zone}, {since}, {floor}, {idleFire} e {idleRubble} vêm do index.js.
+// help-city.html. {appName}, {appNameUpper}, {zone}, {since}, {floor}, {idleFire}, {idleRubble} e {megaFloors} vêm do index.js.
 
 export default {
   html: {
@@ -40,6 +40,7 @@ export default {
       neon: '🦉 Neon rosa: trabalha de noite · 📡 usou hoje',
       road: '🟡 Estrada dourada: pessoas em comum',
       network: '🚩 Rede (2 cidades) · 👑 3+ · 🎩 prefeito do mês',
+      mega: '💎 Mega Builder: {megaFloors} andares em 2+ cidades · um campus no Distrito Corporativo',
       pagoda: '🥋 Pagode preto: faixa preta do Dojo · o Dojo da cidade cresce com todas as faixas',
       ruins: '🔥 Pegando fogo: mais de {idleFire} dias sem Claude · 🧱 escombros: mais de {idleRubble}',
       more: '❔ Ver todos os significados',
@@ -70,6 +71,7 @@ export default {
       countdown: 'Contagem regressiva', countdownDesc: 'o marco mais perto de cair',
       legend: 'Legenda', legendDesc: 'o que cada marca quer dizer',
       hall: 'Prefeitura', hallDesc: 'na vista da cidade',
+      mega: 'Mega Builders', megaDesc: 'as sedes do Distrito Corporativo',
       news: 'Letreiro de notícias', newsDesc: 'o rodapé',
       onMap: 'NO MAPA',
       names: 'Nomes das cidades', namesDesc: 'as placas sobre cada cidade',

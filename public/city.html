@@ -54,11 +54,14 @@
 
   <!-- region view -->
   <aside id="trophies" class="trophies" data-for="region"></aside>
-  <aside id="ranking" class="card ranking" data-for="region">
+  <div class="rcol" data-for="region"><!-- the right column: this week's builds and, below, the Mega Builders -->
+  <aside id="ranking" class="card ranking">
     <button type="button" class="panel-x" data-hide-panel="ranking" aria-label="Hide this week’s builds" title="Hide this week’s builds (the 👁️ brings it back)" data-i18n-aria="html.ranking.hide" data-i18n-title="html.ranking.hideTitle">×</button>
     <h2 data-i18n-html="html.ranking.heading">THIS WEEK’S BUILDS <small>floors added</small></h2>
     <ol id="ranking-list"></ol>
   </aside>
+  <aside id="mega" class="card mega empty"></aside>
+  </div>
   <aside id="derby" class="card derby" data-for="region"></aside>
   <aside id="countdown" class="card countdown" data-for="region"></aside>
   <aside class="card legend" data-for="region">
@@ -77,6 +80,7 @@
       <li data-i18n="html.legend.neon">🦉 Pink neon: works at night · 📡 used today</li>
       <li data-i18n="html.legend.road">🟡 Golden road: people in common</li>
       <li data-i18n="html.legend.network">🚩 Network (2 cities) · 👑 3+ · 🎩 mayor of the month</li>
+      <li data-i18n="html.legend.mega" id="legend-mega">💎 Mega Builder: 1,000 floors in 2+ cities · a campus in the Corporate District</li>
       <li data-i18n="html.legend.pagoda">🥋 Black pagoda: Dojo black belt · the city’s Dojo grows with every belt</li>
       <li data-i18n="html.legend.ruins">🔥 On fire: 15+ days without Claude · 🧱 rubble: 30+</li>
     </ul>
@@ -130,6 +134,7 @@
     <button type="button" role="menuitemcheckbox" data-panel="countdown" aria-checked="true"><span>⏳</span><div><b data-i18n="html.panels.countdown">Countdown</b><small data-i18n="html.panels.countdownDesc">the milestone closest to falling</small></div><i class="tg"></i></button>
     <button type="button" role="menuitemcheckbox" data-panel="legend" aria-checked="true"><span>🔎</span><div><b data-i18n="html.panels.legend">Legend</b><small data-i18n="html.panels.legendDesc">what each mark means</small></div><i class="tg"></i></button>
     <button type="button" role="menuitemcheckbox" data-panel="hall" aria-checked="true"><span>🏛️</span><div><b data-i18n="html.panels.hall">City Hall</b><small data-i18n="html.panels.hallDesc">in the city view</small></div><i class="tg"></i></button>
+    <button type="button" role="menuitemcheckbox" data-panel="mega" aria-checked="true"><span>💎</span><div><b data-i18n="html.panels.mega">Mega Builders</b><small data-i18n="html.panels.megaDesc">the Corporate District’s headquarters</small></div><i class="tg"></i></button>
     <button type="button" role="menuitemcheckbox" data-panel="news" aria-checked="true"><span>📰</span><div><b data-i18n="html.panels.news">News ticker</b><small data-i18n="html.panels.newsDesc">the footer</small></div><i class="tg"></i></button>
     <h4 data-i18n="html.panels.onMap">ON THE MAP</h4>
     <button type="button" role="menuitemcheckbox" data-panel="names" aria-checked="true"><span>🪧</span><div><b data-i18n="html.panels.names">City names</b><small data-i18n="html.panels.namesDesc">the signs over each city</small></div><i class="tg"></i></button>

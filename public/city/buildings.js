@@ -5,14 +5,15 @@
 // Variety per person: a fixed draw from the id (seed) picks the footprint (square, slab, L-shaped or
 // on a podium), the setback, the window tile, the crown and the rooftop details. The rooftop tells
 // the story: yellow top for this week's floors, a crane for whoever is building now, newcomer
-// balloons, helipad, garden, antenna, the night owl's neon sign and the network's flag. Whoever stops
+// balloons, helipad, garden, antenna, the night owl's neon sign and the network's flag (a black and
+// gold banner for a Mega Builder, whose campus stands in the Corporate District). Whoever stops
 // using Claude sees the building burn (soot on the walls; flames and smoke come from life.js) and
 // then fall into a pile of rubble (ruinOf in rules.js).
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { seed, tier, kind, L } from './world.js';
-import { t, displayName } from '../i18n/index.js';
+import { t, fmt, displayName } from '../i18n/index.js';
 import { monthOf, floorsText, ruinOf } from './rules.js';
 
 const TILE_W = 4.8, TILE_H = 4; // one tile of the facade texture: 4 windows × 4 (visual) floors
@@ -77,6 +78,8 @@ const POND = matte('#4b9ad6', { roughness: 0.15, metalness: 0.1 });
 const PAPER = nightly(reg(new THREE.MeshStandardMaterial({ color: '#d8c7a0', emissive: '#ffb45a', emissiveIntensity: 0, roughness: 0.9 })), 1.3);
 const LANTERN = nightly(glowMat('#e03b2e'), 2.2);
 const GOLD_GLOW = nightly(reg(new THREE.MeshStandardMaterial({ color: '#e3c25a', emissive: '#ffb84a', emissiveIntensity: 0, roughness: 0.35, metalness: 0.7, envMapIntensity: 0.9 })), 0.7);
+// the Corporate District: graphite glass, black and gold (the Mega Builders' colors)
+const HQ_GLASS = '#56616f', INK = matte('#16181d', { roughness: 0.5, metalness: 0.2 });
 
 // Facade tiles: 4 windows × 4 floors per style, with the lit windows drawn at random (emission
 // map). The facade is white so the material tints it with the building's color.
@@ -231,6 +234,33 @@ export class Batcher {
   }
 }
 
+// ───────── signs drawn on a canvas ─────────
+// The rally's banner, the headquarters' name and the foundation's board: one material per text, kept
+// between readings (the scene is rebuilt whenever a building gains a floor) and freed when a reading
+// no longer draws it (sweepSigns, after each build), so a TV that runs all day does not pile up textures.
+const signCache = new Map();
+let signUsed = new Set();
+function signMat(key, w, h, draw, glow = 1.3) {
+  signUsed.add(key);
+  let m = signCache.get(key);
+  if (!m) {
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h; draw(cv.getContext('2d'), w, h);
+    const map = new THREE.CanvasTexture(cv); map.colorSpace = THREE.SRGBColorSpace; map.anisotropy = 4;
+    m = nightly(reg(new THREE.MeshStandardMaterial({ map, emissiveMap: map, emissive: new THREE.Color('#ffffff'), emissiveIntensity: 0, roughness: 0.7 })), glow);
+    signCache.set(key, m);
+  }
+  return m;
+}
+export function sweepSigns() {
+  for (const [key, m] of signCache) {
+    if (signUsed.has(key)) continue;
+    signCache.delete(key); mats.delete(m); m.map?.dispose(); m.dispose();
+    const i = lit.findIndex((x) => x.m === m); if (i >= 0) lit.splice(i, 1);
+  }
+  signUsed = new Set();
+}
+const fitFont = (c, text, max, size, min = 12) => { let s = size; c.font = `900 ${s}px Nunito, "Segoe UI", sans-serif`; while (c.measureText(text).width > max && s > min) { s -= 2; c.font = `900 ${s}px Nunito, "Segoe UI", sans-serif`; } return text; };
+
 // ───────── the kit ─────────
 // hOf(b): the building's height in the world (the scale lives in main.js). In each call, x and z are
 // the lot's center; what moves comes back in anims; the lot's trees go into trees.
@@ -344,7 +374,19 @@ export function makeKit(batch, hOf, wkOf, colorOf = null) {
     if (b.night >= 2) { B(boxGeo(w * 0.5, 1.4, 0.2), matte('#3a2a40'), x - w * 0.15, h, z + d * 0.4); B(boxGeo(w * 0.46, 1.1, 0.1), PINK, x - w * 0.15, h + 0.15, z + d * 0.45); }
     if (b.now) crane(x - w * 0.3, h, z + w * 0.3, r);
     if (b.isNew) balloons(x, h, z);
-    if (b.cities > 1) flag(x + w * 0.32, h, z + d * 0.32, b.cities >= 3);
+    flagFor(b, x + w * 0.32, h, z + d * 0.32);
+  }
+  // whoever builds in more cities: the network's golden flag (with a tip from 3 cities); a Mega
+  // Builder's is a black and golden banner with a diamond
+  function flagFor(b, x, h, z) {
+    if (!(b.cities > 1)) return;
+    if (b.mega && !colorOf) megaFlag(x, h, z); else flag(x, h, z, b.cities >= 3);
+  }
+  function megaFlag(x, h, z) {
+    B(cylGeo(0.09, 0.09, 6.2, 6), GOLD_MAT, x, h, z); B(sphGeo(0.32, 6), GOLD_GLOW, x, h + 6.35, z);
+    B(boxGeo(2.6, 1.5, 0.08), INK, x + 1.3, h + 4.4, z);
+    B(boxGeo(2.6, 0.22, 0.1), GOLD_MAT, x + 1.3, h + 4.4, z); B(boxGeo(2.6, 0.22, 0.1), GOLD_MAT, x + 1.3, h + 5.68, z);
+    B(NI(new THREE.OctahedronGeometry(0.42)), GOLD_GLOW, x + 1.3, h + 5.15, z + 0.08, 0, [1, 1.3, 0.35]);
   }
   // The mast goes into the merged mesh; the jib (which turns) becomes an instance of two meshes
   // shared by all cranes (main.js builds and animates them): with a thousand cranes, two meshes per
@@ -391,7 +433,7 @@ export function makeKit(batch, hOf, wkOf, colorOf = null) {
     for (let i = 0; i < 1 + Math.floor(r() * 2); i++) trees.push({ x: x + (r() < 0.5 ? -1 : 1) * L * 0.4, z: z - L * 0.38 + r() * L * 0.3, s: 0.55 + r() * 0.3 });
     if (b.now) crane(x - 2, hh, z + 2, r);
     if (b.isNew) balloons(x, hh, z);
-    if (b.cities > 1) flag(x + 1.3, hh - 0.5, z + 1.3, b.cities >= 3);
+    flagFor(b, x + 1.3, hh - 0.5, z + 1.3);
     if (fire) marks.push({ kind: 'fire', x, z, h: hh, w: 5, d: 4, house: true });
     return { h: hh };
   }
@@ -507,7 +549,7 @@ export function makeKit(batch, hOf, wkOf, colorOf = null) {
     if (b.night >= 2) B(cylGeo(0.5, 0.5, 1, 10), LANTERN, x, eaveY - 1.3, z + topW / 2 + ov - 0.5);
     if (b.now) crane(x - topW * 0.3, top, z + topW * 0.3, r);
     if (b.isNew) balloons(x, top, z);
-    if (b.cities > 1) flag(x + topW * 0.4, top - 0.4, z + topW * 0.4, b.cities >= 3);
+    flagFor(b, x + topW * 0.4, top - 0.4, z + topW * 0.4);
     return { h: top };
   }
   // A dark wooden house, for black belts under 15 floors
@@ -522,7 +564,7 @@ export function makeKit(batch, hOf, wkOf, colorOf = null) {
     const hh = 4.8;
     if (b.now) crane(x - 2, hh, z + 2, r);
     if (b.isNew) balloons(x, hh, z);
-    if (b.cities > 1) flag(x + 1.3, hh - 0.5, z + 1.3, b.cities >= 3);
+    flagFor(b, x + 1.3, hh - 0.5, z + 1.3);
     return { h: hh };
   }
   function stoneLantern(x, z) { B(cylGeo(0.22, 0.3, 1.0, 8), STONE_D, x, 0, z); B(boxGeo(0.7, 0.22, 0.7), STONE_D, x, 1.0, z); B(boxGeo(0.45, 0.42, 0.45), WARM_LIGHT, x, 1.22, z); B(boxGeo(0.9, 0.18, 0.9), STONE_D, x, 1.64, z); B(sphGeo(0.14, 6), STONE_D, x, 1.95, z); }
@@ -571,16 +613,17 @@ export function makeKit(batch, hOf, wkOf, colorOf = null) {
   }
   // The banner's canvas: "MAYOR FOR NOVEMBER", the name and last month's floors (lit at night).
   function bannerMat(m) {
-    const cv = document.createElement('canvas'); cv.width = 512; cv.height = 200; const c = cv.getContext('2d');
-    c.fillStyle = '#1d2630'; c.fillRect(0, 0, 512, 200); c.fillStyle = '#f2b705'; c.fillRect(0, 0, 512, 8); c.fillRect(0, 192, 512, 8);
-    c.textAlign = 'center';
-    const fit = (text, max, size) => { let s = size; c.font = `900 ${s}px Nunito, "Segoe UI", sans-serif`; while (c.measureText(text).width > max && s > 14) { s -= 2; c.font = `900 ${s}px Nunito, "Segoe UI", sans-serif`; } return text; };
-    c.fillStyle = '#f2b705'; c.fillText(fit(t('rally.banner', { month: monthOf(m.month, 'period.thisMonth') }).toUpperCase(), 470, 26), 256, 58);
-    c.fillStyle = '#ffffff'; c.fillText(fit(displayName(m.person).full, 470, 50), 256, 120);
-    c.fillStyle = '#cfd8e3'; c.fillText(fit(t('rally.floors', { floors: floorsText(m.person.lastMonth), lastMonth: monthOf(m.lastMonth, 'period.lastMonth') }), 470, 24), 256, 166);
-    const map = new THREE.CanvasTexture(cv); map.colorSpace = THREE.SRGBColorSpace; map.anisotropy = 4;
-    return nightly(reg(new THREE.MeshStandardMaterial({ map, emissiveMap: map, emissive: new THREE.Color('#ffffff'), emissiveIntensity: 0, roughness: 0.7 })), 1.4);
+    const head = t('rally.banner', { month: monthOf(m.month, 'period.thisMonth') }).toUpperCase(), who = displayName(m.person).full;
+    const foot = t('rally.floors', { floors: floorsText(m.person.lastMonth), lastMonth: monthOf(m.lastMonth, 'period.lastMonth') });
+    return signMat(`rally|${head}|${who}|${foot}`, 512, 200, (c) => {
+      c.fillStyle = '#1d2630'; c.fillRect(0, 0, 512, 200); c.fillStyle = '#f2b705'; c.fillRect(0, 0, 512, 8); c.fillRect(0, 192, 512, 8);
+      c.textAlign = 'center';
+      c.fillStyle = '#f2b705'; c.fillText(fitFont(c, head, 470, 26, 14), 256, 58);
+      c.fillStyle = '#ffffff'; c.fillText(fitFont(c, who, 470, 50, 14), 256, 120);
+      c.fillStyle = '#cfd8e3'; c.fillText(fitFont(c, foot, 470, 24, 14), 256, 166);
+    }, 1.4);
   }
+
 
   // The city's Dojo: Dojo (1 black belt, 1 lot), Temple (3, 2×2) and Great Temple (7, 3×3). The
   // level comes from the count; n is how much fit in the field (the great temple fits where it can).
@@ -610,5 +653,114 @@ export function makeKit(batch, hOf, wkOf, colorOf = null) {
     torii(x, z + 4.3, 2.6, 3.2); sakura(x + 3.6, z - 2.6, 0.8);
     return { h: 7 };
   }
-  return { tower, house, monument, anims, trees, marks, cranes };
+
+  // ───────── the Corporate District: headquarters, foundations and the diamond ─────────
+  // A Mega Builder's headquarters, a campus on a 2×2 lot (p from rules.js megaOf). One wing per city
+  // around a lawn (back, left and right, then two short ones at the front; past five, the rest share
+  // the last), each as tall as that city's floors on the headquarters' scale (H: main.js, 10 floors in
+  // the cities make one here, so a campus grows ten times slower than the buildings), with golden
+  // cornices and corner fins and the city's name at its door; the lobby at the front with the person's
+  // name over the door and one pennant per city; the golden crown and the diamond on the tallest wing.
+  // Windows by the person's hours; this week's floors scaffolded on the wing that grew most; a crane on
+  // the wing being built now; on fire or in rubble like any building.
+  function hq(p, x, z, H = (f) => hOf({ floors: f })) {
+    const r = seed(`hq${p.id}`), ruin = ruinOf(p), fire = ruin === 'fire' && !colorOf, S = L * 0.92;
+    B(boxGeo(S * 2, 0.3, S * 2), STONE, x, 0, z);
+    if (ruin === 'rubble') return rubble(p, x, z, colorOf ? colorOf(p) : HQ_GLASS, false, r);
+    const hex = colorOf ? colorOf(p) : fire ? shade(HQ_GLASS, 0.5) : HQ_GLASS;
+    const side = colorOf ? matte(hex) : facadeMat('hq', 0, true, hex), roof = colorOf ? matte(shade(hex, 0.8)) : INK;
+    const gold = colorOf ? matte(shade(hex, 1.15)) : GOLD_MAT, glow = colorOf ? gold : GOLD_GLOW, unit = colorOf ? roof : matte('#8a8f96');
+    const mask = p.hours || 0, hours = [mask & 255, (mask >> 8) & 255, (mask >> 16) & 255, fire ? 0 : p.now ? 1 : p.today > 0 ? 0.6 : 0.15];
+    const wings = p.parts.slice(0, 5).map(({ b, c }) => ({ b, name: c.name ?? c.code ?? '', f: b.floors, week: b.week || 0, now: !!b.now }));
+    if (p.parts.length > 5) { const rest = p.parts.slice(4), w = wings[4]; w.name = `+${rest.length}`; w.f = rest.reduce((s, { b }) => s + b.floors, 0); w.week = rest.reduce((s, { b }) => s + (b.week || 0), 0); w.now = rest.some(({ b }) => b.now); }
+    const front = wings.length >= 4, e = S - 0.5, back = -e + 4.8, mid = front ? S * 0.3 : S * 0.55;
+    const slots = [[0, (back - e) / 2, 2 * e, 4.8], [-e + 2.2, (back + mid) / 2, 4.4, mid - back], [e - 2.2, (back + mid) / 2, 4.4, mid - back], [-e + 2.2, (mid + 0.6 + e) / 2, 4.4, e - mid - 0.6], [e - 2.2, (mid + 0.6 + e) / 2, 4.4, e - mid - 0.6]];
+    B(boxGeo(2 * (e - 4.4), 0.08, e - 3.6 - back), matte(colorOf ? shade(hex, 1.3) : '#7cc35c'), x, 0.3, z + (e - 3.6 + back) / 2); // the lawn, up to the lobby
+    let top = null; const busy = wings.reduce((a, w) => (w.week >= 1 && w.week > (a?.week ?? 0) ? w : a), null); // the scaffold goes on the wing that grew most this week
+    wings.forEach((w, i) => {
+      const [u, v, ww, dd] = slots[i], cx = x + u, cz = z + v, hw = H(w.f), y1 = 0.3 + hw;
+      cur = { hours, H: hw };
+      bx(ww, hw, dd, side, roof, cx, 0.3, cz);
+      B(boxGeo(ww + 0.5, 0.4, dd + 0.5), gold, cx, y1 - 0.5, cz); // the cornice: a band under the roof's edge
+      const fin = boxGeo(0.4, hw, 0.4);
+      for (const [a, c2] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) B(fin, gold, cx + a * (ww / 2 + 0.03), 0.3, cz + c2 * (dd / 2 + 0.03));
+      B(boxGeo(Math.min(ww, dd) * 0.4, 0.8, Math.min(ww, dd) * 0.4), unit, cx + (ww > dd ? ww * 0.25 : 0), y1, cz + (ww > dd ? 0 : -dd * 0.25)); // a rooftop unit
+      if (!colorOf && w.name) { const pw = Math.min(ww - 1, 4.4); B(NI(new THREE.PlaneGeometry(pw, pw / 4)), wingSign(w.name), cx, 1.9, cz + dd / 2 + 0.06); } // the city's name at the wing's door
+      const wk = H(w.f) - H(Math.max(0, w.f - w.week));
+      if (w === busy && hw > 2) { const s = clamp(Math.max(0.8, wk), 0.8, hw - 1.5); bx(ww + 0.25, s, dd + 0.25, SCAFFOLD, SCAFFOLD_TOP, cx, y1 - s, cz); }
+      if (w.now) crane(cx - ww * 0.2, y1, cz + dd * 0.2, r);
+      if (!top || hw > top.hw) top = { cx, cz, ww, dd, hw, y1 };
+    });
+    cur = null;
+    // the lobby: low glass at the front, the name over the door, a golden canopy and band
+    const lz = z + e - 1.8, lf = lz + 1.8;
+    cur = { hours, H: 4.4 }; bx(7, 4.4, 3.6, side, roof, x, 0.3, lz); cur = null;
+    B(boxGeo(7.6, 0.45, 4.2), gold, x, 4.2, lz);
+    B(boxGeo(2.2, 2, 0.1), INK, x, 0.3, lf + 0.05); B(boxGeo(4, 0.25, 1.2), gold, x, 2.4, lf + 0.6);
+    if (!colorOf) B(NI(new THREE.PlaneGeometry(6.4, 1.4)), hqSign(p), x, 3.65, lf + 0.06);
+    p.parts.forEach((_, i) => { // one pennant per city, on both sides of the lobby
+      const sd = i % 2 ? -1 : 1, px = x + sd * (4.6 + 1.9 * Math.floor(i / 2)), pz = z + S - 0.2;
+      B(cylGeo(0.07, 0.07, 2.8, 6), SILVER, px, 0.3, pz); B(boxGeo(1.3, 0.75, 0.06), i % 2 ? gold : INK, px + sd * 0.68, 2.3, pz);
+    });
+    // the crown on the tallest wing: a golden pavilion, a pyramid and the diamond
+    B(boxGeo(3, 1.4, 3), gold, top.cx, top.y1, top.cz); B(coneGeo(2.1, 2.6, 4), gold, top.cx, top.y1 + 1.4, top.cz, Math.PI / 4);
+    B(NI(new THREE.OctahedronGeometry(1.0)), glow, top.cx, top.y1 + 6.2, top.cz, Math.PI / 4, [1, 1.5, 1]);
+    if (fire) marks.push({ kind: 'fire', x: top.cx, z: top.cz, h: top.y1, w: top.ww, d: top.dd, bw: top.ww, bd: top.dd, by0: 0.3, by1: top.y1 });
+    return { h: top.y1 + 7.8 };
+  }
+  // The foundation of a future headquarters (the next in line): hoarding with a golden stripe, a
+  // concrete slab, a steel frame as tall as the progress, the site office and the board with the name
+  // and how far it is ("761 of 1,000"). No crane: the crane means "building now".
+  function foundation(p, x, z, line, top = 14) { // top: the steel at 100% (lower than the campus it turns into)
+    const prog = clamp(p.floors / Math.max(1, line), 0, 1), flat = colorOf ? matte(colorOf(p)) : null;
+    const conc = flat ?? matte('#bdb7ab'), steel = flat ?? matte('#7d848c', { roughness: 0.5, metalness: 0.4 }), hoard = flat ?? matte('#e6e0d0');
+    B(boxGeo(L * 1.5, 0.5, L * 1.5), conc, x, 0, z);
+    const s = L * 0.88;
+    for (const [cx, cz, w, d] of [[x, z - s, 2 * s, 0.25], [x - s, z, 0.25, 2 * s], [x + s, z, 0.25, 2 * s], [x - s * 0.6, z + s, s * 0.8, 0.25], [x + s * 0.6, z + s, s * 0.8, 0.25]]) {
+      B(boxGeo(w, 1.6, d), hoard, cx, 0, cz);
+      if (!flat) B(boxGeo(w + 0.02, 0.25, d + 0.02), GOLD_MAT, cx, 1.1, cz);
+    }
+    const H = 0.8 + prog * top, g = L * 0.55;
+    for (const u of [-1, 0, 1]) for (const v of [-1, 0, 1]) B(boxGeo(0.4, H, 0.4), steel, x + u * g, 0.5, z + v * g);
+    for (const yy of [0.5 + H * 0.5, 0.5 + H]) for (const u of [-1, 0, 1]) { B(boxGeo(2 * g + 0.4, 0.35, 0.35), steel, x, yy - 0.35, z + u * g); B(boxGeo(0.35, 0.35, 2 * g + 0.4), steel, x + u * g, yy - 0.35, z); }
+    if (prog >= 0.75) B(boxGeo(2 * g + 0.6, 0.3, 2 * g + 0.6), conc, x, 0.5 + H * 0.5, z);
+    B(boxGeo(4, 2.4, 2), flat ?? matte('#3d7bd9'), x + s * 0.55, 0.5, z - s * 0.55); // the site office
+    const bxp = x - s * 0.45, bzp = z + s + 0.5; // the board, at the gate
+    for (const sx of [-2.25, 2.25]) B(cylGeo(0.1, 0.1, 4.3, 6), DARK, bxp + sx, 0, bzp);
+    if (!flat) B(NI(new THREE.PlaneGeometry(4.8, 2.4)), boardMat(p, line), bxp, 3.05, bzp + 0.06);
+    return { h: Math.max(4.4, 0.5 + H) };
+  }
+  // The district's square: a golden diamond on a dark pedestal, glowing at night
+  function diamond(x, z) {
+    B(cylGeo(2.6, 3, 0.6, 16), STONE, x, 0, z); B(cylGeo(1.1, 1.5, 2.4, 8), colorOf ? matte('#8d9199') : INK, x, 0.6, z);
+    B(NI(new THREE.OctahedronGeometry(1.6)), colorOf ? matte('#c9c3b5') : GOLD_GLOW, x, 5.4, z, Math.PI / 4, [1, 1.45, 1]);
+    return { h: 7.8 };
+  }
+  // The headquarters' name over the door and the foundation's board (signMat: one texture per text)
+  function hqSign(p) {
+    const who = displayName(p).full, head = `◆ ${t('mega.one').toUpperCase()} ◆`;
+    return signMat(`hq|${head}|${who}`, 512, 112, (c, w, h) => {
+      c.fillStyle = '#14171c'; c.fillRect(0, 0, w, h); c.fillStyle = '#e3c25a'; c.fillRect(0, 0, w, 5); c.fillRect(0, h - 5, w, 5);
+      c.textAlign = 'center'; c.fillText(fitFont(c, head, 470, 22), w / 2, 34);
+      c.fillStyle = '#ffffff'; c.fillText(fitFont(c, who, 470, 44), w / 2, 86);
+    });
+  }
+  function wingSign(name) {
+    return signMat(`wing|${name}`, 256, 64, (c, w, h) => {
+      c.fillStyle = '#14171c'; c.fillRect(0, 0, w, h); c.fillStyle = '#e3c25a'; c.fillRect(0, h - 4, w, 4);
+      c.textAlign = 'center'; c.fillText(fitFont(c, name.toUpperCase(), 236, 34), w / 2, 44);
+    });
+  }
+  function boardMat(p, line) {
+    const who = displayName(p).full, head = t('mega.future').toUpperCase(), n = Math.floor(p.floors), of = t('mega.of', { floors: fmt.int(n), line: fmt.int(line) });
+    return signMat(`board|${head}|${who}|${of}`, 480, 240, (c, w) => {
+      c.fillStyle = '#f4f1e8'; c.fillRect(0, 0, w, 240); c.fillStyle = '#14171c'; c.fillRect(0, 0, w, 58);
+      c.textAlign = 'center'; c.fillStyle = '#e3c25a'; c.fillText(fitFont(c, head, 440, 26), w / 2, 39);
+      c.fillStyle = '#14171c'; c.fillText(fitFont(c, who, 440, 34), w / 2, 112);
+      const prog = clamp(n / Math.max(1, line), 0, 1);
+      c.fillStyle = '#d9d3c4'; c.fillRect(40, 136, w - 80, 26); c.fillStyle = '#e3a90a'; c.fillRect(40, 136, (w - 80) * prog, 26);
+      c.fillStyle = '#3a3f47'; c.fillText(fitFont(c, of, 440, 28), w / 2, 206);
+    });
+  }
+  return { tower, house, monument, hq, foundation, diamond, anims, trees, marks, cranes };
 }

@@ -192,6 +192,9 @@ export const config = {
     // IDLE_RUBBLE_DAYS it is a pile of rubble (0 turns each one off). Calendar days, weekends included.
     idleFireDays: Math.max(0, Math.round(Number(env('IDLE_FIRE_DAYS', 15)))) || 0,
     idleRubbleDays: Math.max(0, Math.round(Number(env('IDLE_RUBBLE_DAYS', 30)))) || 0,
+    // Mega Builders: whoever builds in 2+ cities and adds up MEGA_FLOORS floors across them gets a
+    // headquarters in the Corporate District (0 turns it off).
+    megaFloors: Math.max(0, Math.round(Number(env('MEGA_FLOORS', 1000)))) || 0,
   },
 
   // Belt program (an optional recognition program): a JSON file with names or e-mails and belts.

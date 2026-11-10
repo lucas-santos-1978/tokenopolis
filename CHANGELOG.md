@@ -3,7 +3,21 @@
 Dates are the day each version went live on the author's panel. Earlier versions were an internal
 tool with another name; the open-source release renames it Tokenopolis.
 
-## Unreleased
+## v28 (2026-11-09)
+
+- Mega Builders: whoever builds in 2+ cities and adds up 1,000 floors across them (`MEGA_FLOORS`,
+  `?mega=`, `mega` in `/api/config`) gets a 💎 badge, a black and gold banner on their buildings and a
+  campus in the new Corporate District, across a channel behind the cities: one wing per city, 1 floor
+  for every 10 there, the diamond on the tallest wing. Choosing one draws golden lines along the
+  streets from their buildings to the campus. The next in line get a foundation with a progress board.
+  A Mega Builders panel (a chip on phones), a card for each campus, 💎 in search and City Hall, and
+  their own color on the network map.
+- The mayor's rally banner no longer leaves a texture behind every time the scene is redrawn (a TV
+  left on all day kept growing its memory); signs drawn on a canvas are now kept per text and freed
+  when no longer drawn.
+- This week's builds shows 12 rows (was 14) to make room for the Mega Builders.
+
+## v27 (2026-11-06)
 
 - A device that asks to reduce motion (common on phones, sometimes switched on by battery savers) no
   longer freezes the city: cars, people, cranes, flames and smoke keep moving; only fireworks,

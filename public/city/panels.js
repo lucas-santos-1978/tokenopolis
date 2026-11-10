@@ -3,7 +3,7 @@
 // and what changed between two readings (liveEvents).
 
 import { t, plural, fmt, cityLabel, displayName } from '../i18n/index.js';
-import { tierOf, BUILDING_TIERS, TEN_BI, monumentsOf, context, mayorOf, raceOf, derby, countdowns, paperHtml, cityTier, buildingTier, monumentText, monthOf, floorsText, htmlCity, ruinOf } from './rules.js';
+import { tierOf, BUILDING_TIERS, TEN_BI, monumentsOf, context, mayorOf, raceOf, derby, countdowns, paperHtml, cityTier, buildingTier, monumentText, monthOf, floorsText, htmlCity, ruinOf, megaOf } from './rules.js';
 import { dojoOf } from './world.js';
 
 const $ = (s) => document.querySelector(s);
@@ -18,7 +18,7 @@ const closer = (panel) => {
 // the stale pill: the data source's error (or no server at all), and that this is the last reading
 export const staleText = (error) => `⚠️ ${error ? t(`error.${error.code}`, error) : t('error.offline')} · ${t('error.stale')}`;
 
-let api = null, data = null, me = null;
+let api = null, data = null, me = null, mega = null; // mega: rules.js megaOf of the reading (it also marks b.mega)
 export function initPanels(a) { api = a; }
 export const setMe = (id) => { me = id; };
 
@@ -26,7 +26,7 @@ const weekRank = () => [...data.cities].sort((a, b) => b.week - a.week || b.floo
 const rankOf = (c) => weekRank().indexOf(c) + 1;
 
 export function renderPanels(d, view, selected) {
-  data = d;
+  data = d; mega = megaOf(d);
   renderNews();
   const city = view.kind === 'city' && data.cities.find((c) => c.id === view.id), isCity = !!city, v = isCity ? 'city' : 'region';
   document.documentElement.dataset.view = v;
@@ -62,11 +62,29 @@ function renderRegionPanels() {
       <div><div class="label">${t(label)}</div><div class="who">${esc(cityLabel(c))}</div><div class="what">${esc(what)}</div></div></div>`).join('')
     + (trophies.length ? closer('trophies') : '');
   const max = Math.max(1, lead?.week ?? 1);
-  $('#ranking-list').innerHTML = rank.slice(0, 14).map((c, i) => `
+  $('#ranking-list').innerHTML = rank.slice(0, 12).map((c, i) => `
     <li data-city="${esc(c.id)}" title="${esc(t('ranking.see', { c }))}"><span class="pos">${i + 1}</span>
       <span class="name">${esc(cityLabel(c))}</span><span class="bar" style="--w:${(c.week / max).toFixed(4)}"></span><span class="val">+${fmt.int(c.week)}</span></li>`).join('');
   renderDerby();
   renderCountdown();
+  renderMega();
+}
+
+// Mega Builders: who already has a headquarters in the Corporate District (the floors added up across
+// the cities) and the next in line, with how far the line is. A tap flies to the headquarters.
+const MEGA_ROWS = 3; // it sits under this week's builds: compact, one line per person
+function renderMega() {
+  const el = $('#mega'), m = mega, empty = !m.line || (!m.members.length && !m.queue.length);
+  el.classList.toggle('empty', empty);
+  if (empty) { el.innerHTML = ''; return; }
+  const where = (p) => esc(fmt.list(p.parts.map(({ c }) => cityLabel(c))));
+  const row = (p, i) => `<li data-hq="${esc(p.id)}" title="${where(p)}"><span class="pos">${i + 1}</span><span class="name">${esc(name(p))}</span><span class="cities">${plural(p.cities, 'count.city')}</span><span class="val">${fmt.int(p.floors)}</span></li>`;
+  const more = m.members.length - MEGA_ROWS, next = m.queue[0];
+  el.innerHTML = `${closer('mega')}
+    <h2>💎 ${t('mega.title')} <small>${t('mega.rule', { line: fmt.int(m.line) })}</small></h2>
+    <ol>${m.members.slice(0, MEGA_ROWS).map(row).join('') || `<li class="none">${t('mega.noneYet')}</li>`}</ol>
+    <div class="foot">${next ? `<button type="button" class="next" data-hq="${esc(next.id)}" title="${where(next)}">🚧 ${t('mega.next', { name: esc(displayName(next).short), floors: fmt.int(Math.floor(next.floors)), line: fmt.int(m.line) })}${m.queue.length > 1 ? ` · +${fmt.int(m.queue.length - 1)}` : ''}</button>` : '<span></span>'}
+      <button type="button" class="go" data-district="1">${more > 0 ? `${plural(more, 'mega.more')} · ` : ''}${t('mega.see')}</button></div>`;
 }
 
 // Derby of the week: the two cities closest in total, and who climbs more this week.
@@ -112,7 +130,7 @@ function renderHall(c) {
   const newcomers = c.buildings.filter((b) => b.isNew).length, corp = c.buildings.filter((b) => b.cities > 1).length;
   const top = c.buildings.slice(0, 6), maxF = Math.max(1, top[0]?.floors ?? 1);
   const works = [...c.buildings].filter((b) => b.week > 0).sort((a, b) => b.week - a.week).slice(0, 3);
-  const chip = (b) => (b.cities > 1 ? `<span class="chip" title="${esc(t('hall.chipTitle', { cities: plural(b.cities, 'count.city') }))}">${b.cities >= 3 ? '👑' : '🚩'}${b.cities}</span>` : '');
+  const chip = (b) => (b.cities > 1 ? `<span class="chip" title="${esc(b.mega ? t('mega.badge', { bi: fmt.dec(mega.line / 1000, 1) }) : t('hall.chipTitle', { cities: plural(b.cities, 'count.city') }))}">${b.mega ? '💎' : b.cities >= 3 ? '👑' : '🚩'}${b.cities}</span>` : '');
   const tr = tierOf(c.floors), mons = c.monuments ?? monumentsOf(c, context(data)), missing = Math.max(1, Math.round(tr.missing));
   const mayor = mayorOf(c), race = raceOf(c), duel = derby(data), rival = duel && (duel.a === c ? duel.b : duel.b === c ? duel.a : null);
   const lastM = monthOf(data.lastMonth, 'period.lastMonth'), thisM = monthOf(data.month, 'period.thisMonth');
@@ -152,6 +170,7 @@ function renderHall(c) {
 // The details card of the touched (or clicked) building.
 function renderSheet(c, selected) {
   const el = $('#sheet');
+  if (selected?.hq) return renderHqSheet(selected.hq);
   if (c && selected?.dojo) return renderDojoSheet(c);
   const b = c && selected && c.buildings.find((x) => x.id === selected.person);
   el.hidden = !b;
@@ -176,12 +195,34 @@ function renderSheet(c, selected) {
     <div class="who"><b>${esc(name(b))}</b><span>${esc(t('sheet.ranks', { c, inCity: fmt.ordinal(inCity), inRegion: fmt.ordinal(inRegion) }))}</span></div>
     <div class="nums"><div><b>${fmt.int(b.floors)}</b><span>${plural(Math.round(b.floors), 'sheet.floors')}</span></div><div class="up"><b>+${fmt.int(b.week)}</b><span>${t('sheet.week')}</span></div><div><b>+${fmt.int(b.today)}</b><span>${t('sheet.today')}</span></div></div>
     <div class="ptier"><div class="row"><span>${tr.icon} ${buildingTier(tr.key).name}</span><small>${tr.next ? t('sheet.nextTier', { n: missing, floors: floorsText(missing), tier: buildingTier(tr.next.key) }) : t('sheet.topTier')}</small></div><i style="--p:${tr.progress.toFixed(3)}"></i></div>
-    <div class="chips">${state}${b.isNew ? `<span>${t('sheet.new')}</span>` : ''}${b.belt ? `<span class="badge dojo" data-dojo="${esc(c.id)}" title="${esc(t('sheet.dojoTitle'))}">${t('sheet.belt', { belt: t(`belt.${b.belt}`), since: b.beltSince ? fmt.isoDate(b.beltSince) : '' })}</span>` : ''}${badges.map((x) => `<span class="badge">${esc(x)}</span>`).join('')}</div>
+    <div class="chips">${state}${b.mega ? `<span class="badge mega" data-hq="${esc(b.id)}" title="${esc(t('mega.badgeTitle'))}">${esc(t('mega.badge', { bi: fmt.dec(mega.line / 1000, 1) }))}</span>` : ''}${b.isNew ? `<span>${t('sheet.new')}</span>` : ''}${b.belt ? `<span class="badge dojo" data-dojo="${esc(c.id)}" title="${esc(t('sheet.dojoTitle'))}">${t('sheet.belt', { belt: t(`belt.${b.belt}`), since: b.beltSince ? fmt.isoDate(b.beltSince) : '' })}</span>` : ''}${badges.map((x) => `<span class="badge">${esc(x)}</span>`).join('')}</div>
     ${others.length ? `<div class="corp">${b.cities >= 3 ? '👑' : '🚩'} ${t('sheet.alsoIn', { list: fmt.list(others.map((k) => `<button type="button" data-city="${esc(k.id)}" data-person="${esc(b.id)}">${esc(cityLabel(k))}</button>`)) })}</div>` : ''}
     <div class="timeline" id="timeline" data-key="${esc(keyOf(c.id, b.id))}"><small>${t('sheet.timelineLoading')}</small></div>
     <div class="actions"><button class="share" type="button" data-share="${esc(c.id)}|${esc(b.id)}">${t('sheet.share')}</button>
     <button class="share mine${me === b.id ? ' on' : ''}" type="button" data-me="${esc(b.id)}">${me === b.id ? t('sheet.mine') : t('sheet.setMine')}</button></div>`;
   api.timeline?.(c, b);
+}
+
+// The card of a headquarters in the Corporate District (or of a foundation, for the next in line):
+// the floors added up, each city's building (a tap flies to it) and how far the line is.
+function renderHqSheet(id) {
+  const el = $('#sheet'), m = mega, rank = m.members.findIndex((x) => x.id === id) + 1;
+  const p = rank ? m.members[rank - 1] : m.queue.find((x) => x.id === id);
+  el.hidden = !p;
+  if (!p) return;
+  const ruin = ruinOf(p), state = ruin
+    ? `<span class="ruin ${ruin}" title="${esc(t('ruin.note'))}">${t(`ruin.${ruin}`, { days: plural(p.idle, 'count.day') })}</span>`
+    : p.now ? `<span>${t('sheet.now')}</span>` : `<span class="off">${t('sheet.idle')}</span>`;
+  const progress = Math.min(1, p.floors / m.line);
+  el.innerHTML = `
+    <button class="close" type="button" data-close aria-label="${esc(t('html.close'))}">×</button>
+    <div class="who"><b>${rank ? '💎' : '🚧'} ${esc(name(p))}</b><span>${esc(rank ? t('mega.hqOf', { rank: fmt.ordinal(rank) }) : t('mega.foundOf'))}</span></div>
+    <div class="nums"><div><b>${fmt.int(p.floors)}</b><span>${t('mega.sum')}</span></div><div class="up"><b>+${fmt.int(p.week)}</b><span>${t('sheet.week')}</span></div><div><b>+${fmt.int(p.month)}</b><span>${t('mega.month')}</span></div></div>
+    ${rank ? `<p class="note">${t('mega.badgeText')}</p>`
+      : `<div class="ptier"><div class="row"><span>🚧 ${t('mega.future')}</span><small>${t('mega.missing', { floors: floorsText(Math.max(1, Math.ceil(m.line - p.floors))) })}</small></div><i style="--p:${progress.toFixed(3)}"></i></div>`}
+    <div class="chips">${state}${me === p.id ? `<span>${t('me.pin')}</span>` : ''}</div>
+    <h3>${t('mega.parts')}</h3>
+    <ol class="works">${p.parts.map(({ b, c }) => `<li data-city="${esc(c.id)}" data-person="${esc(b.id)}"><span>${esc(cityLabel(c))}</span><b>${fmt.int(b.floors)}</b></li>`).join('')}</ol>`;
 }
 
 // The details card of the city's Dojo: the masters (black belts) and, only here, who is on the way
@@ -226,7 +267,7 @@ export function renderFinder() {
     if (!list.length) list = all.sort((x, y) => y.b.floors - x.b.floors);
   }
   const rows = list.slice(0, 8).map(({ b, c }, i) => `<li data-person="${esc(b.id)}" data-city="${esc(c.id)}" class="${i ? '' : 'on'}"><span class="ic">${tierOf(b.floors, BUILDING_TIERS).icon}</span>
-    <div><b>${esc(name(b))}</b><small>${esc(cityLabel(c))}${b.cities > 1 ? ` · ${esc(t('finder.inCities', { cities: plural(b.cities, 'count.city') }))}` : ''}${b.now ? ` · ${t('finder.nowTag')}` : ''}</small></div><span class="fl">${fmt.int(b.floors)}</span></li>`);
+    <div><b>${esc(name(b))}${b.mega ? ' 💎' : ''}</b><small>${esc(cityLabel(c))}${b.cities > 1 ? ` · ${esc(t('finder.inCities', { cities: plural(b.cities, 'count.city') }))}` : ''}${b.now ? ` · ${t('finder.nowTag')}` : ''}</small></div><span class="fl">${fmt.int(b.floors)}</span></li>`);
   $('#finder-list').innerHTML = (head ? `<li class="hd">${esc(head)}</li>` : '') + (rows.join('') || `<li class="hd">${t('finder.none')}</li>`);
 }
 export function finderKey(e) {
@@ -246,13 +287,14 @@ export function locatePerson(pid, cityId) {
 const HEAT = ['#9aa5b1', '#c9e7a2', '#f3d85a', '#f59a3c', '#e8463a'];
 const MODEL_COLORS = { opus: '#2a78d6', sonnet: '#eb6834', haiku: '#1baf7a', fable: '#eda100' };
 const GREY = '#9aa5b1';
+const MEGA_COLOR = '#7b3fe4'; // the network map: the Mega Builders in violet, apart from the network's two golds
 // The belts map paints each building with its belt (and the rest grey).
 export const BELT_COLORS = { black: '#141418', brown: '#8b5a2b', purple: '#8e44ad', blue: '#2f7fe0', white: '#ffffff' };
 // The data maps (like SimCity's): icon and legend colors, in the order of the map.<key>.legend texts.
 export const MAPKEYS = {
   now: { icon: '⚡', colors: ['#e8463a', '#f5a63c', GREY] },
   week: { icon: '📈', colors: HEAT },
-  network: { icon: '🚩', colors: ['#e0a400', '#ffd76e', GREY] },
+  network: { icon: '🚩', colors: [MEGA_COLOR, '#e0a400', '#ffd76e', GREY] },
   model: { icon: '🧠', colors: [MODEL_COLORS.opus, MODEL_COLORS.sonnet, MODEL_COLORS.haiku, MODEL_COLORS.fable, GREY] },
   belts: { icon: '🥋', colors: [BELT_COLORS.black, BELT_COLORS.brown, BELT_COLORS.purple, BELT_COLORS.blue, BELT_COLORS.white, GREY] },
 };
@@ -261,7 +303,7 @@ export function mapColorFor(mode, maxWeek) {
     if (mode === 'belts') return BELT_COLORS[b.belt] ?? GREY;
     if (mode === 'model') return MODEL_COLORS[b.model] ?? GREY;
     if (mode === 'now') return b.now ? '#e8463a' : b.today > 0 ? '#f5a63c' : GREY;
-    if (mode === 'network') return b.cities >= 3 ? '#e0a400' : b.cities === 2 ? '#ffd76e' : GREY;
+    if (mode === 'network') return b.mega ? MEGA_COLOR : b.cities >= 3 ? '#e0a400' : b.cities === 2 ? '#ffd76e' : GREY;
     const r = b.week / Math.max(1, maxWeek);
     return b.week <= 0 ? HEAT[0] : HEAT[Math.min(4, 1 + Math.floor(r * 3.999))];
   };

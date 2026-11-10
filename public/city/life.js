@@ -47,7 +47,7 @@ export function makeLife({ scene, world, data, wx, wz, marks, airports, size }) 
   if (world.PY > 1) for (let i = 0; i < Math.max(2, Math.round(world.GW / 18)); i++) {
     const g = new THREE.Group(), col = ['#f2f2f2', '#d9473f', '#f2c14e'][i % 3];
     g.add(box(6, 1, 2.4, matte(col), 0, 0.5, 0), box(2, 1.2, 1.6, matte('#e9eef2'), -0.5, 1.6, 0), box(0.3, 0.3, 0.3, WARM_LIGHT, 2.6, 1.4, 0));
-    boats.push({ g, s: hash(i, 3, 31), v: (3.5 + hash(i, 4, 31) * 3) / (world.GW * L), dir: i % 2 ? -1 : 1, gy: world.PLOT - 1 + (i % 2) });
+    boats.push({ g, s: hash(i, 3, 31), v: (3.5 + hash(i, 4, 31) * 3) / (world.GW * L), dir: i % 2 ? -1 : 1, gy: (world.OY ?? 0) + world.PLOT - 1 + (i % 2) });
     group.add(g);
   }
 

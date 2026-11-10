@@ -126,6 +126,7 @@ function configJson(stack) {
     refreshSeconds: stack.game.refreshSeconds,
     features: { belts: stack.cities.beltsEnabled() },
     idle: { fire: config.cities.idleFireDays, rubble: config.cities.idleRubbleDays }, // days without Claude: on fire, then rubble (0 = off)
+    mega: { floors: config.cities.megaFloors }, // Mega Builders: floors added up across 2+ cities (0 = off)
   };
 }
 

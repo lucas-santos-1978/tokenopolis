@@ -9,7 +9,7 @@ export let locale = 'en';
 export const fmt = createFmt({ locale: 'en', timeZone: 'UTC' }); // rebuilt in place by initI18n()
 
 let dict = {}, fallback = {};
-const globals = {}; // {appName}, {appNameUpper}, {zone}, {since}, {floor}, {idleFire}, {idleRubble}: usable in every string
+const globals = {}; // {appName}, {appNameUpper}, {zone}, {since}, {floor}, {idleFire}, {idleRubble}, {megaFloors}: usable in every string
 const warned = new Set();
 const partials = new Map();
 
@@ -155,6 +155,7 @@ export async function initI18n(page = document.documentElement.dataset.page ?? (
       appName: config.appName, appNameUpper: String(config.appName).toLocaleUpperCase(locale), zone: fmt.zone,
       floor: t('legend.floor', { tokens: config.floorTokens }),
       idleFire: fmt.int(config.idle?.fire ?? 15), idleRubble: fmt.int(config.idle?.rubble ?? 30), // the abandoned buildings' thresholds
+      megaFloors: fmt.int(config.mega?.floors ?? 1000), // the Mega Builders' line
     });
     globals.since = t('date.since', start ? { day: start.day, month: fmt.monthName(start.month - 1) } : {});
     document.documentElement.lang = locale;

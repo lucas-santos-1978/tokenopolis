@@ -19,7 +19,7 @@ export const URL_DOC = [
     row('map', `map=${Object.keys(MAPKEYS).join('|')}`), row('panels', 'panels=0'), row('names', 'names=0'),
     row('style', `style=${Object.keys(STYLE_ICONS).join('|')}`), row('quality', 'quality=low'), row('ruins', 'ruins=0'), row('lang', `lang=${LANGS.join('|')}`),
   ] },
-  { title: t('urldoc.group.tests'), rows: [row('demo', 'demo'), row('monuments', 'monuments=all'), row('giant', 'giant=N'), row('monster', 'monster'), row('debug', 'debug')] },
+  { title: t('urldoc.group.tests'), rows: [row('demo', 'demo'), row('monuments', 'monuments=all'), row('giant', 'giant=N'), row('mega', 'mega=<floors>'), row('monster', 'monster'), row('debug', 'debug')] },
 ];
 
 // root: the help dialog (#help); state(): what is on screen now (cities, view, time, map…).
