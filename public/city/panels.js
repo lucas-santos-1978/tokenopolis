@@ -3,7 +3,7 @@
 // and what changed between two readings (liveEvents).
 
 import { t, plural, fmt, cityLabel, displayName, config, locale as uiLocale } from '../i18n/index.js';
-import { tierOf, BUILDING_TIERS, TEN_BI, monumentsOf, context, mayorOf, raceOf, derby, countdowns, paperHtml, cityTier, buildingTier, monumentText, monthOf, floorsText, htmlCity, ruinOf, megaOf } from './rules.js';
+import { tierOf, BUILDING_TIERS, TEN_BI, monumentsOf, context, mayorOf, raceOf, derby, countdowns, paperHtml, cityTier, buildingTier, monumentText, monthOf, floorsText, htmlCity, ruinOf, megaOf, markOf, markText } from './rules.js';
 import { dojoOf } from './world.js';
 import { ageText, readingTime } from '../lib/freshness.js';
 
@@ -288,6 +288,9 @@ export function focusable(root = document) {
 // the hour of the day the person builds most (the first of the best ones)
 const peakHour = (clock) => [...clock].reduce((best, d, h) => (Number(d) > Number(clock[best]) ? h : best), 0);
 
+// the person's token medal (every city added up) as a chip that opens the medal to download
+const medalChip = (id, total) => { const m = markOf(total ?? 0); return m ? `<span class="badge tokmedal" data-medal="${esc(id)}" title="${esc(t('medal.chipTitle'))}">🏅 ${esc(t('medal.chip', { mark: markText(m.floors) }))}</span>` : ''; };
+
 // The details card of the touched (or clicked) building.
 function renderSheet(c, selected) {
   const el = $('#sheet');
@@ -331,7 +334,7 @@ function renderSheet(c, selected) {
     <div class="who"><b>${esc(name(b))}</b><span>${esc(t('sheet.ranks', { c, inCity: fmt.ordinal(inCity), inRegion: fmt.ordinal(inRegion) }))}</span></div>
     <div class="nums"><div><b>${fmt.int(b.floors)}</b><span>${plural(Math.round(b.floors), 'sheet.floors')}</span></div><div class="up"><b>+${fmt.int(b.week)}</b><span>${t('sheet.week')}</span></div><div><b>+${fmt.int(b.today)}</b><span>${t('sheet.today')}</span></div></div>
     <div class="ptier"><div class="row"><span>${tr.icon} ${buildingTier(tr.key).name}</span><small>${tr.next ? t('sheet.nextTier', { n: missing, floors: floorsText(missing), tier: buildingTier(tr.next.key) }) : t('sheet.topTier')}</small></div><i style="--p:${tr.progress.toFixed(3)}"></i></div>
-    <div class="chips">${state}${b.mega ? `<span class="badge mega" data-hq="${esc(b.id)}" title="${esc(t('mega.badgeTitle'))}">${esc(t('mega.badge', { bi: fmt.dec(mega.line / 1000, 1) }))}</span>` : ''}${b.isNew ? `<span>${t('sheet.new')}</span>` : ''}${b.back ? `<span class="badge">${esc(t('sheet.back', { days: plural(b.back, 'count.day') }))}</span>` : ''}${b.record ? `<span class="badge">${t('sheet.record')}</span>` : ''}${b.belt ? `<span class="badge dojo" data-dojo="${esc(c.id)}" title="${esc(t('sheet.dojoTitle'))}">${t('sheet.belt', { belt: t(`belt.${b.belt}`), since: b.beltSince ? fmt.isoDate(b.beltSince) : '' })}</span>` : ''}${badges.map((x) => `<span class="badge">${esc(x)}</span>`).join('')}</div>
+    <div class="chips">${state}${medalChip(b.id, b.total)}${b.mega ? `<span class="badge mega" data-hq="${esc(b.id)}" title="${esc(t('mega.badgeTitle'))}">${esc(t('mega.badge', { bi: fmt.dec(mega.line / 1000, 1) }))}</span>` : ''}${b.isNew ? `<span>${t('sheet.new')}</span>` : ''}${b.back ? `<span class="badge">${esc(t('sheet.back', { days: plural(b.back, 'count.day') }))}</span>` : ''}${b.record ? `<span class="badge">${t('sheet.record')}</span>` : ''}${b.belt ? `<span class="badge dojo" data-dojo="${esc(c.id)}" title="${esc(t('sheet.dojoTitle'))}">${t('sheet.belt', { belt: t(`belt.${b.belt}`), since: b.beltSince ? fmt.isoDate(b.beltSince) : '' })}</span>` : ''}${badges.map((x) => `<span class="badge">${esc(x)}</span>`).join('')}</div>
     ${others.length ? `<div class="corp">${b.cities >= 3 ? '👑' : '🚩'} ${t('sheet.alsoIn', { list: fmt.list(others.map((k) => `<button type="button" data-city="${esc(k.id)}" data-person="${esc(b.id)}">${esc(cityLabel(k))}</button>`)) })}</div>` : ''}
     <div class="race${me === b.id ? ' mine' : ''}"><h3>${me === b.id ? t('around.mine') : t('around.title')}</h3><ul>${race}</ul></div>
     ${b.clock || b.models ? `<div class="habits">${b.clock ? `<h3>${t('habits.clock')} <small>${t('habits.clockSub')}</small></h3><div class="clock" role="img" aria-label="${esc(t('habits.clockAria', { peak: fmt.clock(peakHour(b.clock)) }))}">${[...b.clock].map((d, h) => `<i style="--v:${Number(d) / 7}" title="${esc(t('habits.hour', { hour: fmt.clock(h), days: plural(Number(d), 'count.day') }))}"></i>`).join('')}</div><div class="clock-axis"><span>0h</span><span>6h</span><span>12h</span><span>18h</span><span>24h</span></div>` : ''}${b.models ? `<h3>${t('habits.models')} <small>${t('habits.modelsSub')}</small></h3><div class="mix">${b.models.map(([m, s]) => `<i style="flex:${s};background:${MODEL_COLORS[m] ?? GREY}" title="${esc(`${t(`model.${m}`).name} ${fmt.percent(s)}`)}"></i>`).join('')}</div><div class="mix-key">${b.models.map(([m, s]) => `<span><i style="background:${MODEL_COLORS[m] ?? GREY}"></i>${esc(t(`model.${m}`).name)} ${fmt.percent(s)}</span>`).join('')}</div>` : ''}</div>` : ''}
@@ -340,6 +343,7 @@ function renderSheet(c, selected) {
     <button class="share mine${me === b.id ? ' on' : ''}" type="button" data-me="${esc(b.id)}">${me === b.id ? t('sheet.mine') : t('sheet.setMine')}</button>
     <button class="share roof" type="button" data-roof="${esc(c.id)}|${esc(b.id)}" title="${esc(t('sheet.roofTitle'))}">${t('sheet.roof')}</button>
     <button class="share card" type="button" data-card="${esc(c.id)}|${esc(b.id)}" title="${esc(t('sheet.cardTitle'))}">${t('sheet.card')}</button>
+    ${markOf(b.total ?? 0) ? `<button class="share tokmedal" type="button" data-medal="${esc(b.id)}" title="${esc(t('medal.buttonTitle'))}">${t('medal.button')}</button>` : ''}
     <a class="share climb" href="${esc(climbUrl)}" title="${esc(t('sheet.climbTitle'))}">${t('sheet.climb')}</a></div>`;
   api.timeline?.(c, b);
 }
@@ -361,9 +365,10 @@ function renderHqSheet(id) {
     <div class="nums"><div><b>${fmt.int(p.floors)}</b><span>${t('mega.sum')}</span></div><div class="up"><b>+${fmt.int(p.week)}</b><span>${t('sheet.week')}</span></div><div><b>+${fmt.int(p.month)}</b><span>${t('mega.month')}</span></div></div>
     ${rank ? `<p class="note">${t('mega.badgeText')}</p>`
       : `<div class="ptier"><div class="row"><span>🚧 ${t('mega.future')}</span><small>${t('mega.missing', { floors: floorsText(Math.max(1, Math.ceil(m.line - p.floors))) })}</small></div><i style="--p:${progress.toFixed(3)}"></i></div>`}
-    <div class="chips">${state}${me === p.id ? `<span>${t('me.pin')}</span>` : ''}</div>
+    <div class="chips">${state}${medalChip(p.id, p.floors)}${me === p.id ? `<span>${t('me.pin')}</span>` : ''}</div>
     <h3>${t('mega.parts')}</h3>
-    <ol class="works">${p.parts.map(({ b, c }) => `<li data-city="${esc(c.id)}" data-person="${esc(b.id)}"><span>${esc(cityLabel(c))}</span><b>${fmt.int(b.floors)}</b></li>`).join('')}</ol>`;
+    <ol class="works">${p.parts.map(({ b, c }) => `<li data-city="${esc(c.id)}" data-person="${esc(b.id)}"><span>${esc(cityLabel(c))}</span><b>${fmt.int(b.floors)}</b></li>`).join('')}</ol>
+    ${rank ? `<div class="actions"><button class="share card" type="button" data-hq-card="${esc(p.id)}" title="${esc(t('hqCard.buttonTitle'))}">${t('sheet.card')}</button>${markOf(p.floors) ? `<button class="share tokmedal" type="button" data-medal="${esc(p.id)}" title="${esc(t('medal.buttonTitle'))}">${t('medal.button')}</button>` : ''}</div>` : ''}`;
 }
 
 // The details card of the city's Dojo: the masters (black belts) and, only here, who is on the way

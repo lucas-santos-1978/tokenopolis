@@ -1,9 +1,13 @@
-// The building's card (1080×1350 PNG, to share inside the company): on top, the 3D photo of the
-// building as it is on screen (main.js renders a frame and hands over the canvas); below, the person,
-// the city and the numbers. Canvas 2D only: it receives the texts already formatted and localized.
+// The cards (PNG, to share inside the company): on top, the 3D photo as it is on screen (main.js renders
+// a frame and hands over the canvas); below, the person and the numbers. The building's card is
+// 1080×1350; the campus's (the Mega Builder's corporate profile, every city added up) is square,
+// 1080×1080. Both carry the person's token medal (medal.js) where the photo ends, when there is one.
+// Canvas 2D only: they receive the texts already formatted and localized.
 
-export const CARD_W = 1080, CARD_H = 1350;
-const PHOTO_H = 860, FONT = "'Nunito', system-ui, sans-serif";
+import { drawMedal } from './medal.js';
+
+export const CARD_W = 1080, CARD_H = 1350, SQUARE = 1080;
+const PHOTO_H = 860, SQ_PHOTO_H = 600, FONT = "'Nunito', system-ui, sans-serif", BG = '#1b242d';
 
 // text that fits: shrinks the font down to `min`, then cuts with an ellipsis
 function fit(x, text, maxW, size, min, weight = 900) {
@@ -22,46 +26,75 @@ function pill(x, text, px, py, { bg = 'rgba(255,255,255,.12)', fg = '#f4f6f8' } 
   return w;
 }
 
-// shot: the canvas with the frame; title: the person; sub: city and place; stats: [{ value, label, up? }]
-// (three); chips: short strings; brand: the panel's name; date: the day, formatted.
-export function drawBuildingCard({ shot, title, sub, stats, chips, brand, date }) {
-  const cv = document.createElement('canvas'); cv.width = CARD_W; cv.height = CARD_H;
+// the parts both cards share
+function canvasOf(w, h) {
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
   const x = cv.getContext('2d');
-  x.fillStyle = '#1b242d'; x.fillRect(0, 0, CARD_W, CARD_H);
-  // the photo: the middle of the frame, cut to the card's proportion (the building is at the center)
-  const k = Math.max(CARD_W / shot.width, PHOTO_H / shot.height), sw = CARD_W / k, sh = PHOTO_H / k;
-  x.drawImage(shot, (shot.width - sw) / 2, (shot.height - sh) / 2, sw, sh, 0, 0, CARD_W, PHOTO_H);
-  const fade = x.createLinearGradient(0, PHOTO_H - 200, 0, PHOTO_H);
+  x.fillStyle = BG; x.fillRect(0, 0, w, h);
+  return [cv, x];
+}
+// the photo: the middle of the frame, cut to the card's proportion (the subject is at the center),
+// fading into the card at the bottom; the panel's name on it
+function photo(x, shot, w, ph, brand) {
+  const k = Math.max(w / shot.width, ph / shot.height), sw = w / k, sh = ph / k;
+  x.drawImage(shot, (shot.width - sw) / 2, (shot.height - sh) / 2, sw, sh, 0, 0, w, ph);
+  const fade = x.createLinearGradient(0, ph - 200, 0, ph);
   fade.addColorStop(0, 'rgba(27,36,45,0)'); fade.addColorStop(1, 'rgba(27,36,45,1)');
-  x.fillStyle = fade; x.fillRect(0, PHOTO_H - 200, CARD_W, 200);
-  // brand, on the photo
+  x.fillStyle = fade; x.fillRect(0, ph - 200, w, 200);
   x.textBaseline = 'middle'; x.textAlign = 'left';
   pill(x, brand, 40, 36, { bg: 'rgba(27,36,45,.82)' });
-  // the person and the city
-  x.fillStyle = '#ffffff'; x.textBaseline = 'alphabetic';
-  x.fillText(fit(x, title, CARD_W - 96, 76, 44), 48, PHOTO_H + 46);
-  x.fillStyle = '#b9c6d2';
-  x.fillText(fit(x, sub, CARD_W - 96, 34, 24, 700), 48, PHOTO_H + 98);
-  // three numbers
-  const bw = (CARD_W - 96 - 2 * 20) / 3, by = PHOTO_H + 132;
+}
+// the person (title) and the line under it, narrower when the medal stands at the right
+function heading(x, title, sub, y, maxW, big) {
+  x.textAlign = 'left'; x.textBaseline = 'alphabetic';
+  x.fillStyle = '#ffffff'; x.fillText(fit(x, title, maxW, big, 44), 48, y);
+  x.fillStyle = '#b9c6d2'; x.fillText(fit(x, sub, maxW, Math.round(big * 0.45), 24, 700), 48, y + Math.round(big * 0.7));
+}
+// three numbers in boxes
+function numbers(x, stats, w, y, h) {
+  const bw = (w - 96 - 2 * 20) / 3;
   stats.slice(0, 3).forEach((s, i) => {
     const bx = 48 + i * (bw + 20);
-    x.fillStyle = 'rgba(255,255,255,.08)'; x.beginPath(); x.roundRect(bx, by, bw, 150, 22); x.fill();
-    x.fillStyle = s.up ? '#8fd14f' : '#ffffff'; x.textBaseline = 'alphabetic';
-    x.fillText(fit(x, s.value, bw - 44, 64, 36), bx + 22, by + 76);
+    x.fillStyle = 'rgba(255,255,255,.08)'; x.beginPath(); x.roundRect(bx, y, bw, h, 22); x.fill();
+    x.textAlign = 'left'; x.fillStyle = s.up ? '#8fd14f' : '#ffffff'; x.textBaseline = 'alphabetic';
+    x.fillText(fit(x, s.value, bw - 44, Math.round(h * 0.43), 36), bx + 22, y + h * 0.5);
     x.fillStyle = '#9fb0bf';
-    x.fillText(fit(x, s.label, bw - 44, 28, 20, 700), bx + 22, by + 120);
+    x.fillText(fit(x, s.label, bw - 44, 28, 20, 700), bx + 22, y + h * 0.8);
   });
-  // chips, on one line (whatever does not fit stays out)
-  let cx = 48; const cy = by + 174;
+}
+// chips on one line (whatever does not fit stays out) and the day at the bottom right
+function footer(x, chips, w, h, y, date) {
+  let cx = 48;
   for (const c of chips) {
     x.font = `800 28px ${FONT}`;
-    const w = x.measureText(c).width + 36;
-    if (cx + w > CARD_W - 48) break;
-    cx += pill(x, c, cx, cy, { bg: 'rgba(242,183,5,.18)', fg: '#ffd36b' }) + 12;
+    if (cx + x.measureText(c).width + 36 > w - 48) break;
+    cx += pill(x, c, cx, y, { bg: 'rgba(242,183,5,.18)', fg: '#ffd36b' }) + 12;
   }
-  // the day, at the bottom right
   x.font = `700 26px ${FONT}`; x.fillStyle = '#7f8f9d'; x.textAlign = 'right'; x.textBaseline = 'alphabetic';
-  x.fillText(date, CARD_W - 48, CARD_H - 30);
+  x.fillText(date, w - 48, h - 30);
+}
+
+// shot: the canvas with the frame; title: the person; sub: city and place; stats: [{ value, label, up? }]
+// (three); chips: short strings; brand: the panel's name; date: the day, formatted; medal: drawMedal's
+// texts and step, or null.
+export function drawBuildingCard({ shot, title, sub, stats, chips, brand, date, medal }) {
+  const [cv, x] = canvasOf(CARD_W, CARD_H), mx = CARD_W - 185, r = 130;
+  photo(x, shot, CARD_W, PHOTO_H, brand);
+  heading(x, title, sub, PHOTO_H + 46, medal ? mx - r * 1.25 - 48 - 24 : CARD_W - 96, 76);
+  numbers(x, stats, CARD_W, PHOTO_H + 132, 150);
+  footer(x, chips, CARD_W, CARD_H, PHOTO_H + 306, date);
+  if (medal) drawMedal(x, { ...medal, cx: mx, cy: PHOTO_H - 20, r });
+  return cv;
+}
+
+// The campus's card, square: the Corporate District's photo, the person, the tokens of every city
+// added up, the week and the month, and the cities as chips. Same fields as the building's card.
+export function drawProfileCard({ shot, title, sub, stats, chips, brand, date, medal }) {
+  const [cv, x] = canvasOf(SQUARE, SQUARE), mx = SQUARE - 185, r = 136;
+  photo(x, shot, SQUARE, SQ_PHOTO_H, brand);
+  heading(x, title, sub, SQ_PHOTO_H + 92, medal ? mx - r * 1.25 - 48 - 24 : SQUARE - 96, 72);
+  numbers(x, stats, SQUARE, SQ_PHOTO_H + 180, 140);
+  footer(x, chips, SQUARE, SQUARE, SQ_PHOTO_H + 346, date);
+  if (medal) drawMedal(x, { ...medal, cx: mx, cy: SQ_PHOTO_H - 10, r });
   return cv;
 }

@@ -3,6 +3,17 @@
 Dates are the day each version went live on the author's panel. Earlier versions were an internal
 tool with another name; the open-source release renames it Tokenopolis.
 
+## v35 (2026-11-11)
+
+- Token medals: a person's tokens added up across every city earn a medal at 100M, 250M, 500M, 1B,
+  2B, 5B and 10B (bronze to cosmic), shown on their cards and pictures with the day it was reached.
+  "🏅 Medal" downloads it alone, 3072 px on a transparent background with no shadow, with or without
+  the name, ready to print.
+- A campus in the Corporate District has its own card, square (1080×1080): the campus, every city
+  added up, the week, the month and each city.
+- The pictures leave out the selection's box and beam.
+- Downloaded file names keep accented letters as plain letters ("mauricio", not "mauri-cio").
+
 ## v34 (2026-11-11)
 
 - The legend is a 🔎 button in the corner that opens the full guide: the trophies show whole, and

@@ -47,7 +47,7 @@ export default {
     timelapseStop: '■ Stop',
     sheet: 'Building details',
     roofExit: '‹ Leave the roof',
-    card: { aria: 'Building card', download: '⬇️ Download PNG', copy: '📋 Copy image' },
+    card: { aria: 'Building card', download: '⬇️ Download PNG', plain: '⬇️ Without the name', copy: '📋 Copy image' },
     welcome: {
       title: '👋 Find your building',
       text: 'Search your name, open your building and mark “This is my building”. It gets a pin, and the city tells you when it grows.',

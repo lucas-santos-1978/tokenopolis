@@ -62,3 +62,19 @@ test('Mega Builders: 2+ cities and the line; the next in line from half of it', 
   assert.ok(data.cities[0].buildings[0].mega && data.cities[1].buildings[0].mega, 'the members\' buildings are marked');
   assert.ok(!data.cities[0].buildings[1].mega);
 });
+
+test('token medals: the highest mark reached, from every city added up', () => {
+  assert.equal(rules.markOf(99.9), null);
+  assert.deepEqual(rules.markOf(100), { i: 0, floors: 100, next: 250 });
+  assert.equal(rules.markOf(999).floors, 500);
+  assert.equal(rules.markOf(2011.4).floors, 2000);
+  assert.deepEqual(rules.markOf(12000), { i: 6, floors: 10000, next: null });
+  const data = { cities: [
+    { id: 'a', buildings: [person('ana', 700, { cities: 2 }), person('bia', 120)] },
+    { id: 'b', buildings: [person('ana', 400, { cities: 2 })] },
+  ] };
+  rules.megaOf(data);
+  assert.equal(data.cities[0].buildings[0].total, 1100, 'ana adds up both cities');
+  assert.equal(data.cities[1].buildings[0].total, 1100, 'the same total on each of her buildings');
+  assert.equal(data.cities[0].buildings[1].total, 120);
+});

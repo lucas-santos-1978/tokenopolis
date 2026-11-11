@@ -12,6 +12,20 @@ export const TEN_BI = 10000; // floors: 10 billion tokens
 // "1,234 floors" in the page's language, with the number as displayed
 export const floorsText = (n) => plural(Math.round(n), 'count.floor');
 
+// ───────── token medals ─────────
+// A person's tokens added up across every city (b.total, set by megaOf; 1 floor = 1 million tokens)
+// earn a medal at each mark (floors): 100 million, 250 million, 500 million, 1 billion... The medal
+// is the person's, not the building's: the same one on every building, the card and the campus.
+export const TOKEN_MARKS = [100, 250, 500, 1000, 2000, 5000, 10000];
+// the highest mark reached ({ i, floors, next }) or null
+export function markOf(floors) {
+  let i = -1;
+  for (let k = 0; k < TOKEN_MARKS.length; k++) if (floors >= TOKEN_MARKS[k]) i = k;
+  return i < 0 ? null : { i, floors: TOKEN_MARKS[i], next: TOKEN_MARKS[i + 1] ?? null };
+}
+// "2 bi" / "250 mi" ("2B" / "250M"), for chips and texts
+export const markText = (floors) => (floors >= 1000 ? t('medal.bi', { n: fmt.dec(floors / 1000, floors % 1000 ? 1 : 0) }) : t('medal.mi', { n: fmt.int(floors) }));
+
 // ───────── abandoned buildings ─────────
 // Days without Claude (b.idle, calendar days): more than idle.fire and the building is on fire, more
 // than idle.rubble and it is a pile of rubble. The server sets both (IDLE_FIRE_DAYS, IDLE_RUBBLE_DAYS;
@@ -49,6 +63,7 @@ export function megaOf(data) {
     p.floors += b.floors; p.week += b.week; p.month += b.month; p.today += b.today;
     p.idle = Math.min(p.idle, b.idle ?? Infinity); p.hours |= b.hours || 0; p.now ||= !!b.now;
   }
+  for (const p of byId.values()) for (const { b } of p.parts) b.total = p.floors; // the medal's tokens: every city added up
   if (!line) return { line: 0, members: [], queue: [] };
   const multi = [...byId.values()].filter((p) => p.parts.length >= 2).sort((a, b) => b.floors - a.floors || a.id.localeCompare(b.id));
   for (const p of multi) {

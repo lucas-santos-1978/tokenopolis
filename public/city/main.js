@@ -30,15 +30,16 @@ import { skyColorsAt, zoneHour } from '../lib/sky.js';
 import { copyText } from '../lib/clipboard.js';
 import { noteServerClock } from '../lib/freshness.js';
 import { t, plural, fmt, cityLabel, displayName, config } from '../i18n/index.js';
-import { tierOf, BUILDING_TIERS, TEN_BI, advisors, context, floorsText, cityTier, buildingTier, monthOf, ruinOf } from './rules.js';
+import { tierOf, BUILDING_TIERS, TEN_BI, advisors, context, floorsText, cityTier, buildingTier, monthOf, ruinOf, markOf, markText } from './rules.js';
 import { L, seed, hash, kind, buildWorld, groundCanvas, dojoOf, megaLinks } from './world.js';
 import { makeKit, craneJib, Batcher, mats, lit, blinkMats, matte, setAnisotropy, sweepSigns, SILVER, DARK, WARM_LIGHT, HOUSE_H, STYLE_PAL } from './buildings.js';
 import { initPanels, renderPanels, countdownKey, queueToast, liveEvents, hasToasts, keyOf, esc, staleText, renderAge, missionOf, renderBell, setMe as panelsSetMe, renderFinder, finderKey, locatePerson, MAPKEYS, mapColorFor, renderMapKey, renderPaper } from './panels.js';
 import { makeLife, blimpLines } from './life.js';
 import { makeEffects, launchRocket } from './effects.js';
-import { loadHistory, renderTimeline, startTimelapse, openRace, playRace, weekDiary } from './history.js';
+import { loadHistory, renderTimeline, startTimelapse, openRace, playRace, weekDiary, reachedOn } from './history.js';
 import { initLinks } from './links.js';
-import { drawBuildingCard } from './card.js';
+import { drawBuildingCard, drawProfileCard } from './card.js';
+import { drawMedalSheet, MEDAL_PX } from './medal.js';
 import { canCopyImages } from '../lib/clipboard.js';
 
 const $ = (s) => document.querySelector(s);
@@ -981,39 +982,107 @@ function leaveRoof() {
   roofBack = null; delete document.documentElement.dataset.roof;
   frameForDrawers();
 }
-// The building's card: a frame of the scene as it is now (the building is in the middle of the screen)
-// plus the person's numbers, as a PNG to download or, where the browser can, to copy.
+// The cards: a frame of the scene as it is now (the subject in the middle of the screen) plus the
+// person's numbers, as a PNG to download or, where the browser can, to copy. The building's card,
+// the campus's (square, every city added up) and the token medal alone share the same window.
 let cardBlob = null, cardUrl = null;
-function openCard(cityId, personId) {
+const fileSlug = (s) => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase() || 'card';
+const brandName = () => config.appName ?? 'Tokenopolis';
+// the frame: the camera steps to `at` for the picture and returns; drawn and read in the same turn,
+// before the browser clears the drawing buffer
+function snapshot(at) {
+  const keepP = camera.position.clone(), keepT = controls.target.clone(), keepTween = camTween;
+  const marks = [hoverHi, selHi, selFrame, selBeam, selRing], shown = marks.map((o) => o.visible); // the photo without the selection's box and beam
+  for (const o of marks) o.visible = false;
+  camera.clearViewOffset(); camera.updateProjectionMatrix();
+  if (at) flyTo(at, 0);
+  if (useBloom) composer.render(); else renderer.render(scene, camera);
+  marks.forEach((o, i) => { o.visible = shown[i]; });
+  camera.position.copy(keepP); controls.target.copy(keepT); controls.update(); camTween = keepTween;
+  return renderer.domElement;
+}
+// plain: a second picture to download (the medal without the name), with its file name; note: a line
+// under the buttons
+let plainUrl = null;
+const blobOf = (cv) => new Promise((ok) => cv.toBlob(ok, 'image/png'));
+async function showCard(cv, { alt, file, square = false, plain = null, plainFile = '', note = '' }) {
+  frameForDrawers();
+  const [blob, blob2] = await Promise.all([blobOf(cv), plain && blobOf(plain)]);
+  if (!blob) return;
+  if (cardUrl) URL.revokeObjectURL(cardUrl);
+  if (plainUrl) URL.revokeObjectURL(plainUrl);
+  cardBlob = blob; cardUrl = URL.createObjectURL(blob); plainUrl = blob2 ? URL.createObjectURL(blob2) : null;
+  const img = $('#card-img'); img.src = cardUrl; img.alt = alt; img.classList.toggle('square', square);
+  const dl = $('#card-dl'); dl.href = cardUrl; dl.download = `${fileSlug(brandName())}-${file}.png`;
+  const dl2 = $('#card-dl2'); dl2.hidden = !plainUrl;
+  if (plainUrl) { dl2.href = plainUrl; dl2.download = `${fileSlug(brandName())}-${plainFile}.png`; }
+  $('#card-note').hidden = !note; $('#card-note').textContent = note;
+  $('#card-copy').hidden = !canCopyImages(); // plain http has no clipboard for images: the download stays
+  openModal('cardbox');
+}
+// The person's token medal (rules.js TOKEN_MARKS) for drawMedal, or null below the first mark
+function medalFor(total) {
+  const m = markOf(total ?? 0);
+  if (!m) return null;
+  const bi = m.floors >= 1000, n = bi ? m.floors / 1000 : m.floors;
+  return { step: m.i, floors: m.floors, value: fmt.int(n), unit: t(bi ? 'medal.unitBi' : 'medal.unitMi'), ribbon: plural(n, bi ? 'medal.ribbonBi' : 'medal.ribbonMi'), brand: brandName() };
+}
+// the day the mark was reached (ISO), from the record; null when the record does not come
+async function medalSince(id, floors) { try { await loadHistory(); return reachedOn(id, floors); } catch { return null; } }
+const medalChip = (medal, since) => `🏅 ${since ? t('medal.chipSince', { mark: markText(medal.floors), date: fmt.dayMonth(since) }) : markText(medal.floors)}`;
+async function openCard(cityId, personId) {
   const c = cityOf(cityId), b = c?.buildings.find((x) => x.id === personId);
   if (!b) return;
-  // the frame: drawn and read in the same turn, before the browser clears the drawing buffer
-  // the camera steps back to frame the whole building for the picture, and returns
-  const hit = hitByKey.get(keyOf(cityId, personId)), keepP = camera.position.clone(), keepT = controls.target.clone(), keepTween = camTween;
-  camera.clearViewOffset(); camera.updateProjectionMatrix();
-  if (hit) flyTo({ target: new THREE.Vector3(hit.x, hit.h * 0.52, hit.z), phi: 0.3, dist: clamp(hit.h * 2.3, 90, 1100) }, 0);
-  if (useBloom) composer.render(); else renderer.render(scene, camera);
-  camera.position.copy(keepP); controls.target.copy(keepT); controls.update(); camTween = keepTween;
+  const medal = medalFor(b.total), since = medal && (await medalSince(b.id, medal.floors));
+  // the camera steps back to frame the whole building for the picture
+  const hit = hitByKey.get(keyOf(cityId, personId));
+  const shot = snapshot(hit && { target: new THREE.Vector3(hit.x, hit.h * 0.52, hit.z), phi: 0.3, dist: clamp(hit.h * 2.3, 90, 1100) });
   const tr = tierOf(b.floors, BUILDING_TIERS), chips = [`${tr.icon} ${buildingTier(tr.key).name}`];
+  if (medal) chips.push(medalChip(medal, since));
   if (b.mega) chips.push('💎 Mega Builder');
   if (b.belt) chips.push(`🥋 ${t(`belt.${b.belt}`).name}`);
   if (b.streak >= 2) chips.push(`📅 ${plural(b.streak, 'sheet.badge.streak')}`);
   const cv = drawBuildingCard({
-    shot: renderer.domElement, title: displayName(b).full, sub: t('card.sub', { c, rank: fmt.ordinal(c.buildings.indexOf(b) + 1) }),
+    shot, title: displayName(b).full, sub: t('card.sub', { c, rank: fmt.ordinal(c.buildings.indexOf(b) + 1) }),
     stats: [{ value: fmt.int(b.floors), label: t('card.floors') }, { value: `+${fmt.int(b.week)}`, label: t('card.week'), up: true }, { value: `+${fmt.int(b.today)}`, label: t('card.today') }],
-    chips, brand: `🏙️ ${config.appName ?? 'Tokenopolis'}`, date: fmt.date(data.generatedAt, 'long'),
+    chips, brand: `🏙️ ${brandName()}`, date: fmt.date(data.generatedAt, 'long'), medal,
   });
-  frameForDrawers();
-  const slug = (s) => String(s).normalize('NFD').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase() || 'building';
-  cv.toBlob((blob) => {
-    if (!blob) return;
-    if (cardUrl) URL.revokeObjectURL(cardUrl);
-    cardBlob = blob; cardUrl = URL.createObjectURL(blob);
-    $('#card-img').src = cardUrl; $('#card-img').alt = displayName(b).full;
-    const dl = $('#card-dl'); dl.href = cardUrl; dl.download = `${slug(config.appName ?? 'tokenopolis')}-${slug(displayName(b).full)}.png`;
-    $('#card-copy').hidden = !canCopyImages(); // plain http has no clipboard for images: the download stays
-    openModal('cardbox');
-  }, 'image/png');
+  showCard(cv, { alt: displayName(b).full, file: fileSlug(displayName(b).full) });
+}
+// The campus's card (the Mega Builder's corporate profile), square: the campus in the Corporate
+// District, every city added up, the week, the month and each city with its floors.
+async function openHqCard(id) {
+  const h = hqHits.get(id), p = world?.mega.members.find((x) => x.id === id);
+  if (!h || !p) return;
+  const medal = medalFor(p.floors), since = medal && (await medalSince(p.id, medal.floors));
+  const shot = snapshot({ target: new THREE.Vector3(h.x, h.h * 0.42, h.z), phi: 0.36, dist: clamp(h.h * 2.4, 55, 800) });
+  const rank = world.mega.members.indexOf(p) + 1, who = displayName(p).full, chips = [];
+  if (medal) chips.push(medalChip(medal, since));
+  if (p.belt) chips.push(`🥋 ${t(`belt.${p.belt}`).name}`);
+  for (const { b, c } of p.parts) chips.push(`🏙️ ${cityLabel(c)} · ${fmt.int(b.floors)}`);
+  const cv = drawProfileCard({
+    shot, title: who, sub: t('hqCard.sub', { rank: fmt.ordinal(rank), cities: plural(p.parts.length, 'count.city') }),
+    stats: [
+      { value: p.floors >= 1000 ? t('medal.bi', { n: fmt.dec(p.floors / 1000, 2, 2) }) : t('medal.mi', { n: fmt.int(p.floors) }), label: t('hqCard.total') },
+      { value: `+${fmt.int(p.week)}`, label: t('hqCard.week'), up: true },
+      { value: `+${fmt.int(p.month)}`, label: t('hqCard.month') },
+    ],
+    chips, brand: `💎 ${brandName()} · ${t('mega.district')}`, date: fmt.date(data.generatedAt, 'long'), medal,
+  });
+  showCard(cv, { alt: who, file: `${fileSlug(who)}-campus`, square: true });
+}
+// The medal alone, to download and print (a sticker, a pin, a badge): MEDAL_PX on a transparent
+// background, with the name and the day it was reached, or without the name (the mark's medal).
+async function openMedal(id) {
+  const parts = data.cities.flatMap((c) => c.buildings.filter((b) => b.id === id)).sort((a, b) => b.floors - a.floors), b = parts[0];
+  const medal = b && medalFor(b.total);
+  if (!medal) return;
+  const since = await medalSince(id, medal.floors), who = displayName(b).full, mark = fileSlug(markText(medal.floors));
+  const cv = drawMedalSheet(medal, { name: who, since: since ? t('medal.reached', { date: fmt.isoDate(since) }) : '' });
+  showCard(cv, {
+    alt: t('medal.alt', { name: who, mark: markText(medal.floors) }), file: `${fileSlug(who)}-${mark}`, square: true,
+    plain: drawMedalSheet(medal), plainFile: `${fileSlug(t('medal.file'))}-${mark}`, note: t('medal.print', { px: fmt.int(MEDAL_PX), cm: fmt.int(MEDAL_PX / 300 * 2.54) }),
+  });
 }
 async function copyCard() {
   if (!cardBlob) return;
@@ -1119,12 +1188,14 @@ function setMapMode(m) {
   syncUrl();
 }
 document.addEventListener('click', (e) => {
-  const el = e.target.closest('[data-menu], [data-hide-panel], [data-panel], [data-panels], [data-tool], [data-back], [data-close], [data-close-modal], [data-share], [data-me], [data-building], [data-dojo], [data-hq], [data-district], [data-city], [data-dir], [data-map-mode], [data-film], [data-race], [data-tl-stop], #spin, #refit, [data-hour], [data-welcome], [data-card], [data-card-copy], [data-text], [data-roof], [data-roof-exit], .sign');
+  const el = e.target.closest('[data-menu], [data-hide-panel], [data-panel], [data-panels], [data-tool], [data-back], [data-close], [data-close-modal], [data-share], [data-me], [data-building], [data-dojo], [data-hq], [data-district], [data-city], [data-dir], [data-map-mode], [data-film], [data-race], [data-tl-stop], #spin, #refit, [data-hour], [data-welcome], [data-card], [data-hq-card], [data-medal], [data-card-copy], [data-text], [data-roof], [data-roof-exit], .sign');
   if (el?.hasAttribute('data-menu')) return setMenu(!('menu' in document.documentElement.dataset));
   if (!e.target.closest('#menu')) setMenu(false);
   if (!el) { if (e.target.classList.contains('modal')) closeModals(); else if (!e.target.closest('.popover')) closePopovers(); return; }
   if (el.dataset.welcome) return closeWelcome(el.dataset.welcome === 'find');
   if (el.dataset.card) return openCard(...el.dataset.card.split('|'));
+  if (el.dataset.hqCard) return openHqCard(el.dataset.hqCard);
+  if (el.dataset.medal) return openMedal(el.dataset.medal);
   if (el.dataset.text) return setTextZoom(el.dataset.text);
   if (el.hasAttribute('data-roof-exit')) return leaveRoof();
   if (el.dataset.roof) return roofView(...el.dataset.roof.split('|'));

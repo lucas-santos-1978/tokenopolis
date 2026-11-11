@@ -177,6 +177,30 @@ export default {
     copied: { title: 'Imagem copiada', text: 'Cole no Teams ou no Slack' },
     failed: { title: 'Não deu para copiar a imagem', text: 'Use “Baixar PNG” e anexe' },
   },
+  // as medalhas de tokens: a soma de todas as cidades da pessoa (1 andar = 1 milhão de tokens)
+  medal: {
+    bi: '{n} bi', mi: '{n} mi',
+    unitBi: 'BI', unitMi: 'MI',
+    ribbonBi: { one: 'BILHÃO DE TOKENS', other: 'BILHÕES DE TOKENS' },
+    ribbonMi: { one: 'MILHÃO DE TOKENS', other: 'MILHÕES DE TOKENS' },
+    chip: '{mark} de tokens',
+    chipTitle: 'Medalha de tokens: a soma de todas as cidades. Toque para baixar',
+    chipSince: '{mark} desde {date}',
+    button: '🏅 Medalha',
+    buttonTitle: 'A medalha desta pessoa em PNG grande, com fundo transparente: para baixar ou mandar fazer',
+    reached: 'alcançada em {date}',
+    file: 'medalha',
+    print: ({ px, cm }) => `PNG de ${px} × ${px} px, fundo transparente, sem sombra: ${cm} cm a 300 dpi, pronto para imprimir. “Sem o nome” é a medalha da marca, para qualquer pessoa.`,
+    alt: 'Medalha de {mark} de tokens de {name}',
+  },
+  // o card do campus (o perfil corporativo de um Mega Builder), quadrado
+  hqCard: {
+    sub: ({ rank, cities }) => `${rank} Mega Builder · campus com ${cities}`,
+    total: 'tokens em todas as cidades',
+    week: 'andares na semana',
+    month: 'andares no mês',
+    buttonTitle: 'Uma imagem quadrada do campus para compartilhar no Teams, no Slack ou no perfil',
+  },
   // a corrida em volta de um prédio, na ficha
   around: {
     title: 'A CORRIDA',

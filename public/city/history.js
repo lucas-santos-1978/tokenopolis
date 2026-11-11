@@ -28,6 +28,18 @@ const dayIso = (h, i) => (isoFmt ??= new Intl.DateTimeFormat('en-CA', { timeZone
 const dayShort = (h, i) => fmt.date(dayMs(h, i), 'short'); // "Oct 21" / "21 out"
 const weekday0 = (h) => new Date(`${dayIso(h, 0)}T12:00:00Z`).getUTCDay(); // the record's first day, Sunday = 0
 
+// The day a person's tokens, added up across every city, reached `floors` (a token medal's mark): an
+// ISO calendar day ("2026-10-28"), or today when the record does not reach it yet. Needs loadHistory().
+export function reachedOn(personId, floors) {
+  if (!hist) return null;
+  const n = hist.days, sum = new Array(n).fill(0);
+  for (const c of hist.cities) { const p = c.people.find((q) => q.id === personId); if (p) for (let i = 0; i < n; i++) sum[i] += p.d[i] / 10; }
+  let cum = 0;
+  for (let i = 0; i < n; i++) { cum += sum[i]; if (cum >= floors - 1e-6) return dayIso(hist, i); }
+  dayIso(hist, 0); // (makes the formatter)
+  return isoFmt.format(Date.now());
+}
+
 // The week's diary: what happened since Monday, worked out from the record (nothing is stored, so it is
 // there for whoever was not watching): who moved up a type of building, newcomers, buildings that
 // caught fire, cities that changed title or passed another. Newest first. Needs loadHistory().

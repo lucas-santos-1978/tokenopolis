@@ -47,7 +47,7 @@ export default {
     timelapseStop: '■ Parar',
     sheet: 'Ficha do prédio',
     roofExit: '‹ Sair da cobertura',
-    card: { aria: 'Cartão do prédio', download: '⬇️ Baixar PNG', copy: '📋 Copiar imagem' },
+    card: { aria: 'Cartão do prédio', download: '⬇️ Baixar PNG', plain: '⬇️ Sem o nome', copy: '📋 Copiar imagem' },
     welcome: {
       title: '👋 Ache o seu prédio',
       text: 'Busque o seu nome, abra o seu prédio e marque “Este é o meu prédio”. Ele ganha um pino, e a cidade avisa quando ele crescer.',

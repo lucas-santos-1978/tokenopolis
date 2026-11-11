@@ -173,6 +173,30 @@ export default {
     copied: { title: 'Image copied', text: 'Paste it in Teams or Slack' },
     failed: { title: 'Could not copy the image', text: 'Use “Download PNG” and attach it' },
   },
+  // the token medals: a person's tokens added up across every city (1 floor = 1 million tokens)
+  medal: {
+    bi: '{n}B', mi: '{n}M',
+    unitBi: 'B', unitMi: 'M',
+    ribbonBi: { one: 'BILLION TOKENS', other: 'BILLION TOKENS' },
+    ribbonMi: { one: 'MILLION TOKENS', other: 'MILLION TOKENS' },
+    chip: '{mark} tokens',
+    chipTitle: 'Token medal: every city added up. Tap to download',
+    chipSince: '{mark} since {date}',
+    button: '🏅 Medal',
+    buttonTitle: "This person's medal as a large PNG with a transparent background: to download or to have made",
+    reached: 'reached on {date}',
+    file: 'medal',
+    print: ({ px, cm }) => `PNG of ${px} × ${px} px, transparent background, no shadow: ${cm} cm at 300 dpi, ready to print. “Without the name” is the mark's medal, for anyone.`,
+    alt: "{name}'s {mark} token medal",
+  },
+  // the campus's card (a Mega Builder's corporate profile), square
+  hqCard: {
+    sub: ({ rank, cities }) => `${rank} Mega Builder · a campus with ${cities}`,
+    total: 'tokens in every city',
+    week: 'floors this week',
+    month: 'floors this month',
+    buttonTitle: 'A square picture of the campus to share on Teams, Slack or a profile',
+  },
   // the race around a building, on its card
   around: {
     title: 'THE RACE',
