@@ -60,6 +60,7 @@ export default {
     ticker: 'NEWS',
     timelapseStop: '■ Stop',
     sheet: 'Building details',
+    roofExit: '‹ Leave the roof',
     card: { aria: 'Building card', download: '⬇️ Download PNG', copy: '📋 Copy image' },
     welcome: {
       title: '👋 Find your building',

@@ -33,13 +33,20 @@ buildings and unlocks a perk on the map:
 tower (5,000) and the space elevator (10,000 floors = 10 billion tokens, with a cable to the sky
 and a rocket on the day someone gets there). Roofs tell a story: helipad, an infinity pool on the day of a
 personal record, a zen garden in the week of a new belt, garden, antenna, and an owl sign for night
-workers. Buildings have a street level: a ledge, doors and a canopy. "🏙️ Rooftop view" on the card
-puts the camera on the building's roof, looking at the city. Windows light up by the hours each person actually used.
+workers. Buildings have a street level: a ledge, doors, a canopy and rows of shop windows under
+awnings of each shop's color, lit at night. "🏙️ Rooftop view" on the card puts the camera on the
+building's roof, looking at the city's most open side; a button (or `Esc`) leaves the roof, and on a
+phone the drawers step aside. Windows light up by the hours each person actually used. The selection
+outline goes from the ground to the tip of the spire or the antenna.
 
 **Abandoned buildings.** After more than `IDLE_FIRE_DAYS` (15) calendar days without Claude the
 building catches fire: soot on the walls, flames on the roof and out of the windows, a column of
 smoke. After more than `IDLE_RUBBLE_DAYS` (30) it is a pile of rubble with a broken wall and twisted
-beams. Using Claude again puts it back up the same day, with balloons, confetti and a notice ("back today after N days"). Some burning buildings have a fire truck at the door; rubble is closed off with trestles and tape, and weeds grow around it. The card and the hover tip say how many days;
+beams. Using Claude again puts it back up the same day: all day the building wears a golden scaffold
+with sparkles climbing it, "Back!" floats over it, and the notice, the news ticker and the newspaper
+tell it ("back today after N days"). Some burning buildings have a fire truck at the door spraying an
+arc of water on the wall; rubble is closed off with trestles and tape, and weeds grow around it. The
+card and the hover tip say how many days;
 `0` turns either stage off and `?ruins=0` hides both on one screen. Someone whose last use is older than
 `CITIES_START` has no tokens in the window and no building at all.
 
@@ -196,13 +203,15 @@ jersey).
 
 ## Redrawing
 
-A reading that changes nothing visible redraws nothing. In a region of up to 24 cities each city is a
-piece of the scene of its own (the Corporate District is another), so a new floor redraws only its
-city; the land (ground, water, trees, lamps, cars) is redrawn only when the map's layout changes. The
-price is more draw calls per frame, so the page times its first seconds and, under 38 frames a second,
-merges the region into one piece by itself (a weak machine, a TV). `?parts=0` asks for one piece,
-`?parts=1` keeps one per city whatever the speed; a region of more than 24 cities is always one piece. The height scale moves in steps of 2%, so one more
-floor on the tallest building does not change every height.
+A reading that changes nothing visible redraws nothing. The scene is cut into pieces: in a region of
+up to 24 cities each city is a piece of its own, and a bigger region is cut into 24 blocks of
+neighboring cities (the Corporate District is always a piece of its own). A new floor redraws only
+its piece; the land (ground, water, trees, lamps, cars) is redrawn only when the map's layout changes.
+Walls, roofs and awnings that differ only by color share one material, so the pieces cost few draw
+calls. Even so, the page times its first seconds and, under 38 frames a second, merges the region into
+one piece by itself (a weak machine, a TV). `?parts=0` asks for one piece, `?parts=1` keeps the pieces
+whatever the speed. The height scale moves in steps of 2%, so one more floor on the tallest building
+does not change every height.
 
 ## Demo mode
 

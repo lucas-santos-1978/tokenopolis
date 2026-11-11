@@ -3,6 +3,25 @@
 Dates are the day each version went live on the author's panel. Earlier versions were an internal
 tool with another name; the open-source release renames it Tokenopolis.
 
+## v32 (2026-11-11)
+
+- No outside site at all: the Nunito and Playfair Display fonts are served by the panel
+  (`public/vendor/fonts/`, SIL Open Font License), like three.js.
+- The selection outline reaches the tip of the spire or the antenna. Buildings have shop windows on
+  the street (lit at night) under awnings of each shop's color.
+- Back from the ashes, complete: a golden scaffold around the building all day with sparkles climbing
+  it, "Back!" floating over it, and a line in the newspaper. Fire trucks spray an arc of water on
+  the burning wall.
+- The rooftop view has a button to leave the roof, and on a phone the drawers step aside. The text
+  size (A, A+, A++) works on a phone too.
+- Walls, roofs and awnings that differ only by color share one material (the color goes on the
+  vertices). With the author's data: one piece per city went from 1,587 to 570 draw calls (45 to 59
+  frames a second in a headless Chrome), one city redraws in about 115 ms, and the region as one
+  piece went from 569 to 324 draw calls and redraws in about 450 ms instead of 830.
+- A region of more than 24 cities is cut into 24 blocks of neighboring cities instead of being one
+  piece: a new floor redraws only its block. On the demo region (about a hundred cities) a change
+  redraws in about 200 ms instead of 2.4 s, with fewer draw calls than v31 had as one piece.
+
 ## v31 (2026-11-10)
 
 - The page times its first seconds and, under 38 frames a second, merges the region into one piece by

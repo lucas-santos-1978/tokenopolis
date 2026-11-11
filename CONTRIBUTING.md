@@ -6,8 +6,9 @@ contributing is mostly about keeping it that way.
 ## Ground rules
 
 - **No dependencies, no build step.** The server is plain Node (ES modules, Node 22.15 or newer)
-  and the pages are plain ES modules loading three.js from a CDN. If a change needs a package,
-  open an issue first.
+  and the pages are plain ES modules. three.js and the fonts are served by the panel itself, from
+  `public/vendor/` (unmodified copies, with their licenses), so the pages call no outside site. If a
+  change needs a package, open an issue first.
 - **Everything the user reads goes through the dictionaries.** The server sends ids, numbers and
   dates; the browser formats them (`docs/contract.md`, `docs/i18n.md`). A new string gets a key
   in `public/i18n/en/*.js` and `public/i18n/pt-BR/*.js`; never a literal in the page code.

@@ -226,7 +226,7 @@ export default {
   },
 
   // labels in the 3D world
-  float: { floors: { one: '+{n} floor', other: '+{n} floors' } },
+  float: { floors: { one: '+{n} floor', other: '+{n} floors' }, back: 'Back!' },
   // the mayor's rally (banner on the stage, label over it, hover tip)
   rally: {
     banner: 'Mayor for {month}',
@@ -340,6 +340,7 @@ export default {
     noMayors: 'Nobody built in {lastMonth}: the city halls are vacant.',
     fresh: 'Welcome to {list}, who raised their first building this week.',
     noFresh: 'No new buildings this week.',
+    back: '🎉 Back from the ashes today: {list}. The fire is out and the scaffold is golden.',
     weather: {
       calm: { title: 'Still weather', text: 'No crane working right now. A good time for a coffee.' },
       night: { title: 'A night of building', text: { one: '{n} crane works under the light of the lit windows.', other: '{n} cranes work under the light of the lit windows.' } },

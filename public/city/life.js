@@ -154,6 +154,33 @@ export function makeLife({ scene, world, data, wx, wz, marks, airports, size }) 
     g.instanceCount = list.length / stride;
     return g;
   };
+  // The firefighters' jets: drops of water that leave the tip of each truck's ladder, rise in an arc and
+  // fall on the burning wall. One instanced geometry for every truck, moved in the vertex shader.
+  const hs = []; // from (3) · to (3) · phase
+  marks.filter((m) => m.kind === 'hose').forEach((m, i) => { for (let j = 0; j < 44; j++) hs.push(...m.from, ...m.to, j / 44 + hash(i, j, 71) * 0.015); });
+  if (hs.length) {
+    const mat = new THREE.ShaderMaterial({
+      uniforms: fireU, transparent: true, depthWrite: false,
+      vertexShader: `
+        attribute vec3 aFrom; attribute vec3 aTo; attribute float aPhase;
+        uniform float uTime; varying float vT;
+        void main() {
+          float t = fract(uTime * 0.85 + aPhase); vT = t;
+          vec3 c = mix(aFrom, aTo, t);
+          c.y += 8.8 * t * (1.0 - t);
+          c.x += sin(aPhase * 40.0) * 0.3 * t; c.z += cos(aPhase * 31.0) * 0.3 * t;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(c + position * (0.7 + 1.6 * t), 1.0); // the jet opens into spray as it goes
+        }`,
+      fragmentShader: `
+        varying float vT;
+        void main() {
+          gl_FragColor = vec4(0.86, 0.95, 1.0, 0.92 * (1.0 - smoothstep(0.8, 1.0, vT)));
+          #include <colorspace_fragment>
+        }`,
+    });
+    const mesh = new THREE.Mesh(instanced(new THREE.IcosahedronGeometry(0.26, 0), hs, 7, [['aFrom', 3], ['aTo', 3], ['aPhase', 1]]), mat);
+    mesh.frustumCulled = false; mesh.renderOrder = 2; group.add(mesh);
+  }
   if (fl.length) {
     const mat = new THREE.ShaderMaterial({
       uniforms: fireU, transparent: true, depthWrite: false, side: THREE.DoubleSide, toneMapped: false,

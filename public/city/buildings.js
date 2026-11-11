@@ -56,9 +56,18 @@ export const blinkMats = []; // the ones that blink
 const reg = (m) => { mats.add(m); return m; };
 const nightly = (m, i) => { lit.push({ m, i }); return m; };
 const matteCache = new Map();
+// In the merged meshes (Batcher) a material that differs from another only by its color is one material
+// with the color on the vertices: `userData.tint` is that shared material. A city has dozens of colors
+// (walls, roofs, awnings); as materials, each one would be a mesh and a draw call of its own.
+const tintCache = new Map();
+const tintOf = (key, make) => { if (!tintCache.has(key)) tintCache.set(key, reg(make())); return tintCache.get(key); };
 export function matte(hex, extra = {}) {
   const key = hex + JSON.stringify(extra);
-  if (!matteCache.has(key)) matteCache.set(key, reg(new THREE.MeshStandardMaterial({ color: hex, roughness: 0.85, metalness: 0, envMapIntensity: 0.35, ...extra })));
+  if (!matteCache.has(key)) {
+    const m = reg(new THREE.MeshStandardMaterial({ color: hex, roughness: 0.85, metalness: 0, envMapIntensity: 0.35, ...extra }));
+    if (!extra.transparent && !extra.map) m.userData.tint = tintOf(`matte${JSON.stringify(extra)}`, () => new THREE.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, roughness: 0.85, metalness: 0, envMapIntensity: 0.35, ...extra }));
+    matteCache.set(key, m);
+  }
   return matteCache.get(key);
 }
 const glowMat = (hex) => reg(new THREE.MeshStandardMaterial({ color: hex, emissive: hex, emissiveIntensity: 0, roughness: 0.6 }));
@@ -68,6 +77,25 @@ const SCAFFOLD = matte('#f4c440'), SCAFFOLD_TOP = matte('#f6d77f');
 export const STONE = matte('#d6d0c2'), DARK = matte('#3a4048');
 const BRONZE = matte('#a8763f', { roughness: 0.45, metalness: 0.6 }), PATINA = matte('#5fae96', { roughness: 0.7, metalness: 0.2 });
 export const RED_LIGHT = nightly(glowMat('#ff3b30'), 2.5), GREEN_LIGHT = nightly(glowMat('#5cff7a'), 2.5), WARM_LIGHT = nightly(glowMat('#ffd27a'), 1.8);
+// the shop windows at street level: pale glass by day, lit from inside at night
+// one shop per repeat of the tile: a dark frame, a mullion, pale glass by day and, at night, the lit
+// interior with shelves (the emissive map)
+const SHOP = (() => {
+  const W = 128, H = 72, day = document.createElement('canvas'), night = document.createElement('canvas');
+  day.width = night.width = W; day.height = night.height = H;
+  const d = day.getContext('2d'), n = night.getContext('2d');
+  const glass = d.createLinearGradient(0, 0, W, H); glass.addColorStop(0, '#d8eef6'); glass.addColorStop(0.55, '#a9cfe0'); glass.addColorStop(1, '#c4e2ee');
+  d.fillStyle = '#39414a'; d.fillRect(0, 0, W, H);
+  d.fillStyle = glass; d.fillRect(6, 6, W - 12, H - 16);
+  d.fillStyle = 'rgba(255,255,255,.35)'; d.beginPath(); d.moveTo(14, 6); d.lineTo(34, 6); d.lineTo(18, H - 10); d.lineTo(6, H - 10); d.lineTo(6, 20); d.fill(); // a glint
+  d.fillStyle = '#39414a'; d.fillRect(W / 2 - 2, 6, 4, H - 16); d.fillRect(0, H - 12, W, 12); // the mullion and the sill
+  n.fillStyle = '#000'; n.fillRect(0, 0, W, H);
+  n.fillStyle = '#ffd9a0'; n.fillRect(6, 6, W / 2 - 8, H - 16); n.fillRect(W / 2 + 2, 6, W / 2 - 8, H - 16);
+  n.fillStyle = 'rgba(80,40,10,.55)'; for (const y of [24, 40]) { n.fillRect(10, y, W / 2 - 16, 3); n.fillRect(W / 2 + 6, y, W / 2 - 16, 3); } // shelves
+  n.fillStyle = 'rgba(60,30,10,.6)'; n.fillRect(24, 30, 7, 22); n.beginPath(); n.arc(27.5, 26, 4, 0, Math.PI * 2); n.fill(); // someone inside
+  const tex = (cv, srgb) => { const t = new THREE.CanvasTexture(cv); t.wrapS = THREE.RepeatWrapping; if (srgb) t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; };
+  return nightly(reg(new THREE.MeshStandardMaterial({ map: tex(day, true), emissiveMap: tex(night, true), emissive: '#ffffff', emissiveIntensity: 0, roughness: 0.25, metalness: 0.25, envMapIntensity: 0.8 })), 1.1);
+})();
 export const PINK = nightly(glowMat('#ff4fd8'), 2.2), CYAN = nightly(glowMat('#3ef0ff'), 2.2), BEACON = nightly(glowMat('#fff6d0'), 3);
 blinkMats.push(RED_LIGHT, GREEN_LIGHT);
 const HOUSE_GLASS = nightly(reg(new THREE.MeshStandardMaterial({ color: '#4a6a8c', emissive: '#ffd27a', emissiveIntensity: 0, roughness: 0.3 })), 1.6);
@@ -156,12 +184,19 @@ const facadeCache = new Map();
 function facadeMat(st, variant, glass, hex) {
   const key = `${st}${variant}${glass}${hex}`;
   if (facadeCache.has(key)) return facadeCache.get(key);
-  const { map, emissive } = windowTile(st, variant, glass);
-  const m = nightly(reg(new THREE.MeshStandardMaterial({
-    color: hex, map, emissiveMap: emissive, emissive: new THREE.Color(WINDOW_GLOW[st] ?? '#ffd27a'), emissiveIntensity: 0,
-    roughness: glass ? 0.22 : st === 'pagoda' ? 0.45 : 0.8, metalness: glass ? 0.45 : st === 'pagoda' ? 0.12 : 0, envMapIntensity: glass ? 1 : st === 'pagoda' ? 0.5 : 0.3,
-  })), 1.5);
-  m.userData.facade = true; m.onBeforeCompile = hoursShader; m.customProgramCacheKey = () => 'hours';
+  // one material per style, variant and glass, with the wall's color on the vertices (a material per
+  // color would be a mesh per color in every city)
+  const shared = tintOf(`facade${st}${variant}${glass}`, () => {
+    const { map, emissive } = windowTile(st, variant, glass);
+    const s = nightly(new THREE.MeshStandardMaterial({
+      color: '#ffffff', vertexColors: true, map, emissiveMap: emissive, emissive: new THREE.Color(WINDOW_GLOW[st] ?? '#ffd27a'), emissiveIntensity: 0,
+      roughness: glass ? 0.22 : st === 'pagoda' ? 0.45 : 0.8, metalness: glass ? 0.45 : st === 'pagoda' ? 0.12 : 0, envMapIntensity: glass ? 1 : st === 'pagoda' ? 0.5 : 0.3,
+    }), 1.5);
+    s.userData.facade = true; s.onBeforeCompile = hoursShader; s.customProgramCacheKey = () => 'hours';
+    return s;
+  });
+  const m = new THREE.MeshStandardMaterial({ color: hex }); // only carries the color to the Batcher
+  m.userData.facade = true; m.userData.tint = shared;
   facadeCache.set(key, m);
   return m;
 }
@@ -225,6 +260,12 @@ export class Batcher {
     if (s) g.scale(s[0], s[1], s[2]);
     if (ry) g.rotateY(ry);
     g.translate(x, y, z);
+    const shared = mat.userData.tint;
+    if (shared) { // the piece goes to the shared material's mesh; its color is written there, when merging
+      g.userData.col = mat.color;
+      if (!shared.userData.facade && g.attributes.aHours) { g.deleteAttribute('aHours'); g.deleteAttribute('aH'); } // the hours are for the windows only
+      mat = shared;
+    }
     let list = this.groups.get(mat);
     if (!list) this.groups.set(mat, (list = []));
     list.push(g);
@@ -232,9 +273,37 @@ export class Batcher {
   build(shadow = true) {
     const out = [];
     for (const [mat, list] of this.groups) {
-      const m = new THREE.Mesh(mergeGeometries(list, false), mat);
+      // pieces of every origin in one mesh: none indexed, and the same attributes in all of them (a missing
+      // one is filled with what WebGL would read: zeros, and 1 in the last place of a vec4)
+      const sizes = new Map();
+      for (const g of list) for (const [k, a] of Object.entries(g.attributes)) sizes.set(k, a.itemSize);
+      const whole = list.every((g) => !g.index && Object.keys(g.attributes).length === sizes.size); // the usual case: nothing to fill
+      const same = whole ? list : list.map((g0) => {
+        const g = g0.index ? g0.toNonIndexed() : g0;
+        for (const [k, size] of sizes) {
+          if (g.attributes[k]) continue;
+          const a = new Float32Array(g.attributes.position.count * size);
+          if (size === 4) for (let i = 3; i < a.length; i += 4) a[i] = 1;
+          g.setAttribute(k, new THREE.BufferAttribute(a, size));
+        }
+        g.userData.col = g0.userData.col;
+        return g;
+      });
+      const merged = mergeGeometries(same, false);
+      if (mat.vertexColors) { // each piece's color, over its own range of vertices
+        const col = new Float32Array(merged.attributes.position.count * 3);
+        let at = 0;
+        for (const g of same) {
+          const c = g.userData.col, end = at + g.attributes.position.count * 3;
+          if (c) for (let i = at; i < end; i += 3) { col[i] = c.r; col[i + 1] = c.g; col[i + 2] = c.b; }
+          at = end;
+        }
+        merged.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      }
+      const m = new THREE.Mesh(merged, mat);
       m.castShadow = shadow; m.receiveShadow = shadow; out.push(m);
       for (const g of list) g.dispose();
+      if (!whole) for (const g of same) g.dispose();
     }
     this.groups.clear();
     return out;
@@ -285,7 +354,13 @@ export function craneJib() {
 }
 
 export function makeKit(batch, hOf, wkOf, colorOf = null) {
-  const B = (geo, mat, x, y, z, ry, s) => batch.add(geo, mat, x, y, z, ry, s);
+  // while a crown is being made, the highest point of its pieces is kept: the selection outline goes up
+  // to the tip of the spire or the antenna (a piece taller than 60, the space elevator's cable, is left out)
+  let tipOn = false, tipY = 0;
+  const B = (geo, mat, x, y, z, ry, s) => {
+    if (tipOn) { if (!geo.boundingBox) geo.computeBoundingBox(); const up = geo.boundingBox.max.y * (s ? s[1] : 1); if (up < 60) tipY = Math.max(tipY, (y ?? 0) + up); }
+    batch.add(geo, mat, x, y, z, ry, s);
+  };
   let cur = null; // the building being made: its hours of use and height, for the windows (aHours, aH)
   const bx = (w, h, d, side, roof, x, y, z, ry = 0) => {
     const facade = !!side.userData.facade, { sides, caps } = boxParts(w, h, d, facade ? y : 0);
@@ -337,18 +412,37 @@ export function makeKit(batch, hOf, wkOf, colorOf = null) {
       B(boxGeo(bw0 + 0.14, 0.2, bd0 + 0.14), trim, x, 1.55, z);
       B(boxGeo(Math.min(2.2, bw0 * 0.4), 1.3, 0.1), DARK, x, 0, fz + 0.03);
       B(boxGeo(Math.min(3, bw0 * 0.54), 0.14, 1), trim, x, 1.42, fz + 0.5);
-      if (fire && r() < 0.4) fireTruck(x + L * 0.26, z + L * 0.47, r); // the firefighters are at some of the fires
+      // shop windows along the front and the sides, each row under an awning of the shop's color; their own
+      // random numbers, so the rest of the building stays as it always was
+      const r2 = seed(`street${b.id}${c.id}`), pane = fire ? DARK : SHOP, awning = matte(AWNINGS[Math.floor(r2() * AWNINGS.length)]);
+      // each row of shops is one strip of glass with the storefront drawn on it (frames, mullions, the lit
+      // shelves inside), repeated once per shop: one piece instead of one per pane
+      const strip = (len, alongX, cx, cz) => {
+        const g = boxGeo(alongX ? len : 0.08, 0.95, alongX ? 0.08 : len), uv = g.attributes.uv, n = Math.max(1, Math.round(len / 1.7));
+        for (let i = 0; i < uv.count; i++) uv.setX(i, uv.getX(i) * n);
+        B(g, pane, cx, 0.28, cz);
+      };
+      const shops = (cx, cz, len, alongX) => {
+        if (alongX) { const side = (len - 3) / 2; if (side > 0.6) for (const s of [-1, 1]) strip(side, true, cx + s * (1.5 + side / 2), cz); } // two rows, the doors between them
+        else strip(len, false, cx, cz);
+        B(boxGeo(alongX ? len : 0.7, 0.1, alongX ? 0.7 : len), awning, cx, 1.28, cz);
+      };
+      shops(x, fz + 0.05, bw0 * 0.92, true); shops(x - bw0 / 2 - 0.05, z, bd0 * 0.8, false); shops(x + bw0 / 2 + 0.05, z, bd0 * 0.8, false);
+      if (fire && r2() < 0.4) fireTruck(x + L * 0.26, z + L * 0.47, r2, x + bw0 * 0.2, Math.min(h * 0.6, 11), fz); // the firefighters are at some of the fires
+      if (b.back) comeback(x, z, body.bw, body.bd, h);
     }
     // this week's floors: the top in yellow, with scaffolding
     const wk = Math.min(h - 1.5, wkOf(b));
     if (wk >= 0.8) bx(topW + 0.25, wk, topD + 0.25, SCAFFOLD, SCAFFOLD_TOP, x, h - wk, z);
+    tipOn = true; tipY = h;
     crownOf(b, k, st, t, h, topW, topD, hex, side, r, pick, x, z);
+    tipOn = false;
     roofBits(b, h, topW, topD, r, x, z);
     if (k === 'cloudTower') marks.push({ kind: 'beacon', x, y: h + 4.5, z });
     if (k === 'spaceElevator') marks.push({ kind: 'cable', x, y: h + 3, z, seed: r() * 6 });
     if (fire) marks.push({ kind: 'fire', x, z, h, w: topW, d: topD, ...body });
     cur = null;
-    return { h };
+    return { h, top: tipY };
   }
   // The crown of each type: golden spire (supertower), beacon and clouds (cloud tower), ring
   // (orbital), cable to the sky (elevator), art deco steps, machine room, antenna, water tank…
@@ -379,10 +473,23 @@ export function makeKit(batch, hOf, wkOf, colorOf = null) {
     }
   }
   const TRIM = matte('#4a545e');
+  // shop windows (lit at night) and the colors of the awnings over them
+  const AWNINGS = ['#c0504d', '#3f7fb3', '#5f9e45', '#d08a3a', '#7a5ea8', '#2f8f8a'];
+  // Back from the ashes: a golden scaffold around the building for the whole day (corner posts and
+  // rings), and a mark for the sparkles that climb it (main.js)
+  function comeback(x, z, w, d, h) {
+    const hw = w / 2 + 0.35, hd = d / 2 + 0.35;
+    for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) B(boxGeo(0.2, h + 0.6, 0.2), GOLD_MAT, x + sx * hw, 0, z + sz * hd);
+    for (let y = Math.min(2.6, h * 0.5), step = Math.max(2.6, h / 9); y < h; y += step) {
+      for (const s of [-1, 1]) { B(boxGeo(w + 0.9, 0.12, 0.12), GOLD_MAT, x, y, z + s * hd); B(boxGeo(0.12, 0.12, d + 0.9), GOLD_MAT, x + s * hw, y, z); }
+    }
+    marks.push({ kind: 'back', x, z, h, r: Math.max(hw, hd) + 0.4 });
+  }
   // A fire truck at the door of a burning building: the red body, the cab, the ladder raised to the
   // facade and a blue light (static: it goes into the merged mesh).
-  function fireTruck(x, z, r) {
+  function fireTruck(x, z, r, tx = x, ty = 6, tz = z - 2) {
     const red = matte('#c8302b'), a = (r() - 0.5) * 0.5;
+    marks.push({ kind: 'hose', from: [x + 0.4, 4.1, z - 1.6], to: [tx, ty, tz] }); // the jet of water, from the tip of the ladder to the wall (life.js)
     B(boxGeo(2.9, 1.0, 1.15), red, x, 0.25, z, a); B(boxGeo(0.9, 0.75, 1.1), matte('#e8eaec'), x - Math.cos(a) * 0.95, 1.2, z + Math.sin(a) * 0.95, a);
     const ladder = NI(boxGeo(0.16, 4.2, 0.5)); ladder.rotateX(0.75);
     B(ladder, SILVER, x + 0.4, 1.2, z - 0.2, a); B(sphGeo(0.16, 6), RED_LIGHT, x - Math.cos(a) * 0.95, 1.98, z + Math.sin(a) * 0.95);
@@ -467,6 +574,7 @@ export function makeKit(batch, hOf, wkOf, colorOf = null) {
     if (b.isNew) balloons(x, hh, z);
     flagFor(b, x + 1.3, hh - 0.5, z + 1.3);
     if (fire) marks.push({ kind: 'fire', x, z, h: hh, w: 5, d: 4, house: true });
+    if (b.back && !colorOf) comeback(x, z, 6.6, 5.6, hh); // back from the ashes: the golden scaffold
     return { h: hh };
   }
 

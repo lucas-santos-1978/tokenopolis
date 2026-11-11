@@ -7,9 +7,7 @@
   <!-- hidden until initI18n() fills the text (no English flash for pt-BR visitors) -->
   <style>html:not(.i18n-ready) { visibility: hidden; }</style>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏙️</text></svg>" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="vendor/fonts/fonts.css" />
   <link rel="stylesheet" href="city.css" />
   <script type="importmap">
     {
@@ -111,6 +109,7 @@
     <div class="ticker-track"><div id="news" class="ticker-items"></div></div>
   </footer>
   <div id="tour-cap" class="tour-cap" hidden><b></b><span></span></div>
+  <button type="button" id="roof-exit" class="roof-exit" data-roof-exit data-i18n="html.roofExit">‹ Leave the roof</button>
   <div id="tl-bar" class="tl-bar" hidden><span class="tl-date"></span><i class="tl-prog"></i><span class="tl-sub"></span><button type="button" data-tl-stop data-i18n="html.timelapseStop">■ Stop</button></div>
 
   <div id="sheet" class="sheet" role="dialog" aria-label="Building details" data-i18n-aria="html.sheet" hidden></div>

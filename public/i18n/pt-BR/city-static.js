@@ -60,6 +60,7 @@ export default {
     ticker: 'NOTÍCIAS',
     timelapseStop: '■ Parar',
     sheet: 'Ficha do prédio',
+    roofExit: '‹ Sair da cobertura',
     card: { aria: 'Cartão do prédio', download: '⬇️ Baixar PNG', copy: '📋 Copiar imagem' },
     welcome: {
       title: '👋 Ache o seu prédio',

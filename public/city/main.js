@@ -294,7 +294,7 @@ function watchPace(now) {
   if (fps < 38) { onePiece = true; console.info(`[city] ${fps.toFixed(0)} frames a second with one piece per city: the region is now one piece`); buildScene(); }
 }
 const parts = new Map(); // city id (or '~district', or '~all') → { sig, group, hits, entries, kit, airports, maxH }
-let craneMeshes = [];
+let craneMeshes = [], backMarks = []; // backMarks: the buildings back from the ashes today (the golden scaffold)
 // what a building's drawing depends on (the same fields decide whether a reading redraws anything)
 const bSig = (b) => `${b.id}|${Math.floor(b.floors)}|${Math.round(b.week)}|${+b.now}|${+b.isNew}|${b.heli}|${b.streak}|${+(b.today > 0)}|${b.night}|${b.cities}|${b.hours}|${b.belt}|${b.back ?? 0}|${+!!b.record}|${+!!b.beltUp}|${+!!b.mega}|${ruinOf(b) ?? ''}`;
 const flat = (v) => (v && typeof v === 'object' ? (v.id ?? v.key ?? '') + (Array.isArray(v) ? v.length : '') + (v.lastMonth ?? '') + (v.floors ? Math.floor(v.floors) : '') : v);
@@ -330,11 +330,11 @@ function buildPart(objs, sig, colorOf) {
     const x = wx(o.gx), z = wz(o.gy);
     let ud = null;
     if (o.kind === 'bld') {
-      const { h } = o.b.floors < 15 ? kit.house(o.b, o.c, x, z) : kit.tower(o.b, o.c, x, z);
+      const { h, top } = o.b.floors < 15 ? kit.house(o.b, o.c, x, z) : kit.tower(o.b, o.c, x, z);
       part.maxH.set(o.c.id, Math.max(part.maxH.get(o.c.id) ?? 0, h));
       const hit = new THREE.Mesh(new THREE.BoxGeometry(L * 0.9, h + 2, L * 0.9), DARK);
       hit.position.set(x, (h + 2) / 2, z);
-      ud = addHit(hit, { b: o.b, c: o.c, h, x, z });
+      ud = addHit(hit, { b: o.b, c: o.c, h, top: top ?? h, x, z }); // top: the tip of the spire or the antenna (the outline goes up to it)
       hitByKey.set(keyOf(o.c.id, o.b.id), ud); part.keys.push([hitByKey, keyOf(o.c.id, o.b.id)]);
     } else if (o.kind === 'mon') {
       const mx = x + (o.size - 1) * L / 2, mz = z + (o.size - 1) * L / 2;
@@ -398,16 +398,21 @@ function buildScene() {
   }
   for (const m of scen.build()) landGroup.add(m);
   } // (the land)
-  // Buildings, houses and monuments, from the kit, merged by material. In a region of up to PER_CITY_MAX
-  // cities each city is a part of its own (the Corporate District is another): a reading that changes one
-  // city redraws that city only, and the others stay as they are. A bigger region is one single part,
-  // to keep the draw calls down.
-  const colorOf = grey ? mapColorFor(mapMode, world.maxWeek) : null, perCity = !onePiece && src.cities.length <= PER_CITY_MAX;
+  // Buildings, houses and monuments, from the kit, merged by material, in parts: a reading that changes one
+  // city redraws only its part, and the others stay as they are. Up to PER_CITY_MAX cities, each city is
+  // a part; a bigger region is cut into PER_CITY_MAX blocks of neighboring cities (in the map's reading
+  // order), so the draw calls stay those of PER_CITY_MAX parts. The Corporate District is a part of its own.
+  const colorOf = grey ? mapColorFor(mapMode, world.maxWeek) : null;
+  const blockOf = new Map();
+  if (!onePiece) {
+    const order = [...src.cities].filter((c) => c.box).sort((a, b) => a.box.sy - b.box.sy || a.box.sx - b.box.sx), size = Math.max(1, Math.ceil(order.length / PER_CITY_MAX));
+    order.forEach((c, i) => blockOf.set(c.id, size === 1 ? c.id : '~b' + Math.floor(i / size)));
+  }
   const groups = new Map(), trees = [], lamps = [];
   for (const o of world.objs) {
     if (o.kind === 'tree') trees.push({ x: wx(o.gx) - L / 2 + o.u * L, z: wz(o.gy) - L / 2 + o.v * L, s: o.s });
     else if (o.kind === 'lamp') lamps.push({ x: wx(o.gx) + L * 0.36, z: wz(o.gy) + L * 0.36 });
-    else { const k = !perCity ? '~all' : o.c ? o.c.id : '~district'; (groups.get(k) ?? groups.set(k, []).get(k)).push(o); }
+    else { const k = onePiece ? '~all' : o.c ? blockOf.get(o.c.id) ?? '~loose' : '~district'; (groups.get(k) ?? groups.set(k, []).get(k)).push(o); }
   }
   const head = `${FLOOR}|${CLOUD}|${grey ? `${mapMode}${world.maxWeek}` : ''}|${world.mega.line}|${params.get('style') ?? ''}|`;
   const patch = !full && parts.size === groups.size && [...groups.keys()].every((k) => parts.has(k));
@@ -424,8 +429,9 @@ function buildScene() {
   for (const c of src.cities) c.maxH = 0;
   anims = [];
   const cranes = [], marks = [], airports = [], kitTrees = [];
+  backMarks = [];
   for (const part of parts.values()) {
-    anims.push(...part.kit.anims); cranes.push(...part.kit.cranes); marks.push(...part.kit.marks); airports.push(...part.airports); kitTrees.push(...part.kit.trees);
+    anims.push(...part.kit.anims); cranes.push(...part.kit.cranes); marks.push(...part.kit.marks); backMarks.push(...part.kit.marks.filter((m) => m.kind === 'back')); airports.push(...part.airports); kitTrees.push(...part.kit.trees);
     for (const [id, h] of part.maxH) { const c = cityOf(id); if (c) c.maxH = Math.max(c.maxH, h); }
   }
   if (cranes.length) { // the jibs of every crane: two instanced meshes, turned every frame
@@ -788,7 +794,7 @@ const selFrame = new THREE.Mesh(new THREE.RingGeometry(0.655, Math.SQRT1_2, 4, 1
 const selBeam = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 2.6, 70, 14, 1, true), new THREE.MeshBasicMaterial({ color: '#ffd36b', transparent: true, opacity: 0.3, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false }));
 const selRing = new THREE.Mesh(new THREE.TorusGeometry(1, 0.12, 8, 40).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#f2b705', transparent: true, opacity: 0.8, depthWrite: false }));
 selBeam.visible = selRing.visible = selFrame.visible = false; scene.add(selBeam, selRing, selFrame);
-const placeHi = (g, h) => { const w = (h.w ?? L) * 1.02; g.position.set(h.x, 0, h.z); g.scale.set(w, h.h + 1, w); g.children[0].visible = w < WIDE; g.visible = true; return w; };
+const placeHi = (g, h) => { const w = (h.w ?? L) * 1.02; g.position.set(h.x, 0, h.z); g.scale.set(w, (h.top ?? h.h) + 1, w); g.children[0].visible = w < WIDE; g.visible = true; return w; };
 const selectedHit = () => (selected?.hq ? hqHits.get(selected.hq) : selected?.dojo ? dojoHits.get(selected.city) : selected && hitByKey.get(keyOf(selected.city, selected.person)));
 const isSelectedHit = (h) => !!selected && (selected.hq ? (h.hq ?? h.found)?.id === selected.hq
   : !!h.c && h.c.id === selected.city && (h.dojo ? !!selected.dojo : h.mon ? false : !selected.dojo && h.b?.id === selected.person));
@@ -801,7 +807,7 @@ function stepHighlights(now) {
   const w = placeHi(selHi, s); selHi.children[0].material.opacity = 0.1 + 0.14 * pulse;
   selFrame.visible = w >= WIDE;
   if (selFrame.visible) { selFrame.position.set(s.x, 0.62, s.z); selFrame.scale.set(w, 1, w); selFrame.material.opacity = 0.5 + 0.4 * pulse; }
-  selBeam.position.set(s.x, s.h + 35, s.z); selBeam.material.opacity = 0.22 + 0.14 * pulse; selBeam.visible = true;
+  selBeam.position.set(s.x, (s.top ?? s.h) + 35, s.z); selBeam.material.opacity = 0.22 + 0.14 * pulse; selBeam.visible = true;
   const r = Math.max(7, w * 0.72) + 5 * ((now % 1400) / 1400); // the ring starts around the lot, however wide
   selRing.position.set(s.x, 0.5, s.z); selRing.scale.set(r, 1, r); selRing.material.opacity = 0.9 * (1 - (now % 1400) / 1400); selRing.visible = true;
 }
@@ -968,11 +974,13 @@ function roofView(cityId, personId) {
   const eye = new THREE.Vector3(h.x, h.h + 2.2, h.z).addScaledVector(dir, -1.5), look = eye.clone().addScaledVector(dir, 42); look.y = Math.max(1, eye.y - 5);
   camTween = { fromT: controls.target.clone(), toT: look, fromP: camera.position.clone(), toP: eye, t0: performance.now(), ms: 1400 };
   document.documentElement.dataset.roof = '';
+  camera.clearViewOffset(); $('#hall').classList.remove('open'); // the whole screen is the view (on a phone the drawers hide)
 }
 function leaveRoof() {
   if (!roofBack) return;
   camTween = { fromT: controls.target.clone(), toT: roofBack.target, fromP: camera.position.clone(), toP: roofBack.position, t0: performance.now(), ms: 1100 };
   roofBack = null; delete document.documentElement.dataset.roof;
+  frameForDrawers();
 }
 // The building's card: a frame of the scene as it is now (the building is in the middle of the screen)
 // plus the person's numbers, as a PNG to download or, where the browser can, to copy.
@@ -1112,13 +1120,14 @@ function setMapMode(m) {
   syncUrl();
 }
 document.addEventListener('click', (e) => {
-  const el = e.target.closest('[data-menu], [data-hide-panel], [data-panel], [data-panels], [data-tool], [data-back], [data-close], [data-close-modal], [data-share], [data-me], [data-building], [data-dojo], [data-hq], [data-district], [data-city], [data-dir], [data-map-mode], [data-film], [data-race], [data-tl-stop], #spin, #refit, [data-hour], [data-welcome], [data-card], [data-card-copy], [data-text], [data-roof], .sign');
+  const el = e.target.closest('[data-menu], [data-hide-panel], [data-panel], [data-panels], [data-tool], [data-back], [data-close], [data-close-modal], [data-share], [data-me], [data-building], [data-dojo], [data-hq], [data-district], [data-city], [data-dir], [data-map-mode], [data-film], [data-race], [data-tl-stop], #spin, #refit, [data-hour], [data-welcome], [data-card], [data-card-copy], [data-text], [data-roof], [data-roof-exit], .sign');
   if (el?.hasAttribute('data-menu')) return setMenu(!('menu' in document.documentElement.dataset));
   if (!e.target.closest('#menu')) setMenu(false);
   if (!el) { if (e.target.classList.contains('modal')) closeModals(); else if (!e.target.closest('.popover')) closePopovers(); return; }
   if (el.dataset.welcome) return closeWelcome(el.dataset.welcome === 'find');
   if (el.dataset.card) return openCard(...el.dataset.card.split('|'));
   if (el.dataset.text) return setTextZoom(el.dataset.text);
+  if (el.hasAttribute('data-roof-exit')) return leaveRoof();
   if (el.dataset.roof) return roofView(...el.dataset.roof.split('|'));
   if (el.hasAttribute('data-card-copy')) return copyCard();
   if (el.dataset.dojo) { const id = el.dataset.dojo; if (view.kind === 'city' && view.id === id) selectDojo(id); else goCity(id, { dojo: true }); return; }
@@ -1333,6 +1342,7 @@ async function load() {
       for (const c of data.cities) for (const b of c.buildings) {
         if (!b.back || prev.cities.find((x) => x.id === c.id)?.buildings.find((x) => x.id === b.id)?.back) continue;
         queueToast({ icon: '🎉', title: t('toast.back.title', { name: displayName(b).short }), text: t('toast.back.text', { days: plural(b.back, 'count.day'), c }), city: c.id, person: b.id, ms: 9000 });
+        setTimeout(() => spawnFloat(keyOf(c.id, b.id), t('float.back'), true), 700);
         const at = atKey(keyOf(c.id, b.id)); if (at && ANIM) fx.spawn('confetti', at, { dur: 2600, delay: 600 });
       }
       const m0 = missionOf(prev), m1 = missionOf(data); // the region's mission, met between two readings
@@ -1393,6 +1403,14 @@ setInterval(() => {
   queueToast({ icon: tip.icon, title: tip.who, text: tip.text, city: tip.city, person: tip.person, tip: true, ms: 9000 });
 }, 150_000);
 setInterval(updateRing, 12_500);
+// back from the ashes: all day, sparkles climb the golden scaffold in a spiral
+setInterval(() => {
+  if (!ANIM || document.hidden || tl || !backMarks.length) return;
+  const turn = performance.now() / 900;
+  // a few at a time, taking turns (the effects share a pool of 60: the fireworks must keep their room)
+  const start = Math.floor(performance.now() / 2600) % Math.max(1, backMarks.length);
+  for (const m of [...backMarks.slice(start), ...backMarks.slice(0, start)].slice(0, 3)) for (let i = 0; i < 5; i++) fx.spawn('sparkle', { x: m.x + Math.cos(turn + i * 1.05) * m.r, y: m.h * (0.1 + i * 0.17), z: m.z + Math.sin(turn + i * 1.05) * m.r }, { dur: 1100, delay: i * 170 });
+}, 2600);
 setInterval(renderAge, 20_000); // "3 min ago" keeps counting between readings
 
 initPanels({ goCity, goPerson, goRegion, select, closeModals, celebrate, timeline: (c, b) => loadHistory().then(() => renderTimeline(c, b), () => { const el = $('#timeline'); if (el) el.innerHTML = `<small>${t('sheet.timelineFailed')}</small>`; }) });

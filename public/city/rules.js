@@ -247,6 +247,7 @@ export function paperHtml(data, { night = false } = {}) {
   const sky = cranes === 0 ? ['☁️', 'calm'] : night ? ['🌙', 'night'] : cranes >= 20 ? ['☀️', 'sunny'] : ['⛅', 'cloudy'];
   const weather = [sky[0], t(`paper.weather.${sky[1]}.title`), cranes === 0 ? t('paper.weather.calm.text') : plural(cranes, `paper.weather.${sky[1]}.text`)];
   const fresh = all.filter(({ b }) => b.isNew);
+  const back = all.filter(({ b }) => b.back); // back today after the building had caught fire
   const unlocked = data.cities.flatMap((c) => monumentsOf(c, x).filter((m) => m.ok).map((m) => ({ c, m })));
   const tips = advisors(data).slice(0, 3);
   const ads = [...t('paper.ads')].sort(() => r() - 0.5).slice(0, 3);
@@ -294,6 +295,7 @@ export function paperHtml(data, { night = false } = {}) {
         <p>${mayors.length ? t('paper.mayors', { lastMonth: esc(lastMonth), list: fmt.list(more(mayors.map(({ c, m }) => t('paper.mayor', { name: name(m), c: hc(c), floors: fmt.int(m.lastMonth) })), 4)) }) : t('paper.noMayors', { lastMonth: esc(lastMonth) })}</p>
         <h3>${t('paper.h.fresh')}</h3>
         <p>${fresh.length ? t('paper.fresh', { list: fmt.list(more(fresh.map(({ b, c }) => `${name(b)} (${esc(cityLabel(c))})`), 4)) }) : t('paper.noFresh')}</p>
+        ${back.length ? `<p>${t('paper.back', { list: fmt.list(more(back.map(({ b, c }) => `${name(b)} (${esc(cityLabel(c))})`), 4)) })}</p>` : ''}
       </article>
       <article>
         <div class="weather"><span class="wx">${weather[0]}</span><div><h3>${t('paper.h.weather')}</h3><b>${esc(weather[1])}</b><p>${esc(weather[2])}</p></div></div>

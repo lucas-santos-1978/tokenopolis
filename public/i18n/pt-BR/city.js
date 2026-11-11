@@ -230,7 +230,7 @@ export default {
   },
 
   // etiquetas no mundo 3D
-  float: { floors: { one: '+{n} andar', other: '+{n} andares' } },
+  float: { floors: { one: '+{n} andar', other: '+{n} andares' }, back: 'Voltou!' },
   // o palanque do prefeito (painel no palanque, letreiro em cima, dica do mouse)
   rally: {
     banner: 'Prefeito de {month}',
@@ -344,6 +344,7 @@ export default {
     noMayors: 'Ninguém construiu em {lastMonth}: as prefeituras estão vagas.',
     fresh: 'Boas-vindas a {list}, que ergueram o primeiro prédio nesta semana.',
     noFresh: 'Nenhum prédio novo nesta semana.',
+    back: '🎉 Volta por cima hoje: {list}. O fogo apagou e o andaime é dourado.',
     weather: {
       calm: { title: 'Tempo parado', text: 'Nenhum guindaste em operação agora. Bom momento para um café.' },
       night: { title: 'Noite de obras', text: { one: '{n} guindaste trabalha sob a luz das janelas acesas.', other: '{n} guindastes trabalham sob a luz das janelas acesas.' } },

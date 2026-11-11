@@ -18,11 +18,14 @@ SkeletonUtils, SimplexNoise). They are served from `public/vendor/three/`, unmod
 works on a network that blocks outside sites. three.js is Copyright © 2010-2023 three.js authors,
 MIT License; the license text is in `public/vendor/three/LICENSE`.
 
-## Google Fonts (loaded from a CDN)
+## Nunito and Playfair Display (bundled)
 
-The pages load the Nunito and Playfair Display font families from Google Fonts at runtime. Both
-are licensed under the SIL Open Font License 1.1. Visitors' browsers contact `fonts.googleapis.com`
-and `fonts.gstatic.com`; self-host the fonts if that matters for your deployment.
+The pages use the Nunito and Playfair Display font families, served from `public/vendor/fonts/`
+(Latin and Latin Extended subsets, woff2, unmodified as distributed by Google Fonts), so no visitor's
+browser contacts an outside site. Nunito is Copyright 2014 The Nunito Project Authors; Playfair
+Display is Copyright 2017 The Playfair Display Project Authors, with Reserved Font Name "Playfair
+Display". Both are licensed under the SIL Open Font License 1.1; the license texts are in
+`public/vendor/fonts/OFL-Nunito.txt` and `public/vendor/fonts/OFL-PlayfairDisplay.txt`.
 
 ## Everything else
 
