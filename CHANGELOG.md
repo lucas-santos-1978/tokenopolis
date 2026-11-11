@@ -3,6 +3,14 @@
 Dates are the day each version went live on the author's panel. Earlier versions were an internal
 tool with another name; the open-source release renames it Tokenopolis.
 
+## v34 (2026-11-11)
+
+- The legend is a 🔎 button in the corner that opens the full guide: the trophies show whole, and
+  their × is no longer cut.
+- On a short window this week's builds and the Mega Builders fold into chips, one open at a time, and
+  the week's list scrolls inside: the Mega Builders no longer vanishes, and nothing runs under the
+  derby.
+
 ## v33 (2026-11-11)
 
 - The stadium is the size of a city block: 4×4 lots (3×3 or 2×2 where that does not fit, and the

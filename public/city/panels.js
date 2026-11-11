@@ -104,13 +104,25 @@ function renderRegionPanels() {
 // Mega Builders: who already has a headquarters in the Corporate District (the floors added up across
 // the cities) and the next in line, with how far the line is. A tap flies to the headquarters.
 const MEGA_ROWS = 3; // it sits under this week's builds: compact, one line per person
-// The right column (the week's builds and the Mega Builders) stops above the panels at the bottom right:
-// on a short window the Mega Builders list scrolls instead of running under the derby.
+// The right column (the week's builds and the Mega Builders) stops above the panels at the bottom right.
+// When both do not fit whole (a laptop, or a short window), they fold into chips, one open at a time
+// (.fold, city.css), and the week's list scrolls inside instead of running under the derby.
 export function fitColumn() {
   const col = $('.rcol'); if (!col) return;
   const below = [$('#derby'), $('#countdown')].filter((e) => e && !e.hidden && e.getBoundingClientRect().height > 0).map((e) => e.getBoundingClientRect().top);
   const zoom = Number(getComputedStyle(col).zoom) || 1, top = col.getBoundingClientRect().top;
-  col.style.maxHeight = below.length && innerWidth > 900 ? `${Math.max(160, (Math.min(...below) - top - 10) / zoom)}px` : '';
+  const maxH = below.length && innerWidth > 900 ? Math.max(160, (Math.min(...below) - top - 10) / zoom) : 0;
+  col.style.maxHeight = maxH ? `${maxH}px` : '';
+  let fold = innerWidth > 900 && innerWidth <= 1300;
+  if (innerWidth > 1300 && maxH) { // both panels at their natural height: do they fit?
+    col.classList.remove('fold'); col.style.gridTemplateRows = 'auto auto';
+    const parts = [...col.children].filter((e) => e.getBoundingClientRect().height > 0);
+    fold = parts.reduce((s, e) => s + e.getBoundingClientRect().height / zoom, 0) + 10 * Math.max(0, parts.length - 1) > maxH + 0.5;
+    col.style.gridTemplateRows = '';
+  }
+  const was = col.classList.contains('fold');
+  col.classList.toggle('fold', fold);
+  if (fold && !was && !$('#mega')?.classList.contains('open')) $('#ranking')?.classList.add('open'); // folding: the week's builds start open
   // the same on the left: the trophies stop above the legend (the last card scrolls instead of hiding under it)
   const tro = $('#trophies'), leg = $('.legend');
   if (tro) {

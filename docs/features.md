@@ -90,8 +90,10 @@ and a countdown ring when a city reaches a milestone.
 
 **Panels.** Trophies, this week's builds, the weekly derby (two cities neck and neck), countdowns to
 the next milestones, the Mega Builders (with who is next in line), the mayor of the month (most floors last month, with a statue and a rally in front of it), advisors, the
-regional newspaper with classifieds, a live ticker of events, the legend, and the city hall sheet
-with everyone in the city. Panels hide with 👁️ or the `P` key (`?panels=0`).
+regional newspaper with classifieds, a live ticker of events, the legend (a 🔎 button in the corner that
+opens the full guide, also on the `?` key), and the city hall sheet with everyone in the city. Panels
+hide with 👁️ or the `P` key (`?panels=0`). On a laptop, or a window too short for both whole, this
+week's builds and the Mega Builders fold into chips that open on their title, one at a time.
 
 **On a phone** (up to 700 px wide) the scene comes first: the tools, the climb link and the language
 move behind ☰, this week's builds and the Mega Builders fold into chips, City Hall and the building card are drawers at

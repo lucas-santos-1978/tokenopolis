@@ -66,11 +66,16 @@ body { font-family: Nunito, "Segoe UI", system-ui, sans-serif; color: var(--ink)
 .ranking .bar { height: 12px; border-radius: 6px; background: var(--green); width: max(2px, calc(var(--w) * 96px)); }
 .ranking li:first-child .bar { background: var(--gold); }
 .ranking .val { text-align: right; font-weight: 800; font-size: 14px; }
-.legend { position: fixed; left: 20px; bottom: 20px; width: 290px; padding: 12px 16px; font-size: 12px; z-index: 4; }
-.legend ul { list-style: none; margin: 0; padding: 0; }
-.legend .kinds { display: grid; gap: 3px; margin-bottom: 8px; padding-bottom: 7px; border-bottom: 1px solid #edf0f3; line-height: 1.3; color: #3d4a56; }
-.legend .kinds b { color: var(--ink); font-weight: 900; margin-right: 2px; }
-.legend .marks li { line-height: 20px; }
+/* the legend is one button in the corner that opens the full guide (the help dialog) */
+.legend { position: fixed; left: 20px; bottom: 20px; max-width: 290px; padding: 0; z-index: 4; }
+.legend-cta { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 14px 9px 12px; border-radius: 10px; }
+.legend-cta .ic { font-size: 20px; line-height: 1; }
+.legend-cta .tx { display: grid; gap: 1px; min-width: 0; }
+.legend-cta b { font-size: 13px; font-weight: 900; color: var(--ink); }
+.legend-cta small { font-size: 11px; font-weight: 600; color: var(--mute); }
+.legend-cta .go { font-style: normal; font-size: 20px; font-weight: 900; color: #2b6cb0; margin-left: auto; padding-left: 6px; }
+.legend-cta:hover b { color: #2b6cb0; }
+.legend-cta:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
 .sw { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; border: 1px solid rgba(0, 0, 0, .2); }
 .sw.works { background: #f4c440; }
 .derby, .countdown { position: fixed; right: 20px; width: 330px; padding: 11px 14px 10px; z-index: 4; }
@@ -292,8 +297,6 @@ kbd { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 5px
 
 .tool-pop { top: 60px; right: 20px; }
 .popover button.on { background: #fff5d6; }
-.legend .more { all: unset; cursor: pointer; display: block; margin-top: 7px; padding-top: 6px; border-top: 1px solid #edf0f3; font-weight: 900; color: #2b6cb0; }
-.legend .more:hover { text-decoration: underline; }
 
 /* news ticker */
 .ticker { position: fixed; left: 0; right: 0; bottom: 0; height: 36px; z-index: 3; display: flex; align-items: center; background: var(--slate); overflow: hidden; }
@@ -648,19 +651,25 @@ html:not([data-tour]) .tour-cap { display: none; }
   [data-view=city] .corner, [data-hidden~=legend] .corner, [data-map] .corner { left: 20px; }
 }
 @media (min-width: 701px) and (max-width: 900px) { .corner { left: 20px; } }
-/* a laptop or a small window (901 to 1300px): the right column folds into chips too (a click on a title opens
-   or closes it), so the scene keeps its room; this week's builds start open */
-@media (min-width: 901px) and (max-width: 1300px) {
-  .rcol { justify-items: end; }
-  .ranking, .rcol .mega:not(.empty) { width: 100%; box-sizing: border-box; }
-  .ranking h2, .mega h2 { cursor: pointer; gap: 8px; }
-  .ranking h2::after, .mega h2::after { content: '▾'; font-size: 12px; }
-  .ranking.open h2::after, .mega.open h2::after { content: '▴'; }
-  .ranking:not(.open), .rcol .mega:not(.open) { width: auto; padding: 9px 12px 8px; }
-  .ranking:not(.open) h2, .mega:not(.open) h2 { margin: 0; }
-  .ranking:not(.open) ol, .ranking:not(.open) h2 small, .ranking:not(.open) .mission, .ranking:not(.open) .panel-x { display: none; }
-  .mega:not(.open) ol, .mega:not(.open) .foot, .mega:not(.open) h2 small, .mega:not(.open) .panel-x { display: none; }
-}
+/* a laptop or a small window (901 to 1300px), or a window too short for both panels whole (panels.js
+   fitColumn adds .fold): the right column folds into chips (a click on a title opens or closes it, one open
+   at a time), so the scene keeps its room; this week's builds start open */
+.rcol.fold { justify-items: end; }
+.rcol.fold .ranking, .rcol.fold .mega:not(.empty) { width: 100%; box-sizing: border-box; }
+.rcol.fold .ranking h2, .rcol.fold .mega h2 { cursor: pointer; gap: 8px; }
+.rcol.fold .ranking h2::after, .rcol.fold .mega h2::after { content: '▾'; font-size: 12px; }
+.rcol.fold .ranking.open h2::after, .rcol.fold .mega.open h2::after { content: '▴'; }
+.rcol.fold .ranking:not(.open), .rcol.fold .mega:not(.open) { width: auto; padding: 9px 12px 8px; }
+.rcol.fold .ranking:not(.open) h2, .rcol.fold .mega:not(.open) h2 { margin: 0; }
+.rcol.fold .ranking:not(.open) ol, .rcol.fold .ranking:not(.open) h2 small, .rcol.fold .ranking:not(.open) .mission, .rcol.fold .ranking:not(.open) .panel-x { display: none; }
+.rcol.fold .mega:not(.open) ol, .rcol.fold .mega:not(.open) .foot, .rcol.fold .mega:not(.open) h2 small, .rcol.fold .mega:not(.open) .panel-x { display: none; }
+.rcol.fold .mega:not(.empty):not(.open) { min-height: 36px; }
+/* the open panel takes the room the column has: this week's list scrolls inside instead of running under
+   the derby (the card itself does not clip, so its × stays whole) */
+.rcol.fold { grid-template-rows: minmax(0, 1fr) auto; }
+.rcol.fold:has(.mega.open) { grid-template-rows: auto minmax(0, 1fr); }
+.rcol.fold .ranking.open { display: flex; flex-direction: column; min-height: 0; }
+.rcol.fold .ranking.open ol { flex: 1 1 auto; min-height: 0; overflow: hidden auto; scrollbar-width: thin; }
 /* phone: rows a finger can hit */
 @media (max-width: 700px) {
   .ranking li { height: 36px; }
@@ -672,10 +681,15 @@ html:not([data-tour]) .tour-cap { display: none; }
   .hall .sorts button { padding: 9px 4px; }
   .sheet .share { padding: 11px 14px; }
 }
-/* the right column stops above the bottom-right panels (panels.js fitColumn): the Mega Builders list scrolls */
+/* the right column stops above the bottom-right panels (panels.js fitColumn); on a big screen the Mega
+   Builders fits whole (or the column folds), so it does not clip its × */
 .rcol { grid-template-rows: auto minmax(0, 1fr); }
 .rcol .mega { min-height: 0; overflow: hidden auto; scrollbar-width: thin; }
-.trophies { overflow: hidden auto; scrollbar-width: none; }
+@media (min-width: 901px) { .rcol .mega { overflow: visible; } }
+/* the trophies scroll only on a short window; the room around the cards keeps the × (top right) inside
+   the scrolling box, which would otherwise cut it */
+.trophies { overflow: hidden auto; scrollbar-width: none; top: 64px; width: 300px; padding: 10px 10px 4px 0; box-sizing: border-box; }
+.trophies > .panel-x { top: 1px; right: 1px; }
 @media (max-width: 1300px) { .rcol .mega:not(.empty):not(.open) { min-height: 36px; overflow: hidden; } }
 /* the rooftop view: a way back on screen; on a phone the drawers get out of the way of the view */
 .roof-exit { all: unset; display: none; cursor: pointer; position: fixed; left: 50%; bottom: 56px; transform: translateX(-50%); z-index: 9; padding: 10px 18px; border-radius: 99px; background: var(--gold); color: var(--ink); font-size: 14px; font-weight: 900; white-space: nowrap; box-shadow: 0 6px 18px rgba(0, 0, 0, .3); }

@@ -451,7 +451,6 @@ function buildScene() {
     el.className = 'route'; el.textContent = t('sign.route', { n: fmt.int(r.n) });
     const lab = new CSS2DObject(el); lab.position.set(wx(Math.floor(mid / 10000)), 5, wz(mid % 10000)); cityGroup.add(lab);
   }
-  $('#legend-mega').hidden = !world.mega.line; // ?mega=0 or MEGA_FLOORS=0: no Mega Builders, no legend line
   const dt = world.district;
   if (dt) { // the district's sign, at the end of the bridge
     const wrap = document.createElement('div'), n = world.mega.members.length;
@@ -1202,7 +1201,7 @@ document.addEventListener('keydown', (e) => {
 addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; frameForDrawers(); camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight); labels.setSize(innerWidth, innerHeight); });
 // the folded panels of a narrow screen: this week's builds and the Mega Builders open on their title; City Hall opens on any
 // touch and folds again on its top (the buttons and names inside keep working as usual)
-const folds = () => innerWidth <= 1300; // the panels fold into chips on a phone and on a mid-size window
+const folds = () => innerWidth <= 900 || $('.rcol').classList.contains('fold'); // the panels fold into chips on a phone, a mid-size window and a short one (panels.js fitColumn)
 if (innerWidth > 900 && innerWidth <= 1300) $('#ranking').classList.add('open'); // on a laptop the week's builds start open; the Mega Builders start as a chip
 // one open at a time: the column is short, and the other one folds back into its chip
 $('#ranking h2').addEventListener('click', () => { if (folds() && $('#ranking').classList.toggle('open')) $('#mega').classList.remove('open'); });
