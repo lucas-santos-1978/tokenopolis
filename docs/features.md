@@ -75,7 +75,13 @@ its owner, like any building. `?mega=<floors>` moves the line on one screen; `0`
 | Leadership Statue | leading this week's builds |
 | Fountain Square | 3 newcomers in one week |
 
-Weekly feats reset on Monday, so monuments appear during the week.
+Weekly feats reset on Monday, so monuments appear during the week. Most take 1×1 or 2×2 lots; the
+stadium takes a block, 4×4 (stepping down to 3×3 or 2×2 where it does not fit, and only when the
+smaller size lets another earned monument in).
+
+**Streets.** Every city has a street all around it, the highways frame every plot and the whole region
+(bridges over the river and the channel), and the Corporate District's boulevards meet them: no street
+ends in the fields.
 
 **Life.** Cranes and scaffolding on buildings that grew this week, people on the sidewalks for open
 sessions, boats on the river, planes leaving the airport, a helicopter with a spotlight, a blimp

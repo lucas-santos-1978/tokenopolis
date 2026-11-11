@@ -3,6 +3,16 @@
 Dates are the day each version went live on the author's panel. Earlier versions were an internal
 tool with another name; the open-source release renames it Tokenopolis.
 
+## v33 (2026-11-11)
+
+- The stadium is the size of a city block: 4×4 lots (3×3 or 2×2 where that does not fit, and the
+  smaller size only when it lets another earned monument in), with five rows of stands, a ring roof on
+  pillars, a striped pitch with its lines inside a running track and floodlights at the corners.
+- No street stops in the fields any more: a street runs around every city, the highways go around the
+  whole region (the outer edge and the channel bank included, with bridges over the river), and the
+  Corporate District's boulevards cross the band and meet them. Each plot has two more lots of field so
+  the monuments keep their room; the region is a little larger.
+
 ## v32 (2026-11-11)
 
 - No outside site at all: the Nunito and Playfair Display fonts are served by the panel

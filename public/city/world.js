@@ -37,8 +37,9 @@ export function buildWorld(d, { allMonuments = false } = {}) {
     c.style = tierOf(c.floors).style;
   }
   const kmax = Math.max(1, ...cities.map((c) => Math.max(c.k, c.m)));
-  // blocks + streets + margin (1 lot behind and 2 in front, where the monuments go)
-  const PLOT = kmax * (BLOCK + 1) + 3;
+  // blocks + streets + the street around the city + margin (fields on every side, where the monuments
+  // go, with at least a lot of grass between that street and the highways)
+  const PLOT = kmax * (BLOCK + 1) + 5;
   const mx = context(d);
   const PX = Math.max(1, Math.ceil(Math.sqrt(cities.length * 4 / 3))), PY = Math.max(1, Math.ceil(cities.length / PX));
   const GW = PLOT * PX;
@@ -63,13 +64,14 @@ export function buildWorld(d, { allMonuments = false } = {}) {
 
   const tiles = new Map(), objs = [];
   const getT = (x, y) => tiles.get(K(x, y));
-  // river between the 1st and 2nd rows of plots; highways on the other borders
+  // river between the 1st and 2nd rows of plots; highways on the other borders, the region's outer edge
+  // included, so no highway stops in the fields
   for (let gx = 0; gx < GW; gx++) for (let gy = OY; gy < GH; gy++) {
-    const lx = gx % PLOT, ry = gy - OY, ly = ry % PLOT, row = Math.floor(ry / PLOT);
+    const lx = gx % PLOT, ry = gy - OY, ly = ry % PLOT, edgeX = lx === 0 || gx === GW - 1;
     let t = { t: 'grass' };
-    if (PY > 1 && (ry === PLOT - 1 || ry === PLOT)) t = lx === 0 && gx > 0 ? { t: 'hwy', dir: 'y', bridge: true } : { t: 'water' };
-    else if (lx === 0 && gx > 0) t = { t: 'hwy', dir: 'y' };
-    else if (ly === 0 && row >= 2) t = { t: 'hwy', dir: 'x' };
+    if (PY > 1 && (ry === PLOT - 1 || ry === PLOT)) t = edgeX ? { t: 'hwy', dir: 'y', bridge: true } : { t: 'water' };
+    else if (edgeX) t = { t: 'hwy', dir: 'y' };
+    else if (ly === 0 || gy === GH - 1) t = { t: 'hwy', dir: 'x' };
     tiles.set(K(gx, gy), t);
   }
   const district = dist ? placeDistrict(dist, dLots, { tiles, objs, GW, OY }) : null;
@@ -82,6 +84,10 @@ export function buildWorld(d, { allMonuments = false } = {}) {
     for (let u = 0; u < cw; u++) for (let v = 0; v < ch; v++) {
       if (u % (BLOCK + 1) === BLOCK || v % (BLOCK + 1) === BLOCK) tiles.set(K(sx + u, sy + v), { t: 'road', city: c });
       else lots.push([sx + u, sy + v]);
+    }
+    // a street all around the city, so every street inside it comes out somewhere
+    for (let u = -1; u <= cw; u++) for (let v = -1; v <= ch; v++) {
+      if ((u === -1 || u === cw || v === -1 || v === ch) && getT(sx + u, sy + v)?.t === 'grass') tiles.set(K(sx + u, sy + v), { t: 'road', city: c });
     }
     // street linking the city to the highways on both sides of the plot
     const row = c.m > 1 ? sy + BLOCK : Math.min(oy0 + PLOT - 2, sy + ch);
@@ -119,14 +125,29 @@ export function buildWorld(d, { allMonuments = false } = {}) {
       ...c.monuments.filter((k) => k.ok || allMonuments),
       ...(mayor ? [{ key: 'mayor', icon: '🎩', size: 1, person: mayor, month: d.month, lastMonth: d.lastMonth }] : []),
     ];
-    for (const m of placed) {
-      let best = null;
-      if (m.key === 'dojo') { for (let s = m.size; s >= 1 && !best; s--) { best = spot(s); if (best) m.size = s; } } // the great temple fits where it can
-      else best = spot(m.size);
-      if (!best) continue;
-      for (let u = 0; u < m.size; u++) for (let v = 0; v < m.size; v++) tiles.set(K(best.gx + u, best.gy + v), { t: 'mon', city: c, mon: m.key });
-      m.at = [best.gx, best.gy];
-      objs.push({ gx: best.gx, gy: best.gy, kind: 'mon', m, c, size: m.size });
+    // the great temple fits where it can (down to 1×1), the stadium down to its smaller size
+    const size0 = placed.map((m) => m.size);
+    const placeAll = (shrink) => {
+      placed.forEach((m, i) => { m.size = shrink && m.min ? m.min : size0[i]; delete m.at; });
+      const taken = [], start = objs.length;
+      for (const m of placed) {
+        let best = null;
+        for (let s = m.size, low = m.key === 'dojo' ? 1 : m.min ?? m.size; s >= low && !best; s--) { best = spot(s); if (best) m.size = s; }
+        if (!best) continue;
+        for (let u = 0; u < m.size; u++) for (let v = 0; v < m.size; v++) { taken.push(K(best.gx + u, best.gy + v)); tiles.set(K(best.gx + u, best.gy + v), { t: 'mon', city: c, mon: m.key }); }
+        m.at = [best.gx, best.gy];
+        objs.push({ gx: best.gx, gy: best.gy, kind: 'mon', m, c, size: m.size });
+      }
+      return { taken, start, n: objs.length - start };
+    };
+    const undo = (p) => { for (const key of p.taken) tiles.set(key, { t: 'grass' }); objs.length = p.start; }; // the lots it took were all grass
+    // a big stadium must not push out another monument the city earned: everything is placed again with
+    // the stadium at its smaller size, and that is kept only if more monuments fit
+    const big = placeAll(false);
+    if (big.n < placed.length && placed.some((m) => m.min && m.at && m.size > m.min)) {
+      undo(big);
+      const small = placeAll(true);
+      if (small.n <= big.n) { undo(small); placeAll(false); }
     }
     // farms around, where there is field left
     const r = seed(c.id);
@@ -195,7 +216,10 @@ function placeDistrict(dist, lots, { tiles, objs, GW, OY }) {
     for (let gy = 0; gy < DH; gy++) tiles.set(K(gx, gy), { t: gx >= x0 && gx <= x1 ? 'campus' : 'grass' });
     for (let gy = DH; gy < OY; gy++) tiles.set(K(gx, gy), gx === bridge ? { t: 'hwy', dir: 'y', bridge: true } : { t: 'water' });
   }
-  for (const gy of blvds) for (let gx = x0 + 1; gx < x1; gx++) tiles.set(K(gx, gy), { t: 'road', district: true });
+  // the boulevards cross the whole band and meet the highways on the region's sides, which go over the
+  // channel down to the cities (no boulevard stops in the lawn)
+  for (const gy of blvds) for (let gx = 1; gx < GW - 1; gx++) tiles.set(K(gx, gy), { t: 'road', district: true });
+  for (const gx of [0, GW - 1]) for (let gy = blvds[0]; gy < OY; gy++) tiles.set(K(gx, gy), { t: 'hwy', dir: 'y', ...(gy >= DH ? { bridge: true } : {}) });
   for (let gy = blvds[0]; gy < DH; gy++) tiles.set(K(bridge, gy), { t: 'road', district: true }); // from the first boulevard down to the bridge
   const placed = [];
   lots.forEach((lot, i) => {

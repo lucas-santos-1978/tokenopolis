@@ -113,7 +113,7 @@ const newcomers = (c) => c.buildings.filter((b) => b.isNew).length;
 export const MONUMENTS = [
   { key: 'obelisk', icon: '🔟', size: 1, score: (c) => c.floors / TEN_BI },
   { key: 'airport', icon: '🛫', size: 2, score: (c) => c.floors / 8000 },
-  { key: 'stadium', icon: '🏟️', size: 2, score: (c) => c.builders / Math.max(1, c.people) / 0.6 },
+  { key: 'stadium', icon: '🏟️', size: 4, min: 2, score: (c) => c.builders / Math.max(1, c.people) / 0.6 }, // 3×3 or 2×2 where 4×4 does not fit
   { key: 'ferrisWheel', icon: '🎡', size: 2, score: (c) => c.growth / 0.1 },
   { key: 'centralPark', icon: '🌳', size: 2, score: (c) => c.people / 50 },
   { key: 'tvTower', icon: '🗼', size: 1, score: (c) => (c.buildings[0]?.floors ?? 0) / 450 },
@@ -123,7 +123,7 @@ export const MONUMENTS = [
 export function monumentsOf(c, x) {
   return MONUMENTS.map((m) => {
     const s = Math.max(0, m.score(c, x) || 0);
-    return { key: m.key, icon: m.icon, size: m.size, ok: s >= 1, progress: Math.min(1, s) };
+    return { key: m.key, icon: m.icon, size: m.size, ...(m.min ? { min: m.min } : {}), ok: s >= 1, progress: Math.min(1, s) };
   });
 }
 

@@ -240,7 +240,7 @@ const hitGroup = new THREE.Group(); scene.add(hitGroup);
 const hitByKey = new Map(); // city|person → { x, z, h, b, c }
 const dojoHits = new Map(); // city → { x, z, h, w, dojo, c } of the city's Dojo
 const hqHits = new Map(); // person → { x, z, h, w, hq | found } in the Corporate District (a headquarters or a foundation)
-const MON_H = { obelisk: 31, airport: 12, stadium: 14, ferrisWheel: 20, centralPark: 6, tvTower: 53, leadershipStatue: 12, fountainSquare: 5, mayor: 8 }; // hit box heights
+const MON_H = { obelisk: 31, airport: 12, ferrisWheel: 20, centralPark: 6, tvTower: 53, leadershipStatue: 12, fountainSquare: 5, mayor: 8 }; // hit box heights
 const MON_W = { obelisk: 5, tvTower: 6, leadershipStatue: 5 }; // the thin ones get a narrow hit box, so they do not hide what stands behind them
 let anims = [], cars = null, kit = null, groundTex = null, life = null, rockets = [];
 const fx = makeEffects(scene);

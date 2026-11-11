@@ -637,12 +637,8 @@ export function makeKit(batch, hOf, wkOf, colorOf = null) {
     else if (m.key === 'tvTower') { B(cylGeo(1.4, 2, 2, 10), STONE, x, 0.3, z); B(cylGeo(0.5, 0.9, 40, 8), matte('#e9e6df'), x, 2.3, z); B(sphGeo(3, 14), SILVER, x, 33, z, 0, [1, 0.7, 1]); B(cylGeo(0.1, 0.2, 10, 5), SILVER, x, 42, z); B(sphGeo(0.5, 6), RED_LIGHT, x, 52.3, z); }
     else if (m.key === 'fountainSquare') { B(cylGeo(3.4, 3.6, 0.8, 20), matte('#bdb6a6'), x, 0.3, z); B(cylGeo(3, 3, 0.4, 20), matte('#5aa7e0', { roughness: 0.1, metalness: 0.2 }), x, 1, z); B(cylGeo(0.5, 0.7, 1.6, 10), matte('#bdb6a6'), x, 1.3, z); B(coneGeo(0.5, 2.6, 8), matte('#bfe6ff', { transparent: true, opacity: 0.8 }), x, 2.9, z); }
     else if (m.key === 'centralPark') { B(boxGeo(n * L * 0.92, 0.1, n * L * 0.92), matte('#7cc35c'), x, 0.3, z); B(cylGeo(4.5, 4.5, 0.2, 24), matte('#4b9ad6', { roughness: 0.1 }), x + 2, 0.4, z + 3); for (const [u, v, s] of [[-6, -6, 1.3], [6, -5, 1.1], [-5, 6, 1.2], [7, 7, 0.9], [-1, -2, 1]]) trees.push({ x: x + u, z: z + v, s }); }
-    else if (m.key === 'stadium') {
-      const s = new THREE.Shape(); s.absellipse(0, 0, 8.5, 7, 0, Math.PI * 2); const hole = new THREE.Path(); hole.absellipse(0, 0, 6.3, 5, 0, Math.PI * 2); s.holes.push(hole);
-      B(new THREE.ExtrudeGeometry(s, { depth: 4.5, bevelEnabled: false }).rotateX(-Math.PI / 2), matte('#c9c4b6'), x, 0.3, z);
-      B(cylGeo(6.3, 6.3, 0.5, 24), matte('#c95a4f'), x, 0.3, z); B(cylGeo(5, 5, 0.6, 24), matte('#4fae53'), x, 0.3, z, 0, [1, 1, 0.75]);
-      for (const [u, v] of [[-8, -7], [8, -7], [8, 7], [-8, 7]]) { B(cylGeo(0.15, 0.25, 14, 6), SILVER, x + u, 0.3, z + v); B(boxGeo(1.6, 0.8, 0.3), BEACON, x + u, 14, z + v); }
-    } else if (m.key === 'ferrisWheel') {
+    else if (m.key === 'stadium') return stadiumMon(n, x, z);
+    else if (m.key === 'ferrisWheel') {
       const hub = new THREE.Group(); hub.position.set(x, 10.5, z);
       const hb = new Batcher(); hb.add(NI(new THREE.TorusGeometry(8.5, 0.35, 8, 48)), matte('#e8eef3'));
       for (let i = 0; i < 12; i++) { const sp = cylGeo(0.12, 0.12, 8.5, 5); sp.rotateZ((i / 12) * Math.PI * 2 + Math.PI); hb.add(sp, SILVER); }
@@ -657,6 +653,51 @@ export function makeKit(batch, hOf, wkOf, colorOf = null) {
       B(boxGeo(8, 3.5, 5), matte('#e8e4dc'), x - 3, 0.3, z + 4); B(cylGeo(0.9, 1.1, 10, 8), matte('#d9d4c8'), x + 5, 0.3, z + 5); B(cylGeo(2, 1.4, 2, 8), matte('#7fc4e8', { roughness: 0.2 }), x + 5, 10.3, z + 5);
       const fus = cylGeo(0.5, 0.5, 5, 8); fus.rotateX(Math.PI / 2); B(fus, matte('#f4f6f8'), x - 4, 1, z - 6.5); B(boxGeo(6, 0.15, 1.2), matte('#f4f6f8'), x - 4, 1, z - 4); B(boxGeo(0.2, 1.4, 1.2), matte('#e8434b'), x - 4, 1, z - 1.8);
     }
+  }
+
+  // ───────── the stadium ─────────
+  // An oval bowl: five rows of stands, each higher and further back, with the seats on top; a ring roof
+  // over the back rows, on pillars around the outside; the pitch with its lines inside the running track;
+  // a floodlight at each corner. Everything follows the n×n lots it takes, so on 3×3 it stands bigger than
+  // the ferris wheel (on 2×2 it keeps about the old size).
+  function stadiumMon(n, x, z) {
+    const s = n * L * 0.46, k = n / 2, H = s * 0.45, A = s * 0.95, Bz = s * 0.8, a1 = s * 0.6, b1 = s * 0.45, y0 = 0.3;
+    const ring = (ao, bo, ai, bi, depth) => {
+      const sh = new THREE.Shape(); sh.absellipse(0, 0, ao, bo, 0, Math.PI * 2);
+      const hole = new THREE.Path(); hole.absellipse(0, 0, ai, bi, 0, Math.PI * 2); sh.holes.push(hole);
+      return new THREE.ExtrudeGeometry(sh, { depth, bevelEnabled: false, curveSegments: 24 }).rotateX(-Math.PI / 2);
+    };
+    const at = (f) => [a1 + (A - a1) * f, b1 + (Bz - b1) * f]; // a share of the way from the track to the outer wall
+    const concrete = matte('#cfcabd'), seats = [matte('#3a78bd'), matte('#4b8bd1')], white = matte('#f4f3ee');
+    for (let i = 0, rows = 5; i < rows; i++) {
+      const [ai, bi] = at(i / rows), [an, bn] = i < rows - 1 ? at((i + 1) / rows) : [A, Bz], h = H * (0.25 + (0.75 * (i + 1)) / rows);
+      B(ring(A, Bz, ai, bi, h), concrete, x, y0, z);
+      B(ring(an - 0.05, bn - 0.05, ai + 0.08, bi + 0.08, 0.12), seats[i % 2], x, y0 + h, z);
+    }
+    // the roof over the back rows, on pillars around the outer wall
+    const roofY = y0 + H + 1.6 * k, [ra, rb] = at(0.62);
+    B(ring(A + 0.5 * k, Bz + 0.5 * k, ra, rb, 0.35 * k), white, x, roofY, z);
+    for (let i = 0, np = 16 + 4 * n; i < np; i++) { const t = (i / np) * Math.PI * 2; B(boxGeo(0.4 * k, roofY - y0, 0.4 * k), concrete, x + (A + 0.12) * Math.cos(t), y0, z + (Bz + 0.12) * Math.sin(t)); }
+    // the track, the pitch in two greens and its white lines
+    B(cylGeo(a1 + 0.05, a1 + 0.05, 0.3, 40), matte('#c95a4f'), x, y0, z, 0, [1, 1, b1 / a1]);
+    const px = a1 * 0.7, pz = b1 * 0.68, band = (2 * px) / 8, lw = 0.1 * k, ly = y0 + 0.36;
+    for (let i = 0; i < 8; i++) B(boxGeo(band, 0.36, 2 * pz), matte(i % 2 ? '#4fae53' : '#5cbd5f'), x - px + band * (i + 0.5), y0, z);
+    const line = (cx, cz, w, d) => B(boxGeo(w, 0.03, d), white, x + cx, ly, z + cz);
+    line(0, -pz, 2 * px, lw); line(0, pz, 2 * px, lw); line(-px, 0, lw, 2 * pz); line(px, 0, lw, 2 * pz); line(0, 0, lw, 2 * pz);
+    B(torusFlat(pz * 0.3, lw * 0.6, 4, 28), white, x, ly, z);
+    for (const sg of [-1, 1]) {
+      const bw = px * 0.24, bd = pz * 0.56;
+      line(sg * (px - bw), 0, lw, 2 * bd); line(sg * (px - bw / 2), -bd, bw, lw); line(sg * (px - bw / 2), bd, bw, lw);
+      B(boxGeo(0.25 * k, 0.9 * k, pz * 0.22), white, x + sg * (px + 0.2 * k), y0, z); // the goal
+    }
+    // floodlights at the corners, the lamps turned to the pitch
+    const lh = H * 3.3;
+    for (const [u, v] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+      const ux = u * s * 0.9, vz = v * s * 0.9;
+      B(cylGeo(0.16 * k, 0.28 * k, lh, 6), SILVER, x + ux, y0, z + vz);
+      B(boxGeo(2.2 * k, 1.2 * k, 0.3), BEACON, x + ux, y0 + lh, z + vz, Math.atan2(-ux, -vz));
+    }
+    return { h: y0 + lh + 1.2 * k };
   }
 
   // ───────── Dojo: the black belt's black pagoda and the city's Dojo ─────────
