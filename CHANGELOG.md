@@ -3,6 +3,12 @@
 Dates are the day each version went live on the author's panel. Earlier versions were an internal
 tool with another name; the open-source release renames it Tokenopolis.
 
+## v38 (2026-11-12)
+
+- The printed token medal reads at pin size (about 5 cm): a bigger name and a much bigger day on the
+  plate, and TOKENOPOLIS on the medal white and heavier, with a dark edge. The medal is a little
+  smaller on the sheet to make room; the sheet stays square.
+
 ## v37 (2026-11-12)
 
 - 🏆 Overall ranking: everyone in the region, one line per person with every city added up (the

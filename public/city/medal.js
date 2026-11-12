@@ -75,20 +75,22 @@ export function drawMedal(x, { cx, cy, r, step, value, unit, ribbon, brand, shad
   x.globalAlpha = 1;
   x.restore();
   x.lineWidth = r * 0.012; x.strokeStyle = 'rgba(255,255,255,.28)'; hex(x, cx, cy, r * 0.8); x.stroke();
-  // the panel's name on top
+  // the panel's name on top, white and heavy with a dark edge so it still reads on a 5 cm print; low
+  // enough that the face is wide enough for it (the face narrows toward the top point)
   if (brand) {
-    spaced(x, r * 0.025); x.fillStyle = L.ink[1]; x.globalAlpha = 0.9;
-    sized(x, brand.toUpperCase(), r * 0.8, r * 0.085, r * 0.05, 800); x.fillText(brand.toUpperCase(), cx, cy - r * 0.56);
-    x.globalAlpha = 1;
+    const B = brand.toUpperCase();
+    spaced(x, r * 0.01); sized(x, B, r * 0.86, r * 0.12, r * 0.06);
+    x.lineJoin = 'round'; x.lineWidth = r * 0.024; x.strokeStyle = 'rgba(0,0,0,.35)'; x.strokeText(B, cx, cy - r * 0.5);
+    x.fillStyle = L.ink[0]; x.fillText(B, cx, cy - r * 0.5);
   }
   // the number and the unit
   spaced(x, 0);
-  const s = sized(x, value, r * 1.16, r * 0.74, r * 0.3), ny = cy - r * 0.1;
+  const s = sized(x, value, r * 1.16, r * 0.74, r * 0.3), ny = cy - r * 0.045;
   const ink = x.createLinearGradient(0, ny - s * 0.45, 0, ny + s * 0.4);
   ink.addColorStop(0, L.ink[0]); ink.addColorStop(1, L.ink[1]);
   x.lineJoin = 'round'; x.lineWidth = r * 0.04; x.strokeStyle = 'rgba(0,0,0,.32)'; x.strokeText(value, cx, ny);
   x.fillStyle = ink; x.fillText(value, cx, ny);
-  spaced(x, r * 0.05); x.font = `900 ${r * 0.2}px ${FONT}`; x.fillStyle = L.ink[1]; x.fillText(unit, cx + r * 0.025, cy + r * 0.3);
+  spaced(x, r * 0.05); x.font = `900 ${r * 0.2}px ${FONT}`; x.fillStyle = L.ink[1]; x.fillText(unit, cx + r * 0.025, cy + r * 0.34);
   // the ribbon across the bottom, its tails folded behind
   const ry = cy + r * 0.62, rh = r * 0.26, rw = r * 1.0, drop = rh * 0.26, tail = r * 0.24;
   for (const d of [-1, 1]) {
@@ -118,19 +120,21 @@ function shade(hex6, k) {
 
 // The medal to download and print: MEDAL_PX square (26 cm at 300 dpi), transparent background, no
 // shadow, a margin all round. With a name, a dark plate under it carries the name and the day the mark
-// was reached (`since`, already formatted); without one, it is the mark's medal for anyone.
+// was reached (`since`, already formatted); without one, it is the mark's medal for anyone. The sheet
+// is usually printed small (a 5 cm pin or magnet), so the name and the day are sized for that.
 export const MEDAL_PX = 3072;
 export function drawMedalSheet(medal, { name, since } = {}) {
   const P = MEDAL_PX, k = P / 2048, cv = document.createElement('canvas'); cv.width = cv.height = P;
   const x = cv.getContext('2d');
-  drawMedal(x, { ...medal, cx: P / 2, cy: (name ? 860 : 1000) * k, r: (name ? 700 : 800) * k, shadow: false });
+  drawMedal(x, { ...medal, cx: P / 2, cy: (name ? 815 : 1000) * k, r: (name ? 670 : 800) * k, shadow: false });
   if (name) {
     x.textAlign = 'center'; x.textBaseline = 'middle';
-    const ns = sized(x, name, 1500 * k, 120 * k, 64 * k), nw = Math.min(1820 * k, x.measureText(name).width + 200 * k);
-    const py = 1660 * k, ph = (since ? 300 : 210) * k;
-    x.fillStyle = '#1b242d'; x.beginPath(); x.roundRect((P - nw) / 2, py, nw, ph, 60 * k); x.fill();
-    x.fillStyle = '#ffffff'; x.font = `900 ${ns}px ${FONT}`; x.fillText(name, P / 2, py + (since ? 110 : ph / k / 2) * k);
-    if (since) { x.font = `800 ${64 * k}px ${FONT}`; x.fillStyle = '#b9c6d2'; x.fillText(since, P / 2, py + 215 * k); }
+    x.font = `800 ${102 * k}px ${FONT}`; const dw = since ? x.measureText(since).width : 0;
+    const ns = sized(x, name, 1700 * k, 152 * k, 84 * k), w = Math.max(x.measureText(name).width, dw);
+    const nw = Math.min(1920 * k, w + 220 * k), py = 1555 * k, ph = (since ? 410 : 260) * k;
+    x.fillStyle = '#1b242d'; x.beginPath(); x.roundRect((P - nw) / 2, py, nw, ph, 70 * k); x.fill();
+    x.fillStyle = '#ffffff'; x.font = `900 ${ns}px ${FONT}`; x.fillText(name, P / 2, py + (since ? 145 : ph / k / 2) * k);
+    if (since) { x.font = `800 ${102 * k}px ${FONT}`; x.fillStyle = '#e1e8ee'; x.fillText(since, P / 2, py + 300 * k); }
   }
   return cv;
 }
