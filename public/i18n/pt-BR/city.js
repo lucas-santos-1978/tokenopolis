@@ -193,6 +193,23 @@ export default {
     print: ({ px, cm }) => `PNG de ${px} × ${px} px, fundo transparente, sem sombra: ${cm} cm a 300 dpi, pronto para imprimir. “Sem o nome” é a medalha da marca, para qualquer pessoa.`,
     alt: 'Medalha de {mark} de tokens de {name}',
   },
+  // o ranking geral: todo mundo, uma linha por pessoa, com as cidades somadas
+  league: {
+    filter: 'Filtrar por nome',
+    city: 'Cidade',
+    allCities: 'Todas as cidades',
+    sortBy: 'Ordenar por',
+    sort: { total: 'Total', week: 'Semana', month: 'Mês', today: 'Hoje' },
+    people: { one: '{n} pessoa', other: '{n} pessoas' },
+    shown: 'mostrando {n}',
+    me: '📍 você está em {pos}',
+    none: 'Ninguém com esse nome nesta cidade',
+    chip: '🏆 {pos} no ranking geral',
+    chipTitle: 'Ver no ranking geral (todas as cidades somadas)',
+    csvTitle: 'O ranking geral numa planilha (abre no Excel)',
+    csvHead: ['Posição', 'Nome', 'Andares (milhões de tokens)', 'Semana', 'Mês', 'Hoje', 'Cidades', 'Medalha'],
+    file: 'ranking-geral',
+  },
   // o card do campus (o perfil corporativo de um Mega Builder), quadrado
   hqCard: {
     sub: ({ rank, cities }) => `${rank} Mega Builder · campus com ${cities}`,

@@ -33,7 +33,7 @@ import { t, plural, fmt, cityLabel, displayName, config } from '../i18n/index.js
 import { tierOf, BUILDING_TIERS, TEN_BI, advisors, context, floorsText, cityTier, buildingTier, monthOf, ruinOf, markOf, markText } from './rules.js';
 import { L, seed, hash, kind, buildWorld, groundCanvas, dojoOf, megaLinks } from './world.js';
 import { makeKit, craneJib, Batcher, mats, lit, blinkMats, matte, setAnisotropy, sweepSigns, SILVER, DARK, WARM_LIGHT, HOUSE_H, STYLE_PAL } from './buildings.js';
-import { initPanels, renderPanels, countdownKey, queueToast, liveEvents, hasToasts, keyOf, esc, staleText, renderAge, missionOf, renderBell, setMe as panelsSetMe, renderFinder, finderKey, locatePerson, MAPKEYS, mapColorFor, renderMapKey, renderPaper } from './panels.js';
+import { initPanels, renderPanels, countdownKey, queueToast, liveEvents, hasToasts, keyOf, esc, staleText, renderAge, missionOf, renderBell, setMe as panelsSetMe, renderFinder, finderKey, locatePerson, MAPKEYS, mapColorFor, renderMapKey, renderPaper, renderLeague } from './panels.js';
 import { makeLife, blimpLines } from './life.js';
 import { makeEffects, launchRocket } from './effects.js';
 import { loadHistory, renderTimeline, startTimelapse, openRace, playRace, weekDiary, reachedOn } from './history.js';
@@ -1166,11 +1166,14 @@ function openModal(id) {
   m.hidden = false;
   if (d) { d.setAttribute('aria-modal', 'true'); d.tabIndex = -1; (d.querySelector('input, .close, button, a[href]') ?? d).focus({ preventScroll: true }); }
 }
+// the overall ranking; focus: a person to show in it (from the details card)
+function openLeague(focus = null) { closeModals(); openModal('league'); renderLeague(focus); }
 function openTool(name, btn) {
   setMenu(false);
   if (name === 'me') { const hit = me && locatePerson(me); if (hit) goPerson(hit.c.id, hit.b.id); return; }
   if (name === 'find') { openModal('finder'); $('#finder-q').value = ''; renderFinder(); $('#finder-q').focus(); return; }
   if (name === 'paper') { renderPaper(dayF < 0.5); openModal('newspaper'); return; }
+  if (name === 'league') { openLeague(); return; }
   if (name === 'help') { openModal('help'); links.showTab('read'); return; }
   const pop = $({ panels: '#panels', sky: '#sky', maps: '#maps', history: '#films', bell: '#bell' }[name]), was = pop && !pop.hidden;
   closeModals();
@@ -1188,7 +1191,7 @@ function setMapMode(m) {
   syncUrl();
 }
 document.addEventListener('click', (e) => {
-  const el = e.target.closest('[data-menu], [data-hide-panel], [data-panel], [data-panels], [data-tool], [data-back], [data-close], [data-close-modal], [data-share], [data-me], [data-building], [data-dojo], [data-hq], [data-district], [data-city], [data-dir], [data-map-mode], [data-film], [data-race], [data-tl-stop], #spin, #refit, [data-hour], [data-welcome], [data-card], [data-hq-card], [data-medal], [data-card-copy], [data-text], [data-roof], [data-roof-exit], .sign');
+  const el = e.target.closest('[data-menu], [data-hide-panel], [data-panel], [data-panels], [data-tool], [data-back], [data-close], [data-close-modal], [data-share], [data-me], [data-building], [data-dojo], [data-hq], [data-district], [data-city], [data-dir], [data-map-mode], [data-film], [data-race], [data-tl-stop], #spin, #refit, [data-hour], [data-welcome], [data-card], [data-hq-card], [data-medal], [data-league], [data-card-copy], [data-text], [data-roof], [data-roof-exit], .sign');
   if (el?.hasAttribute('data-menu')) return setMenu(!('menu' in document.documentElement.dataset));
   if (!e.target.closest('#menu')) setMenu(false);
   if (!el) { if (e.target.classList.contains('modal')) closeModals(); else if (!e.target.closest('.popover')) closePopovers(); return; }
@@ -1196,6 +1199,7 @@ document.addEventListener('click', (e) => {
   if (el.dataset.card) return openCard(...el.dataset.card.split('|'));
   if (el.dataset.hqCard) return openHqCard(el.dataset.hqCard);
   if (el.dataset.medal) return openMedal(el.dataset.medal);
+  if (el.dataset.league) return openLeague(el.dataset.league);
   if (el.dataset.text) return setTextZoom(el.dataset.text);
   if (el.hasAttribute('data-roof-exit')) return leaveRoof();
   if (el.dataset.roof) return roofView(...el.dataset.roof.split('|'));

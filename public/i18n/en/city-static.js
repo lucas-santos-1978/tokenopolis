@@ -11,11 +11,12 @@ export default {
     },
     tools: {
       aria: 'Tools',
-      short: { me: 'My building', find: 'Find', maps: 'Maps', paper: 'Newspaper', history: 'Time-lapse', sky: 'Time of day', bell: 'Notices', panels: 'Panels', help: 'Help' }, // the labels of the ☰ menu on a phone
+      short: { me: 'My building', find: 'Find', maps: 'Maps', paper: 'Newspaper', league: 'Ranking', history: 'Time-lapse', sky: 'Time of day', bell: 'Notices', panels: 'Panels', help: 'Help' }, // the labels of the ☰ menu on a phone
       me: 'Go to my building',
       find: 'Find a building',
       maps: 'Data maps',
       paper: 'The Daily Token',
+      league: 'Overall ranking: everyone, every city added up',
       history: 'Time-lapse and the city race, {since}',
       sky: 'Time of day (automatic, by the time in {zone})',
       bell: 'Notices and the week’s diary',
@@ -94,6 +95,11 @@ export default {
       heading: '🏁 City race',
       intro: 'Floors accumulated {since}, week by week. {floor}.',
       replay: '↺ Watch again',
+    },
+    league: {
+      aria: 'Overall ranking',
+      heading: '🏆 Overall ranking',
+      intro: 'Everyone in the region, each person’s cities added up, as on the medal. {floor}.',
     },
     help: {
       aria: 'How to read {appName}',

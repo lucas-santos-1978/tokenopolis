@@ -24,6 +24,19 @@ export function markOf(floors) {
   return i < 0 ? null : { i, floors: TOKEN_MARKS[i], next: TOKEN_MARKS[i + 1] ?? null };
 }
 // "2 bi" / "250 mi" ("2B" / "250M"), for chips and texts
+// Everyone in the region, one entry per person: a person in 2+ cities adds them up, as the medal does.
+// { id, total, week, month, today, parts: [{ b, c }] (the tallest first), top: the tallest building, c: its city }
+export function peopleOf(data) {
+  const by = new Map();
+  for (const c of data.cities) for (const b of c.buildings) {
+    let p = by.get(b.id);
+    if (!p) by.set(b.id, (p = { id: b.id, total: 0, week: 0, month: 0, today: 0, parts: [] }));
+    p.total += b.floors; p.week += b.week ?? 0; p.month += b.month ?? 0; p.today += b.today ?? 0;
+    p.parts.push({ b, c });
+  }
+  return [...by.values()].map((p) => { p.parts.sort((x, y) => y.b.floors - x.b.floors); return Object.assign(p, { top: p.parts[0].b, c: p.parts[0].c }); });
+}
+
 // The week's medals, from the reading alone: whoever's tokens, every city added up, passed a mark since
 // Monday (the total without the week was below it), the highest mark first; and who is closest to the
 // next billion (or, below that, to any next mark). Each person: { id, total, week, top, c, mark }.

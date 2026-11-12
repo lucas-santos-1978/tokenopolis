@@ -40,6 +40,7 @@
       <button type="button" data-tool="find" title="Find a building" aria-label="Find" data-i18n-title="html.tools.find" data-i18n-aria="html.tools.short.find">🔍</button>
       <button type="button" data-tool="maps" title="Data maps" aria-label="Maps" data-i18n-title="html.tools.maps" data-i18n-aria="html.tools.short.maps">🗺️</button>
       <button type="button" data-tool="paper" title="The Daily Token" aria-label="Newspaper" data-i18n-title="html.tools.paper" data-i18n-aria="html.tools.short.paper">📰</button>
+      <button type="button" data-tool="league" title="Overall ranking" aria-label="Ranking" data-i18n-title="html.tools.league" data-i18n-aria="html.tools.short.league">🏆</button>
       <button type="button" data-tool="history" title="Time-lapse and the city race" aria-label="Time-lapse" data-i18n-title="html.tools.history" data-i18n-aria="html.tools.short.history">🎬</button>
       <button type="button" data-tool="sky" id="sky-btn" title="Time of day" aria-label="Time of day" data-i18n-title="html.tools.sky" data-i18n-aria="html.tools.short.sky">🌗</button>
       <button type="button" data-tool="bell" id="bell-btn" title="Notices and the week’s diary" aria-label="Notices" data-i18n-title="html.tools.bell" data-i18n-aria="html.tools.short.bell">🔔</button>
@@ -159,6 +160,13 @@
       <div class="race-week"><b id="race-label">—</b><span id="race-news"></span></div>
       <div id="race-bars" class="race-bars"></div>
       <footer><button type="button" data-race="replay" data-i18n="html.race.replay">↺ Watch again</button></footer>
+    </div>
+  </div>
+  <div id="league" class="modal" hidden>
+    <div class="league" role="dialog" aria-label="Overall ranking" data-i18n-aria="html.league.aria">
+      <button class="close" type="button" data-close-modal aria-label="Close" data-i18n-aria="html.close">×</button>
+      <header><h2 data-i18n="html.league.heading">🏆 Overall ranking</h2><p data-i18n="html.league.intro">Everyone in the region, each person's cities added up, as on the medal. 1 floor = 1 million tokens.</p></header>
+      <div id="league-body"></div>
     </div>
   </div>
   <div id="cardbox" class="modal" hidden>

@@ -11,11 +11,12 @@ export default {
     },
     tools: {
       aria: 'Ferramentas',
-      short: { me: 'Meu prédio', find: 'Achar', maps: 'Mapas', paper: 'Jornal', history: 'Time-lapse', sky: 'Hora do dia', bell: 'Avisos', panels: 'Painéis', help: 'Ajuda' }, // os rótulos do menu ☰ no celular
+      short: { me: 'Meu prédio', find: 'Achar', maps: 'Mapas', paper: 'Jornal', league: 'Ranking', history: 'Time-lapse', sky: 'Hora do dia', bell: 'Avisos', panels: 'Painéis', help: 'Ajuda' }, // os rótulos do menu ☰ no celular
       me: 'Ir até o meu prédio',
       find: 'Achar um prédio',
       maps: 'Mapas de dados',
       paper: 'O Diário dos Tokens',
+      league: 'Ranking geral: todo mundo, com as cidades somadas',
       history: 'Time-lapse e corrida das cidades, {since}',
       sky: 'Hora do dia (automática pela hora de {zone})',
       bell: 'Avisos e o diário da semana',
@@ -94,6 +95,11 @@ export default {
       heading: '🏁 Corrida das cidades',
       intro: 'Andares acumulados {since}, semana a semana. {floor}.',
       replay: '↺ Ver de novo',
+    },
+    league: {
+      aria: 'Ranking geral',
+      heading: '🏆 Ranking geral',
+      intro: 'Todo mundo da região, com as cidades de cada pessoa somadas, como na medalha. {floor}.',
     },
     help: {
       aria: 'Como ler {appName}',

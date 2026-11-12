@@ -189,6 +189,23 @@ export default {
     print: ({ px, cm }) => `PNG of ${px} × ${px} px, transparent background, no shadow: ${cm} cm at 300 dpi, ready to print. “Without the name” is the mark's medal, for anyone.`,
     alt: "{name}'s {mark} token medal",
   },
+  // the overall ranking: everyone, one line per person, every city added up
+  league: {
+    filter: 'Filter by name',
+    city: 'City',
+    allCities: 'All cities',
+    sortBy: 'Sort by',
+    sort: { total: 'Total', week: 'Week', month: 'Month', today: 'Today' },
+    people: { one: '{n} person', other: '{n} people' },
+    shown: 'showing {n}',
+    me: '📍 you are {pos}',
+    none: 'Nobody by that name in this city',
+    chip: '🏆 {pos} overall',
+    chipTitle: 'See it in the overall ranking (every city added up)',
+    csvTitle: 'The overall ranking as a spreadsheet (opens in Excel)',
+    csvHead: ['Position', 'Name', 'Floors (million tokens)', 'Week', 'Month', 'Today', 'Cities', 'Medal'],
+    file: 'overall-ranking',
+  },
   // the campus's card (a Mega Builder's corporate profile), square
   hqCard: {
     sub: ({ rank, cities }) => `${rank} Mega Builder · a campus with ${cities}`,

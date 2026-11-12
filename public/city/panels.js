@@ -3,7 +3,7 @@
 // and what changed between two readings (liveEvents).
 
 import { t, plural, fmt, cityLabel, displayName, config, locale as uiLocale } from '../i18n/index.js';
-import { tierOf, BUILDING_TIERS, TEN_BI, monumentsOf, context, mayorOf, raceOf, derby, countdowns, paperHtml, cityTier, buildingTier, monumentText, monthOf, floorsText, htmlCity, ruinOf, megaOf, markOf, markText } from './rules.js';
+import { tierOf, BUILDING_TIERS, TEN_BI, monumentsOf, context, mayorOf, raceOf, derby, countdowns, paperHtml, cityTier, buildingTier, monumentText, monthOf, floorsText, htmlCity, ruinOf, megaOf, markOf, markText, peopleOf } from './rules.js';
 import { dojoOf } from './world.js';
 import { ageText, readingTime } from '../lib/freshness.js';
 
@@ -36,6 +36,8 @@ const rankOf = (c) => weekRank().indexOf(c) + 1;
 
 export function renderPanels(d, view, selected) {
   data = d; mega = megaOf(d);
+  leagueRanked = null; leaguePosOf = null; // the overall ranking follows the reading
+  if ($('#league') && !$('#league').hidden) renderLeagueList(true);
   renderNews();
   const city = view.kind === 'city' && data.cities.find((c) => c.id === view.id), isCity = !!city, v = isCity ? 'city' : 'region';
   document.documentElement.dataset.view = v;
@@ -334,7 +336,7 @@ function renderSheet(c, selected) {
     <div class="who"><b>${esc(name(b))}</b><span>${esc(t('sheet.ranks', { c, inCity: fmt.ordinal(inCity), inRegion: fmt.ordinal(inRegion) }))}</span></div>
     <div class="nums"><div><b>${fmt.int(b.floors)}</b><span>${plural(Math.round(b.floors), 'sheet.floors')}</span></div><div class="up"><b>+${fmt.int(b.week)}</b><span>${t('sheet.week')}</span></div><div><b>+${fmt.int(b.today)}</b><span>${t('sheet.today')}</span></div></div>
     <div class="ptier"><div class="row"><span>${tr.icon} ${buildingTier(tr.key).name}</span><small>${tr.next ? t('sheet.nextTier', { n: missing, floors: floorsText(missing), tier: buildingTier(tr.next.key) }) : t('sheet.topTier')}</small></div><i style="--p:${tr.progress.toFixed(3)}"></i></div>
-    <div class="chips">${state}${medalChip(b.id, b.total)}${b.mega ? `<span class="badge mega" data-hq="${esc(b.id)}" title="${esc(t('mega.badgeTitle'))}">${esc(t('mega.badge', { bi: fmt.dec(mega.line / 1000, 1) }))}</span>` : ''}${b.isNew ? `<span>${t('sheet.new')}</span>` : ''}${b.back ? `<span class="badge">${esc(t('sheet.back', { days: plural(b.back, 'count.day') }))}</span>` : ''}${b.record ? `<span class="badge">${t('sheet.record')}</span>` : ''}${b.belt ? `<span class="badge dojo" data-dojo="${esc(c.id)}" title="${esc(t('sheet.dojoTitle'))}">${t('sheet.belt', { belt: t(`belt.${b.belt}`), since: b.beltSince ? fmt.isoDate(b.beltSince) : '' })}</span>` : ''}${badges.map((x) => `<span class="badge">${esc(x)}</span>`).join('')}</div>
+    <div class="chips">${state}${medalChip(b.id, b.total)}${leagueChip(b.id)}${b.mega ? `<span class="badge mega" data-hq="${esc(b.id)}" title="${esc(t('mega.badgeTitle'))}">${esc(t('mega.badge', { bi: fmt.dec(mega.line / 1000, 1) }))}</span>` : ''}${b.isNew ? `<span>${t('sheet.new')}</span>` : ''}${b.back ? `<span class="badge">${esc(t('sheet.back', { days: plural(b.back, 'count.day') }))}</span>` : ''}${b.record ? `<span class="badge">${t('sheet.record')}</span>` : ''}${b.belt ? `<span class="badge dojo" data-dojo="${esc(c.id)}" title="${esc(t('sheet.dojoTitle'))}">${t('sheet.belt', { belt: t(`belt.${b.belt}`), since: b.beltSince ? fmt.isoDate(b.beltSince) : '' })}</span>` : ''}${badges.map((x) => `<span class="badge">${esc(x)}</span>`).join('')}</div>
     ${others.length ? `<div class="corp">${b.cities >= 3 ? '👑' : '🚩'} ${t('sheet.alsoIn', { list: fmt.list(others.map((k) => `<button type="button" data-city="${esc(k.id)}" data-person="${esc(b.id)}">${esc(cityLabel(k))}</button>`)) })}</div>` : ''}
     <div class="race${me === b.id ? ' mine' : ''}"><h3>${me === b.id ? t('around.mine') : t('around.title')}</h3><ul>${race}</ul></div>
     ${b.clock || b.models ? `<div class="habits">${b.clock ? `<h3>${t('habits.clock')} <small>${t('habits.clockSub')}</small></h3><div class="clock" role="img" aria-label="${esc(t('habits.clockAria', { peak: fmt.clock(peakHour(b.clock)) }))}">${[...b.clock].map((d, h) => `<i style="--v:${Number(d) / 7}" title="${esc(t('habits.hour', { hour: fmt.clock(h), days: plural(Number(d), 'count.day') }))}"></i>`).join('')}</div><div class="clock-axis"><span>0h</span><span>6h</span><span>12h</span><span>18h</span><span>24h</span></div>` : ''}${b.models ? `<h3>${t('habits.models')} <small>${t('habits.modelsSub')}</small></h3><div class="mix">${b.models.map(([m, s]) => `<i style="flex:${s};background:${MODEL_COLORS[m] ?? GREY}" title="${esc(`${t(`model.${m}`).name} ${fmt.percent(s)}`)}"></i>`).join('')}</div><div class="mix-key">${b.models.map(([m, s]) => `<span><i style="background:${MODEL_COLORS[m] ?? GREY}"></i>${esc(t(`model.${m}`).name)} ${fmt.percent(s)}</span>`).join('')}</div>` : ''}</div>` : ''}
@@ -365,7 +367,7 @@ function renderHqSheet(id) {
     <div class="nums"><div><b>${fmt.int(p.floors)}</b><span>${t('mega.sum')}</span></div><div class="up"><b>+${fmt.int(p.week)}</b><span>${t('sheet.week')}</span></div><div><b>+${fmt.int(p.month)}</b><span>${t('mega.month')}</span></div></div>
     ${rank ? `<p class="note">${t('mega.badgeText')}</p>`
       : `<div class="ptier"><div class="row"><span>🚧 ${t('mega.future')}</span><small>${t('mega.missing', { floors: floorsText(Math.max(1, Math.ceil(m.line - p.floors))) })}</small></div><i style="--p:${progress.toFixed(3)}"></i></div>`}
-    <div class="chips">${state}${medalChip(p.id, p.floors)}${me === p.id ? `<span>${t('me.pin')}</span>` : ''}</div>
+    <div class="chips">${state}${medalChip(p.id, p.floors)}${leagueChip(p.id)}${me === p.id ? `<span>${t('me.pin')}</span>` : ''}</div>
     <h3>${t('mega.parts')}</h3>
     <ol class="works">${p.parts.map(({ b, c }) => `<li data-city="${esc(c.id)}" data-person="${esc(b.id)}"><span>${esc(cityLabel(c))}</span><b>${fmt.int(b.floors)}</b></li>`).join('')}</ol>
     ${rank ? `<div class="actions"><button class="share card" type="button" data-hq-card="${esc(p.id)}" title="${esc(t('hqCard.buttonTitle'))}">${t('sheet.card')}</button>${markOf(p.floors) ? `<button class="share tokmedal" type="button" data-medal="${esc(p.id)}" title="${esc(t('medal.buttonTitle'))}">${t('medal.button')}</button>` : ''}</div>` : ''}`;
@@ -400,6 +402,87 @@ function people() {
   for (const c of data.cities) for (const b of c.buildings) { const p = best.get(b.id); if (!p || b.floors > p.b.floors) best.set(b.id, { b, c }); }
   return [...best.values()];
 }
+// ───────── the overall ranking ─────────
+// Everyone in the region, one line per person (every city added up, the same total as the medal),
+// sorted by the total, the week, the month or today. Filtering by name or city keeps the overall
+// position. A line flies to the person's tallest building; the CSV takes the whole list.
+let leagueRanked = null, leaguePosOf = null, leagueSort = 'total', leagueQ = '', leagueCity = '', leagueFocus = null;
+const LEAGUE_SORTS = { total: (p) => p.total, week: (p) => p.week, month: (p) => p.month, today: (p) => p.today };
+const tokensText = (floors) => (floors >= 1000 ? t('medal.bi', { n: fmt.dec(floors / 1000, 2, 2) }) : t('medal.mi', { n: fmt.int(floors) }));
+const byTotal = (a, b) => b.total - a.total || a.id.localeCompare(b.id);
+function leagueRank() {
+  if (leagueRanked?.sort === leagueSort) return leagueRanked.list;
+  const val = LEAGUE_SORTS[leagueSort];
+  const list = peopleOf(data).sort((a, b) => val(b) - val(a) || byTotal(a, b));
+  list.forEach((p, i) => { p.pos = i + 1; });
+  leagueRanked = { sort: leagueSort, list };
+  return list;
+}
+// the overall position by the total (on the details card), 0 when unknown
+function leaguePos(id) {
+  if (!leaguePosOf) { leaguePosOf = new Map(); peopleOf(data).sort(byTotal).forEach((p, i) => leaguePosOf.set(p.id, i + 1)); }
+  return leaguePosOf.get(id) ?? 0;
+}
+const leagueChip = (id) => { const pos = data && leaguePos(id); return pos ? `<span class="badge leaguepos" data-league="${esc(id)}" title="${esc(t('league.chipTitle'))}">${esc(t('league.chip', { pos: fmt.ordinal(pos) }))}</span>` : ''; };
+// focus: a person to show (scrolled to the middle and outlined), with the filters cleared
+export function renderLeague(focus = null) {
+  if (!data) return;
+  leagueFocus = focus;
+  if (focus) { leagueQ = ''; leagueCity = ''; }
+  const cities = [...data.cities].sort((a, b) => cityLabel(a).localeCompare(cityLabel(b)));
+  $('#league-body').innerHTML = `
+    <div class="league-tools">
+      <input id="league-q" type="search" value="${esc(leagueQ)}" placeholder="${esc(t('league.filter'))}" aria-label="${esc(t('league.filter'))}" autocomplete="off" spellcheck="false" />
+      <select id="league-city" aria-label="${esc(t('league.city'))}"><option value="">${esc(t('league.allCities'))}</option>${cities.map((c) => `<option value="${esc(c.id)}"${c.id === leagueCity ? ' selected' : ''}>${esc(cityLabel(c))}</option>`).join('')}</select>
+      <div class="sorts" role="group" aria-label="${esc(t('league.sortBy'))}">${Object.keys(LEAGUE_SORTS).map((k) => `<button type="button" data-league-sort="${k}" aria-pressed="${k === leagueSort}">${t(`league.sort.${k}`)}</button>`).join('')}</div>
+      <button type="button" class="csv" data-league-csv title="${esc(t('league.csvTitle'))}">⬇️ CSV</button>
+    </div>
+    <p class="league-sum" id="league-sum"></p>
+    <ol class="league-list" id="league-list"></ol>`;
+  renderLeagueList();
+}
+function renderLeagueList(keepScroll = false) {
+  const ol = $('#league-list');
+  if (!ol || !data) return;
+  const scroll = ol.scrollTop, list = leagueRank(), val = LEAGUE_SORTS[leagueSort], q = norm(leagueQ.trim());
+  const max = Math.max(1, list.length ? val(list[0]) : 1);
+  const shown = list.filter((p) => (!leagueCity || p.parts.some(({ c }) => c.id === leagueCity)) && (!q || norm(name(p.top)).includes(q)));
+  const mine = me ? list.find((p) => p.id === me) : null;
+  $('#league-sum').innerHTML = [esc(plural(list.length, 'league.people')), shown.length < list.length ? esc(t('league.shown', { n: fmt.int(shown.length) })) : '', mine ? `<button type="button" data-league-me>${esc(t('league.me', { pos: fmt.ordinal(mine.pos) }))}</button>` : ''].filter(Boolean).join(' · ');
+  ol.innerHTML = shown.map((p) => {
+    const m = markOf(p.total), n = p.parts.length, v = val(p);
+    return `<li data-city="${esc(p.c.id)}" data-person="${esc(p.id)}"${p.id === me ? ' class="me"' : ''}><span class="pos${p.pos <= 3 ? ` m${p.pos}` : ''}">${fmt.int(p.pos)}</span>
+      <span class="who"><b>${esc(name(p.top))}</b>${m ? `<em class="lm">🏅 ${esc(markText(m.floors))}</em>` : ''}${n > 1 ? `<em class="lc">${p.top.mega ? '💎' : '🚩'}${n}</em>` : ''}<small>${esc(p.parts.map(({ c }) => cityLabel(c)).join(' · '))}</small></span>
+      <span class="bar"><i style="width:${Math.max(1, (100 * Math.max(0, v)) / max).toFixed(1)}%"></i></span><span class="v">${leagueSort === 'total' ? '' : '+'}${esc(tokensText(Math.max(0, v)))}</span></li>`;
+  }).join('') || `<li class="none">${t('league.none')}</li>`;
+  focusable(ol);
+  if (keepScroll) ol.scrollTop = scroll;
+  if (leagueFocus) {
+    const row = [...ol.children].find((li) => li.dataset.person === leagueFocus);
+    if (row) { row.classList.add('focus'); row.scrollIntoView({ block: 'center' }); }
+  }
+}
+// the whole list as a spreadsheet, by the total (semicolons and decimal commas where the language uses them)
+function downloadLeagueCsv() {
+  const comma = (1.5).toLocaleString(uiLocale).includes(','), sep = comma ? ';' : ',';
+  const num = (v) => String(Math.round(v * 10) / 10).replace('.', comma ? ',' : '.');
+  const cell = (v) => { const s = String(v ?? ''); return s.includes(sep) || s.includes('"') || s.includes('\n') ? `"${s.replaceAll('"', '""')}"` : s; };
+  const lines = [t('league.csvHead').map(cell).join(sep)];
+  peopleOf(data).sort(byTotal).forEach((p, i) => { const m = markOf(p.total); lines.push([i + 1, name(p.top), num(p.total), num(p.week), num(p.month), num(p.today), p.parts.map(({ c }) => cityLabel(c)).join(' · '), m ? markText(m.floors) : ''].map(cell).join(sep)); });
+  const a = document.createElement('a'), url = URL.createObjectURL(new Blob([String.fromCharCode(0xfeff) + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' }));
+  a.href = url; a.download = `${slug(config.appName ?? 'tokenopolis')}-${slug(t('league.file'))}-${new Date(data.generatedAt).toISOString().slice(0, 10)}.csv`;
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+document.addEventListener('click', (e) => {
+  const s = e.target.closest('[data-league-sort]');
+  if (s) { leagueSort = s.dataset.leagueSort; leagueFocus = null; document.querySelectorAll('[data-league-sort]').forEach((x) => x.setAttribute('aria-pressed', String(x === s))); renderLeagueList(); $('#league-list').scrollTop = 0; return; }
+  if (e.target.closest('[data-league-me]')) { leagueQ = ''; leagueCity = ''; $('#league-q').value = ''; $('#league-city').value = ''; leagueFocus = me; renderLeagueList(); return; }
+  if (e.target.closest('[data-league-csv]') && data) downloadLeagueCsv();
+});
+document.addEventListener('input', (e) => { if (e.target.id === 'league-q') { leagueQ = e.target.value; leagueFocus = null; renderLeagueList(); } });
+document.addEventListener('change', (e) => { if (e.target.id === 'league-city') { leagueCity = e.target.value; leagueFocus = null; renderLeagueList(); } });
+
 export function renderFinder() {
   if (!data) return;
   const q = norm($('#finder-q').value.trim()), all = people(), key = (x) => norm(name(x.b));

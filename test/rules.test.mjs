@@ -90,3 +90,15 @@ test('the week\'s medals: passed a mark since Monday, and the closest to the nex
   assert.equal(m.next.id, 'bia', 'bia is 10 floors from 1 billion');
   assert.equal(m.next.mark, 1000);
 });
+
+test('the overall ranking: one entry per person, every city added up', () => {
+  const data = { cities: [
+    { id: 'a', buildings: [person('ana', 700, { week: 10, month: 40, today: 1, cities: 2 }), person('bia', 900, { week: 5 })] },
+    { id: 'b', buildings: [person('ana', 400, { week: 20, month: 60, today: 2, cities: 2 })] },
+  ] };
+  const ps = rules.peopleOf(data).sort((x, y) => y.total - x.total);
+  assert.deepEqual(ps.map((p) => [p.id, p.total]), [['ana', 1100], ['bia', 900]], 'ana passes bia only with both cities');
+  assert.deepEqual([ps[0].week, ps[0].month, ps[0].today], [30, 100, 3]);
+  assert.equal(ps[0].c.id, 'a', 'shown in the city of her tallest building');
+  assert.deepEqual(ps[0].parts.map(({ c }) => c.id), ['a', 'b']);
+});

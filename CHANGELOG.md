@@ -3,6 +3,13 @@
 Dates are the day each version went live on the author's panel. Earlier versions were an internal
 tool with another name; the open-source release renames it Tokenopolis.
 
+## v37 (2026-11-12)
+
+- 🏆 Overall ranking: everyone in the region, one line per person with every city added up (the
+  medal's total), by the total, the week, the month or today; filter by name or city keeping the
+  overall position, jump to one's own line, download it as CSV. The details card shows the person's
+  overall position and opens the ranking on their line.
+
 ## v36 (2026-11-11)
 
 - The building's card is square too (1080×1080), the same card as the campus's.
