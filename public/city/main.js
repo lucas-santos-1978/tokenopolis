@@ -38,7 +38,7 @@ import { makeLife, blimpLines } from './life.js';
 import { makeEffects, launchRocket } from './effects.js';
 import { loadHistory, renderTimeline, startTimelapse, openRace, playRace, weekDiary, reachedOn } from './history.js';
 import { initLinks } from './links.js';
-import { drawBuildingCard, drawProfileCard } from './card.js';
+import { drawCard } from './card.js';
 import { drawMedalSheet, MEDAL_PX } from './medal.js';
 import { canCopyImages } from '../lib/clipboard.js';
 
@@ -984,7 +984,7 @@ function leaveRoof() {
 }
 // The cards: a frame of the scene as it is now (the subject in the middle of the screen) plus the
 // person's numbers, as a PNG to download or, where the browser can, to copy. The building's card,
-// the campus's (square, every city added up) and the token medal alone share the same window.
+// the campus's (every city added up), both square, and the token medal alone share the same window.
 let cardBlob = null, cardUrl = null;
 const fileSlug = (s) => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase() || 'card';
 const brandName = () => config.appName ?? 'Tokenopolis';
@@ -1005,14 +1005,14 @@ function snapshot(at) {
 // under the buttons
 let plainUrl = null;
 const blobOf = (cv) => new Promise((ok) => cv.toBlob(ok, 'image/png'));
-async function showCard(cv, { alt, file, square = false, plain = null, plainFile = '', note = '' }) {
+async function showCard(cv, { alt, file, plain = null, plainFile = '', note = '' }) {
   frameForDrawers();
   const [blob, blob2] = await Promise.all([blobOf(cv), plain && blobOf(plain)]);
   if (!blob) return;
   if (cardUrl) URL.revokeObjectURL(cardUrl);
   if (plainUrl) URL.revokeObjectURL(plainUrl);
   cardBlob = blob; cardUrl = URL.createObjectURL(blob); plainUrl = blob2 ? URL.createObjectURL(blob2) : null;
-  const img = $('#card-img'); img.src = cardUrl; img.alt = alt; img.classList.toggle('square', square);
+  const img = $('#card-img'); img.src = cardUrl; img.alt = alt;
   const dl = $('#card-dl'); dl.href = cardUrl; dl.download = `${fileSlug(brandName())}-${file}.png`;
   const dl2 = $('#card-dl2'); dl2.hidden = !plainUrl;
   if (plainUrl) { dl2.href = plainUrl; dl2.download = `${fileSlug(brandName())}-${plainFile}.png`; }
@@ -1042,14 +1042,14 @@ async function openCard(cityId, personId) {
   if (b.mega) chips.push('💎 Mega Builder');
   if (b.belt) chips.push(`🥋 ${t(`belt.${b.belt}`).name}`);
   if (b.streak >= 2) chips.push(`📅 ${plural(b.streak, 'sheet.badge.streak')}`);
-  const cv = drawBuildingCard({
+  const cv = drawCard({
     shot, title: displayName(b).full, sub: t('card.sub', { c, rank: fmt.ordinal(c.buildings.indexOf(b) + 1) }),
     stats: [{ value: fmt.int(b.floors), label: t('card.floors') }, { value: `+${fmt.int(b.week)}`, label: t('card.week'), up: true }, { value: `+${fmt.int(b.today)}`, label: t('card.today') }],
     chips, brand: `🏙️ ${brandName()}`, date: fmt.date(data.generatedAt, 'long'), medal,
   });
   showCard(cv, { alt: displayName(b).full, file: fileSlug(displayName(b).full) });
 }
-// The campus's card (the Mega Builder's corporate profile), square: the campus in the Corporate
+// The campus's card (the Mega Builder's corporate profile): the campus in the Corporate
 // District, every city added up, the week, the month and each city with its floors.
 async function openHqCard(id) {
   const h = hqHits.get(id), p = world?.mega.members.find((x) => x.id === id);
@@ -1060,7 +1060,7 @@ async function openHqCard(id) {
   if (medal) chips.push(medalChip(medal, since));
   if (p.belt) chips.push(`🥋 ${t(`belt.${p.belt}`).name}`);
   for (const { b, c } of p.parts) chips.push(`🏙️ ${cityLabel(c)} · ${fmt.int(b.floors)}`);
-  const cv = drawProfileCard({
+  const cv = drawCard({
     shot, title: who, sub: t('hqCard.sub', { rank: fmt.ordinal(rank), cities: plural(p.parts.length, 'count.city') }),
     stats: [
       { value: p.floors >= 1000 ? t('medal.bi', { n: fmt.dec(p.floors / 1000, 2, 2) }) : t('medal.mi', { n: fmt.int(p.floors) }), label: t('hqCard.total') },
@@ -1069,7 +1069,7 @@ async function openHqCard(id) {
     ],
     chips, brand: `💎 ${brandName()} · ${t('mega.district')}`, date: fmt.date(data.generatedAt, 'long'), medal,
   });
-  showCard(cv, { alt: who, file: `${fileSlug(who)}-campus`, square: true });
+  showCard(cv, { alt: who, file: `${fileSlug(who)}-campus` });
 }
 // The medal alone, to download and print (a sticker, a pin, a badge): MEDAL_PX on a transparent
 // background, with the name and the day it was reached, or without the name (the mark's medal).
@@ -1080,7 +1080,7 @@ async function openMedal(id) {
   const since = await medalSince(id, medal.floors), who = displayName(b).full, mark = fileSlug(markText(medal.floors));
   const cv = drawMedalSheet(medal, { name: who, since: since ? t('medal.reached', { date: fmt.isoDate(since) }) : '' });
   showCard(cv, {
-    alt: t('medal.alt', { name: who, mark: markText(medal.floors) }), file: `${fileSlug(who)}-${mark}`, square: true,
+    alt: t('medal.alt', { name: who, mark: markText(medal.floors) }), file: `${fileSlug(who)}-${mark}`,
     plain: drawMedalSheet(medal), plainFile: `${fileSlug(t('medal.file'))}-${mark}`, note: t('medal.print', { px: fmt.int(MEDAL_PX), cm: fmt.int(MEDAL_PX / 300 * 2.54) }),
   });
 }

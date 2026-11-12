@@ -516,6 +516,7 @@ export function renderBell(diary) {
     if (e.kind === 'tier') return row(e.icon, name(e.b), t('diary.tier', { tier: buildingTier(e.tier).name, city }), e.when, at);
     if (e.kind === 'new') return row(e.icon, name(e.b), t('diary.new', { city }), e.when, at);
     if (e.kind === 'fire') return row(e.icon, name(e.b), t('diary.fire', { city }), e.when, at);
+    if (e.kind === 'medal') return row(e.icon, name(e.b), t('diary.medal', { mark: markText(e.mark) }), e.when, at);
     if (e.kind === 'cityTier') return row(e.icon, city, t('diary.cityTier', { tier: cityTier(e.tier).name }), e.when, at);
     return row(e.icon, city, t('diary.overtake', { other: cityLabel(e.other) }), e.when, at);
   }).join('');
@@ -571,6 +572,23 @@ export function liveEvents(prev, next) {
       if (t1.key === 'spaceElevator') { queueToast({ icon: '🚀', title: t('toast.elevator.title'), text: t('toast.elevator.text', { name: name(b), c }), city: c.id, person: b.id, ms: 10000, fireworks: true }); rockets.push({ key }); }
       else { const tier = buildingTier(t1.key); queueToast({ icon: t1.icon, title: t('toast.buildingTier.title', { tier }), text: t('toast.buildingTier.text', { name: name(b), c, n: fmt.int(t1.min) }), city: c.id, person: b.id }); fireworks.push({ key, delay }); }
     }
+  }
+  // a token medal: someone's tokens, every city added up, passed a mark between the two readings
+  const totals = (d) => {
+    const m = new Map();
+    for (const c of d.cities) for (const b of c.buildings) {
+      const p = m.get(b.id);
+      if (!p) m.set(b.id, { total: b.floors, b, c });
+      else { p.total += b.floors; if (b.floors > p.b.floors) Object.assign(p, { b, c }); }
+    }
+    return m;
+  };
+  const was = totals(prev);
+  for (const [id, p] of totals(next)) {
+    const q = was.get(id), m1 = markOf(p.total), m0 = q && markOf(q.total);
+    if (!q || !m1 || m1.floors <= (m0?.floors ?? 0)) continue;
+    queueToast({ icon: '🏅', title: t('toast.medal.title', { name: name(p.b), mark: markText(m1.floors) }), text: t('toast.medal.text'), city: p.c.id, person: id, ms: 8000, fireworks: true });
+    fireworks.push({ key: keyOf(p.c.id, id), delay: 0 });
   }
   const pc = new Map(prev.cities.map((c) => [c.id, c])), px = context(prev), nx = context(next);
   for (const a of next.cities) for (const b of next.cities) {

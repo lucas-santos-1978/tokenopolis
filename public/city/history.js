@@ -4,7 +4,7 @@
 
 import * as THREE from 'three';
 import { t, plural, fmt, config, displayName } from '../i18n/index.js';
-import { tierOf, cityTier, floorsText, BUILDING_TIERS } from './rules.js';
+import { tierOf, cityTier, floorsText, BUILDING_TIERS, markOf } from './rules.js';
 import { STYLE_PAL, PAL } from './buildings.js';
 import { esc, keyOf } from './panels.js';
 
@@ -42,16 +42,21 @@ export function reachedOn(personId, floors) {
 
 // The week's diary: what happened since Monday, worked out from the record (nothing is stored, so it is
 // there for whoever was not watching): who moved up a type of building, newcomers, buildings that
-// caught fire, cities that changed title or passed another. Newest first. Needs loadHistory().
+// caught fire, token medals, cities that changed title or passed another. Newest first. Needs loadHistory().
 export function weekDiary(data) {
   if (!hist || !data) return [];
   const n = hist.days, w0 = Math.max(0, Math.round((data.week.start - hist.start) / DAY_MS)), fire = config.idle?.fire ?? 0, out = [], totals = [];
+  const people = new Map(); // a person's floors per day, every city added up, and the tallest building (for the medals)
   for (const hc of hist.cities) {
     const c = data.cities.find((x) => x.id === hc.id);
     if (!c) continue;
     const byId = new Map(c.buildings.map((b) => [b.id, b])), cityCum = new Array(n).fill(0);
     for (const p of hc.people) {
       const b = byId.get(p.id);
+      let pp = people.get(p.id);
+      if (!pp) people.set(p.id, (pp = { d: new Array(n).fill(0), b: null, c: null }));
+      if (b && (!pp.b || b.floors > pp.b.floors)) Object.assign(pp, { b, c });
+      for (let i = 0; i < n; i++) pp.d[i] += p.d[i] / 10;
       let cum = 0, first = -1, last = -1;
       for (let i = 0; i < n; i++) {
         const before = cum;
@@ -69,10 +74,22 @@ export function weekDiary(data) {
     for (let i = Math.max(1, w0); i < n; i++) { const t0 = tierOf(cityCum[i - 1]), t1 = tierOf(cityCum[i]); if (t0.key !== t1.key) out.push({ day: i, icon: t1.icon, kind: 'cityTier', c, tier: t1.key }); }
     totals.push({ c, cum: cityCum });
   }
+  for (const pp of people.values()) { // a token medal: the day the total passed a mark
+    if (!pp.b) continue;
+    let cum = 0;
+    for (let i = 0; i < n; i++) {
+      const before = cum; cum += pp.d[i];
+      const m = i >= w0 && markOf(cum), m0 = markOf(before);
+      if (m && m.floors > (m0?.floors ?? 0)) out.push({ day: i, icon: '🏅', kind: 'medal', b: pp.b, c: pp.c, mark: m.floors });
+    }
+  }
   for (let i = Math.max(1, w0); i < n; i++) for (const a of totals) for (const b of totals) {
     if (a !== b && a.cum[i - 1] < b.cum[i - 1] && a.cum[i] > b.cum[i]) out.push({ day: i, icon: '🏁', kind: 'overtake', c: a.c, other: b.c });
   }
-  return out.sort((x, y) => y.day - x.day).slice(0, 80).map((e) => ({ ...e, when: fmt.dayShort(dayIso(hist, e.day)) }));
+  // newest day first and, within a day, the rarest first: a busy day of newcomers must not push the
+  // medals out of the 80 rows
+  const RANK = { medal: 0, cityTier: 1, overtake: 1, tier: 2, fire: 3, new: 4 };
+  return out.sort((x, y) => y.day - x.day || (RANK[x.kind] ?? 5) - (RANK[y.kind] ?? 5)).slice(0, 80).map((e) => ({ ...e, when: fmt.dayShort(dayIso(hist, e.day)) }));
 }
 
 // The details card's timeline: floors accumulated day by day, the best day and the best week;

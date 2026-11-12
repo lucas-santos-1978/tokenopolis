@@ -132,9 +132,9 @@ screen (not during `?tour`).
 (10) more floors than last week. A bar under this week's builds shows how far it is, and the leading
 cities get fireworks when it is met. `0` turns it off; a region in its first week has no mission.
 
-**The building's card.** "📸 Card" on the details card makes a 1080×1350 PNG with the building framed
-and the person's numbers, to download or (on https or localhost) to copy. A campus's card (a Mega
-Builder's corporate profile) is square, 1080×1080: the campus, every city added up, the week, the
+**The building's card.** "📸 Card" on the details card makes a square 1080×1080 PNG with the building
+framed and the person's numbers, to download or (on https or localhost) to copy. A campus's card (a
+Mega Builder's corporate profile) is the same card: the campus, every city added up, the week, the
 month and each city with its floors. The pictures leave out the selection's box and beam.
 
 **Token medals.** A person's tokens added up across every city (1 floor = 1 million tokens) earn a
@@ -142,7 +142,10 @@ medal at each mark: 100M bronze, 250M silver, 500M gold, 1B platinum, 2B sapphir
 cosmic (`TOKEN_MARKS` in `public/city/rules.js`). The medal is the person's, not the building's: a
 🏅 chip on every card of theirs (with the day it was reached, from the history), drawn on both
 pictures, and "🏅 Medal" downloads it alone as a 3072 px PNG on a transparent background with no
-shadow (26 cm at 300 dpi, ready to print), with the name and the day or without the name.
+shadow (26 cm at 300 dpi, ready to print), with the name and the day or without the name. Passing a
+mark brings a 🏅 notice with fireworks when it happens between two readings, a line in the week's
+diary (🔔, from the history), and the newspaper's "Token medals" lists who passed one this week and
+who is closest to the next billion.
 
 **Notices and the week's diary.** 🔔 keeps the notices of the visit (they leave the screen in seconds)
 and lists what happened since Monday, worked out from the record: who moved up a type of building,

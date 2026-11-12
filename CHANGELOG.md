@@ -3,6 +3,14 @@
 Dates are the day each version went live on the author's panel. Earlier versions were an internal
 tool with another name; the open-source release renames it Tokenopolis.
 
+## v36 (2026-11-11)
+
+- The building's card is square too (1080×1080), the same card as the campus's.
+- Passing a token mark brings a 🏅 notice with fireworks, a line in the week's diary (🔔) and the
+  newspaper's "Token medals": who passed one this week and who is closest to the next billion.
+- Within a day, the week's diary lists the rarest events first, so a busy day of newcomers no longer
+  pushes the medals out.
+
 ## v35 (2026-11-11)
 
 - Token medals: a person's tokens added up across every city earn a medal at 100M, 250M, 500M, 1B,

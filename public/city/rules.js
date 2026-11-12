@@ -24,6 +24,27 @@ export function markOf(floors) {
   return i < 0 ? null : { i, floors: TOKEN_MARKS[i], next: TOKEN_MARKS[i + 1] ?? null };
 }
 // "2 bi" / "250 mi" ("2B" / "250M"), for chips and texts
+// The week's medals, from the reading alone: whoever's tokens, every city added up, passed a mark since
+// Monday (the total without the week was below it), the highest mark first; and who is closest to the
+// next billion (or, below that, to any next mark). Each person: { id, total, week, top, c, mark }.
+export function weekMedals(data) {
+  const by = new Map();
+  for (const c of data.cities) for (const b of c.buildings) {
+    const p = by.get(b.id);
+    if (!p) { by.set(b.id, { id: b.id, total: b.floors, week: b.week ?? 0, top: b, c }); continue; }
+    p.total += b.floors; p.week += b.week ?? 0;
+    if (b.floors > p.top.floors) Object.assign(p, { top: b, c });
+  }
+  const all = [...by.values()], won = [];
+  for (const p of all) {
+    const m = markOf(p.total), m0 = markOf(p.total - p.week);
+    if (m && (!m0 || m0.floors < m.floors)) won.push({ ...p, mark: m.floors });
+  }
+  won.sort((a, b) => b.mark - a.mark || b.total - a.total);
+  const ahead = all.map((p) => { const m = markOf(p.total), goal = m ? m.next : TOKEN_MARKS[0]; return goal ? { ...p, mark: goal, missing: goal - p.total } : null; }).filter(Boolean);
+  const closest = (list) => list.sort((a, b) => a.missing - b.missing)[0] ?? null;
+  return { won, next: closest(ahead.filter((p) => p.mark >= 1000)) ?? closest(ahead) };
+}
 export const markText = (floors) => (floors >= 1000 ? t('medal.bi', { n: fmt.dec(floors / 1000, floors % 1000 ? 1 : 0) }) : t('medal.mi', { n: fmt.int(floors) }));
 
 // ───────── abandoned buildings ─────────
@@ -271,7 +292,7 @@ export function paperHtml(data, { night = false } = {}) {
   const club = data.cities.filter((c) => c.floors >= TEN_BI).sort((p, q) => q.floors - p.floors);
   const nextClub = data.cities.filter((c) => c.floors < TEN_BI).sort((p, q) => q.floors - p.floors)[0];
   const mayors = data.cities.map((c) => ({ c, m: mayorOf(c) })).filter((y) => y.m).sort((p, q) => q.m.lastMonth - p.m.lastMonth);
-  const duel = derby(data), soon = countdowns(data).slice(0, 2);
+  const duel = derby(data), soon = countdowns(data).slice(0, 2), medals = weekMedals(data);
   const lastMonth = monthOf(data.lastMonth, 'period.lastMonth'), month = monthOf(data.month, 'period.thisMonth');
   const more = (list, n) => (list.length > n ? [...list.slice(0, n), t('paper.more', { n: fmt.int(list.length - n) })] : list);
   const name = (b) => B(displayName(b).full);
@@ -306,6 +327,8 @@ export function paperHtml(data, { night = false } = {}) {
         ${soon.length ? `<h3>${t('paper.h.countdown')}</h3>${soon.map((y) => `<p>${t('paper.countdown', { icon: y.icon, n: Math.round(y.missing), floors: floorsText(y.missing), text: esc(y.text) })}</p>`).join('')}` : ''}
         <h3>${t('paper.h.monuments')}</h3>
         <p>${unlocked.length ? `${unlocked.slice(0, 6).map(({ c, m }) => t('paper.monument', { icon: m.icon, mon: monumentText(m.key), c: hc(c) })).join('; ')}.` : t('paper.noMonuments')}</p>
+        <h3>${t('paper.h.medals')}</h3>
+        <p>${medals.won.length ? t('paper.medals', { list: fmt.list(more(medals.won.map((p) => `${name(p.top)} (${esc(markText(p.mark))})`), 4)) }) : t('paper.noMedals')}${medals.next ? ` ${t('paper.nextMedal', { name: name(medals.next.top), floors: floorsText(Math.max(1, Math.ceil(medals.next.missing))), mark: esc(markText(medals.next.mark)) })}` : ''}</p>
         <h3>${t('paper.h.mayors', { month: esc(month) })}</h3>
         <p>${mayors.length ? t('paper.mayors', { lastMonth: esc(lastMonth), list: fmt.list(more(mayors.map(({ c, m }) => t('paper.mayor', { name: name(m), c: hc(c), floors: fmt.int(m.lastMonth) })), 4)) }) : t('paper.noMayors', { lastMonth: esc(lastMonth) })}</p>
         <h3>${t('paper.h.fresh')}</h3>

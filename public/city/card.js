@@ -1,13 +1,13 @@
-// The cards (PNG, to share inside the company): on top, the 3D photo as it is on screen (main.js renders
-// a frame and hands over the canvas); below, the person and the numbers. The building's card is
-// 1080×1350; the campus's (the Mega Builder's corporate profile, every city added up) is square,
-// 1080×1080. Both carry the person's token medal (medal.js) where the photo ends, when there is one.
+// The cards (1080×1080 PNG, to share inside the company and on a profile): on top, the 3D photo as it
+// is on screen (main.js renders a frame and hands over the canvas); below, the person and the numbers.
+// The same card serves the building and the campus (the Mega Builder's corporate profile, every city
+// added up), with the person's token medal (medal.js) where the photo ends, when there is one.
 // Canvas 2D only: they receive the texts already formatted and localized.
 
 import { drawMedal } from './medal.js';
 
-export const CARD_W = 1080, CARD_H = 1350, SQUARE = 1080;
-const PHOTO_H = 860, SQ_PHOTO_H = 600, FONT = "'Nunito', system-ui, sans-serif", BG = '#1b242d';
+export const CARD = 1080;
+const PHOTO_H = 600, FONT = "'Nunito', system-ui, sans-serif", BG = '#1b242d';
 
 // text that fits: shrinks the font down to `min`, then cuts with an ellipsis
 function fit(x, text, maxW, size, min, weight = 900) {
@@ -74,27 +74,15 @@ function footer(x, chips, w, h, y, date) {
   x.fillText(date, w - 48, h - 30);
 }
 
-// shot: the canvas with the frame; title: the person; sub: city and place; stats: [{ value, label, up? }]
-// (three); chips: short strings; brand: the panel's name; date: the day, formatted; medal: drawMedal's
-// texts and step, or null.
-export function drawBuildingCard({ shot, title, sub, stats, chips, brand, date, medal }) {
-  const [cv, x] = canvasOf(CARD_W, CARD_H), mx = CARD_W - 185, r = 130;
-  photo(x, shot, CARD_W, PHOTO_H, brand);
-  heading(x, title, sub, PHOTO_H + 46, medal ? mx - r * 1.25 - 48 - 24 : CARD_W - 96, 76);
-  numbers(x, stats, CARD_W, PHOTO_H + 132, 150);
-  footer(x, chips, CARD_W, CARD_H, PHOTO_H + 306, date);
-  if (medal) drawMedal(x, { ...medal, cx: mx, cy: PHOTO_H - 20, r });
-  return cv;
-}
-
-// The campus's card, square: the Corporate District's photo, the person, the tokens of every city
-// added up, the week and the month, and the cities as chips. Same fields as the building's card.
-export function drawProfileCard({ shot, title, sub, stats, chips, brand, date, medal }) {
-  const [cv, x] = canvasOf(SQUARE, SQUARE), mx = SQUARE - 185, r = 136;
-  photo(x, shot, SQUARE, SQ_PHOTO_H, brand);
-  heading(x, title, sub, SQ_PHOTO_H + 92, medal ? mx - r * 1.25 - 48 - 24 : SQUARE - 96, 72);
-  numbers(x, stats, SQUARE, SQ_PHOTO_H + 180, 140);
-  footer(x, chips, SQUARE, SQUARE, SQ_PHOTO_H + 346, date);
-  if (medal) drawMedal(x, { ...medal, cx: mx, cy: SQ_PHOTO_H - 10, r });
+// The card, square: shot: the canvas with the frame; title: the person; sub: the line under it
+// (city and place, or the campus); stats: [{ value, label, up? }] (three); chips: short strings; brand:
+// the panel's name; date: the day, formatted; medal: drawMedal's texts and step, or null.
+export function drawCard({ shot, title, sub, stats, chips, brand, date, medal }) {
+  const [cv, x] = canvasOf(CARD, CARD), mx = CARD - 185, r = 136;
+  photo(x, shot, CARD, PHOTO_H, brand);
+  heading(x, title, sub, PHOTO_H + 92, medal ? mx - r * 1.25 - 48 - 24 : CARD - 96, 72);
+  numbers(x, stats, CARD, PHOTO_H + 180, 140);
+  footer(x, chips, CARD, CARD, PHOTO_H + 346, date);
+  if (medal) drawMedal(x, { ...medal, cx: mx, cy: PHOTO_H - 10, r });
   return cv;
 }

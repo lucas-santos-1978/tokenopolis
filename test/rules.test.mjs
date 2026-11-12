@@ -78,3 +78,15 @@ test('token medals: the highest mark reached, from every city added up', () => {
   assert.equal(data.cities[1].buildings[0].total, 1100, 'the same total on each of her buildings');
   assert.equal(data.cities[0].buildings[1].total, 120);
 });
+
+test('the week\'s medals: passed a mark since Monday, and the closest to the next billion', () => {
+  const data = { cities: [
+    { id: 'a', buildings: [person('ana', 950, { week: 80, cities: 2 }), person('bia', 990, { week: 5 }), person('caio', 260, { week: 30 })] },
+    { id: 'b', buildings: [person('ana', 100, { week: 0, cities: 2 })] },
+  ] };
+  const m = rules.weekMedals(data);
+  assert.deepEqual(m.won.map((p) => [p.id, p.mark]), [['ana', 1000], ['caio', 250]], 'ana: 970 on Monday, 1,050 now; caio: 230 to 260; bia stayed in 500');
+  assert.equal(m.won[0].c.id, 'a', 'ana is shown in her tallest building\'s city');
+  assert.equal(m.next.id, 'bia', 'bia is 10 floors from 1 billion');
+  assert.equal(m.next.mark, 1000);
+});
