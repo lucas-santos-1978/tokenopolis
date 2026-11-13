@@ -41,6 +41,7 @@ from ids, indices, numbers and ISO dates (see `docs/i18n.md`).
   "utcOffset": -3,
   "mode": "mock",
   "floorTokens": 1000000,
+  "scoreTypes": ["input", "output", "cachecreation"],
   "start": 1754017200000,
   "refreshSeconds": 15,
   "features": { "belts": true },
@@ -48,7 +49,7 @@ from ids, indices, numbers and ISO dates (see `docs/i18n.md`).
   "mega": { "floors": 1000 }
 }
 ```
-`locale` is only the default for first-time visitors. `features.belts` is true when a belts file
+`locale` is only the default for first-time visitors. `scoreTypes` is `SCORE_TYPES` (lowercase; an empty list = every type): the pages say what counts with it. `features.belts` is true when a belts file
 exists or the source provides belts (mock/demo). `idle` holds `IDLE_FIRE_DAYS` and `IDLE_RUBBLE_DAYS`: a
 building with more than `idle.fire` days without Claude is on fire, more than `idle.rubble` is rubble
 (`0` = that stage is off). `mega.floors` is `MEGA_FLOORS`: the floors a person must add up across 2 or

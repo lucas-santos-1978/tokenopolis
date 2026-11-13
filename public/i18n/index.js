@@ -9,7 +9,7 @@ export let locale = 'en';
 export const fmt = createFmt({ locale: 'en', timeZone: 'UTC' }); // rebuilt in place by initI18n()
 
 let dict = {}, fallback = {};
-const globals = {}; // {appName}, {appNameUpper}, {zone}, {since}, {floor}, {idleFire}, {idleRubble}, {megaFloors}: usable in every string
+const globals = {}; // {appName}, {appNameUpper}, {zone}, {since}, {floor}, {counted}, {idleFire}, {idleRubble}, {megaFloors}: usable in every string
 const warned = new Set();
 const partials = new Map();
 
@@ -154,6 +154,7 @@ export async function initI18n(page = document.documentElement.dataset.page ?? (
     Object.assign(globals, {
       appName: config.appName, appNameUpper: String(config.appName).toLocaleUpperCase(locale), zone: fmt.zone,
       floor: t('legend.floor', { tokens: config.floorTokens }),
+      counted: t('legend.counted', { types: config.scoreTypes }), // the token types that count (SCORE_TYPES)
       idleFire: fmt.int(config.idle?.fire ?? 15), idleRubble: fmt.int(config.idle?.rubble ?? 30), // the abandoned buildings' thresholds
       megaFloors: fmt.int(config.mega?.floors ?? 1000), // the Mega Builders' line
     });

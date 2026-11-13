@@ -46,4 +46,6 @@ pages are served with `Cache-Control: no-store`, so visitors always get the new 
 Docker API: `compose.mjs` generates a compose file whose container boots `boot.cjs`, which waits for
 an encrypted package that `publicar.mjs` builds from `public/`, `server/`, `package.json`, `.env`
 and the optional root data files. They are specific to that setup and kept here as an example of
-a push-based deploy without a registry; the generic path is the Dockerfile above.
+a push-based deploy without a registry; the generic path is the Dockerfile above. Behind a reverse
+proxy on the same Docker network, `compose.mjs <version> <project> none` publishes no port on the
+server, and `publicar.mjs` takes the proxy's https address instead of `http://<ip>:<port>`.

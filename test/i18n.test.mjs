@@ -43,3 +43,14 @@ test('no key is defined twice in the same dictionary file', async () => {
     assert.deepEqual(twice, [], `${lang}/${file}.js`);
   }
 });
+
+test('what counts: the SCORE_TYPES types in words, cache reads said to be out or in', async () => {
+  const en = (await import('../public/i18n/en/common.js')).default.legend.counted;
+  const pt = (await import('../public/i18n/pt-BR/common.js')).default.legend.counted;
+  assert.equal(en({}), 'input, output and cache writes (cache reads are left out)', 'the default');
+  assert.equal(pt({ types: ['input', 'output', 'cachecreation'] }), 'entrada, saída e escrita de cache (a leitura de cache fica de fora)');
+  assert.equal(en({ types: [] }), 'every type, cache reads included', 'empty = every type');
+  assert.equal(pt({ types: [] }), 'todos os tipos, inclusive a leitura de cache');
+  assert.equal(en({ types: ['output', 'cacheRead'] }), 'output and cache reads', 'cache reads in: no note');
+  assert.equal(pt({ types: ['input', 'thinking'] }), 'entrada e thinking (a leitura de cache fica de fora)', 'an unknown type by its name');
+});

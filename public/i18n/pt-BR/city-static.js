@@ -1,5 +1,5 @@
 // Texto estático de city.html (atributos data-i18n*). A aba "Como ler" da ajuda é o parcial
-// help-city.html. {appName}, {appNameUpper}, {zone}, {since}, {floor}, {idleFire}, {idleRubble} e {megaFloors} vêm do index.js.
+// help-city.html. {appName}, {appNameUpper}, {zone}, {since}, {floor}, {counted}, {idleFire}, {idleRubble} e {megaFloors} vêm do index.js.
 
 export default {
   html: {
@@ -99,7 +99,7 @@ export default {
     league: {
       aria: 'Ranking geral',
       heading: '🏆 Ranking geral',
-      intro: 'Todo mundo da região, com as cidades de cada pessoa somadas, como na medalha. {floor}.',
+      intro: 'Todo mundo da região, com as cidades de cada pessoa somadas, como na medalha. {floor}, somando {counted}.',
     },
     help: {
       aria: 'Como ler {appName}',

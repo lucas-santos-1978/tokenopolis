@@ -123,6 +123,7 @@ function configJson(stack) {
     utcOffset: config.season.utcOffsetHours,
     mode: stack.source.mode,
     floorTokens: config.cities.floorTokens,
+    scoreTypes: config.scoreTypes, // the token types that count (SCORE_TYPES); empty = every type
     start: config.cities.start,
     refreshSeconds: stack.game.refreshSeconds,
     features: { belts: stack.cities.beltsEnabled() },

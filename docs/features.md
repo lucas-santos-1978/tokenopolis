@@ -4,6 +4,20 @@ Two pages share one server and one set of data: the **city** (`/`, `city.html`) 
 (`climb.html`). Both re-read the API every minute (every 15 s with generated data) and only redraw
 what changed. `?demo` on either page shows a fictional region/stage instead of your data.
 
+**What counts.** Both pages add up the token types in `SCORE_TYPES` (default input, output and cache
+writes); cache reads are left out by default: they are most of the volume (around 96% on the author's
+team) and measure the model re-reading its context, not new work. A person is the `user.email` tag,
+so one person across several organizations is one climber and one building per city, added up on the
+medal and in the overall ranking. The help of both pages says what counts (`{counted}`, from
+`scoreTypes` in `/api/config`).
+
+**The streaks.** Two rules, both in the configured time zone (a day runs midnight to midnight):
+- climb 🔥: days in a row with usage in any organization; an idle weekend does not break it and weekend
+  usage counts;
+- city 📅/🌿: workdays in a row with usage in that city; weekends neither count nor break it.
+
+Claude Code's `/stats` counts calendar days (an idle weekend breaks it), so it can differ from both.
+
 ## The city
 
 **Floors.** Each person is a building in each team (Claude organization) they use. Height is the
@@ -209,7 +223,7 @@ become plaques on the rock.
 | 👑 | Reigning Champion | won last season |
 | 🚩 | Planted the Flag | reached the summit |
 | 🧭 | Ahead of the Sherpa | on pace for the summit |
-| 🔥 | On Fire | 5+ days in a row (weekends neither count nor break it) |
+| 🔥 | On Fire | 5+ days in a row with usage (an idle weekend does not break it; weekend usage counts) |
 | 🚀 | Rocket | biggest climb of the day (unique) |
 | 🧊 | Cache Master | highest cache-read share (unique) |
 | 🏃 | Marathoner | most sessions (unique) |

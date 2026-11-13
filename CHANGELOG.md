@@ -3,6 +3,15 @@
 Dates are the day each version went live on the author's panel. Earlier versions were an internal
 tool with another name; the open-source release renames it Tokenopolis.
 
+## v39 (2026-11-13)
+
+- The pages say what counts: the help of the climb and of the city, and the overall ranking, list the
+  token types that count (input, output and cache writes; cache reads are left out), from the new
+  `scoreTypes` in `/api/config`. The climb's help explains the 🔥 streak (days in a row with usage,
+  an idle weekend does not break it) and the city's the rooftop garden's (workdays in that city).
+- `compose.mjs` takes the host port `none`: no port on the server, for a container reached only
+  through a reverse proxy.
+
 ## v38 (2026-11-12)
 
 - The printed token medal reads at pin size (about 5 cm): a bigger name and a much bigger day on the

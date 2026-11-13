@@ -1,5 +1,5 @@
 // Static text of city.html (data-i18n* attributes). The "How to read" help pane is the partial
-// help-city.html. {appName}, {appNameUpper}, {zone}, {since}, {floor}, {idleFire}, {idleRubble} and {megaFloors} are filled by index.js.
+// help-city.html. {appName}, {appNameUpper}, {zone}, {since}, {floor}, {counted}, {idleFire}, {idleRubble} and {megaFloors} are filled by index.js.
 
 export default {
   html: {
@@ -99,7 +99,7 @@ export default {
     league: {
       aria: 'Overall ranking',
       heading: '🏆 Overall ranking',
-      intro: 'Everyone in the region, each person’s cities added up, as on the medal. {floor}.',
+      intro: 'Everyone in the region, each person’s cities added up, as on the medal. {floor}, adding up {counted}.',
     },
     help: {
       aria: 'How to read {appName}',

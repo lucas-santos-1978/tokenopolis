@@ -10,6 +10,9 @@ export const da = (c) => (c.name ? `da ${c.name}` : `do ${city(c)}`);
 export const na = (c) => (c.name ? `na ${c.name}` : `no ${city(c)}`);
 
 const milhoes = (tokens) => (tokens === 1e6 ? '1 milhão de' : `${(tokens / 1e6).toLocaleString('pt-BR')} milhões de`);
+// os tipos de token do Datadog, para dizer o que conta (SCORE_TYPES do servidor)
+const TIPOS = { input: 'entrada', output: 'saída', cachecreation: 'escrita de cache', cacheread: 'leitura de cache' };
+const lista = (xs) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} e ${xs.at(-1)}`);
 
 export default {
   page: { title: '{appName}' },
@@ -31,7 +34,7 @@ export default {
     champion: { icon: '👑', name: 'Campeão Reinante', desc: 'Venceu a temporada passada' },
     summit: { icon: '🚩', name: 'Fincou a Bandeira', desc: 'Chegou ao cume nesta temporada' },
     sherpa: { icon: '🧭', name: 'À Frente do Sherpa', desc: 'Acima do ritmo pra chegar ao cume até o fim da temporada' },
-    streak: { icon: '🔥', name: 'Em Chamas', desc: '5 ou mais dias seguidos escalando' },
+    streak: { icon: '🔥', name: 'Em Chamas', desc: '5 ou mais dias seguidos escalando (fim de semana parado não quebra)' },
     rocket: { icon: '🚀', name: 'Foguete', desc: 'Maior subida do dia' },
     cache: { icon: '🧊', name: 'Mestre do Cache', desc: 'Maior reaproveitamento de cache (cache read)' },
     marathon: { icon: '🏃', name: 'Maratonista', desc: 'Mais sessões abertas na temporada' },
@@ -167,6 +170,13 @@ export default {
 
   legend: {
     floor: ({ tokens = 1e6 }) => `1 andar = ${tokens >= 1e6 && tokens % 1e6 === 0 ? milhoes(tokens) : tokens.toLocaleString('pt-BR')} tokens`,
+    // o que conta: os tipos do SCORE_TYPES (lista vazia = todos)
+    counted: ({ types = ['input', 'output', 'cachecreation'] }) => {
+      if (!types?.length) return 'todos os tipos, inclusive a leitura de cache';
+      const ts = types.map((x) => String(x).toLowerCase());
+      const s = lista(ts.map((x) => TIPOS[x] ?? x));
+      return ts.includes('cacheread') ? s : `${s} (a leitura de cache fica de fora)`;
+    },
   },
 
   // O objeto `error` da API (docs/contract.md).

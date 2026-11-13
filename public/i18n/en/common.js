@@ -3,6 +3,9 @@
 // their explicit forms (name, a, lower, plural); never derive them with toLowerCase().
 
 const million = (tokens) => `${(tokens / 1e6).toLocaleString('en')} million`;
+// Datadog's token types, to say what counts (the server's SCORE_TYPES)
+const TYPES = { input: 'input', output: 'output', cachecreation: 'cache writes', cacheread: 'cache reads' };
+const list = (xs) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`);
 
 export default {
   page: { title: '{appName}' },
@@ -24,7 +27,7 @@ export default {
     champion: { icon: '👑', name: 'Reigning Champion', desc: 'Won last season' },
     summit: { icon: '🚩', name: 'Planted the Flag', desc: 'Reached the summit this season' },
     sherpa: { icon: '🧭', name: 'Ahead of the Sherpa', desc: 'On pace to reach the summit by the end of the season' },
-    streak: { icon: '🔥', name: 'On Fire', desc: '5 or more days in a row climbing' },
+    streak: { icon: '🔥', name: 'On Fire', desc: '5 or more days in a row climbing (an idle weekend does not break it)' },
     rocket: { icon: '🚀', name: 'Rocket', desc: 'Biggest climb of the day' },
     cache: { icon: '🧊', name: 'Cache Master', desc: 'Highest cache reuse (cache read)' },
     marathon: { icon: '🏃', name: 'Marathoner', desc: 'Most sessions opened this season' },
@@ -160,6 +163,13 @@ export default {
 
   legend: {
     floor: ({ tokens = 1e6 }) => `1 floor = ${tokens >= 1e6 && tokens % 1e6 === 0 ? million(tokens) : tokens.toLocaleString('en')} tokens`,
+    // what counts: the SCORE_TYPES types (an empty list = every type)
+    counted: ({ types = ['input', 'output', 'cachecreation'] }) => {
+      if (!types?.length) return 'every type, cache reads included';
+      const ts = types.map((x) => String(x).toLowerCase());
+      const s = list(ts.map((x) => TYPES[x] ?? x));
+      return ts.includes('cacheread') ? s : `${s} (cache reads are left out)`;
+    },
   },
 
   // The `error` object of the API (docs/contract.md).
