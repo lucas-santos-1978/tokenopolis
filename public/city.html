@@ -92,6 +92,11 @@
   </footer>
   <div id="tour-cap" class="tour-cap" hidden><b></b><span></span></div>
   <button type="button" id="roof-exit" class="roof-exit" data-roof-exit data-i18n="html.roofExit">‹ Leave the roof</button>
+  <!-- on the sightseeing bus: whose building this stop shows, and the way off -->
+  <div id="ride-bar" class="ride-bar" hidden>
+    <div class="ride-cap" aria-live="polite"><small></small><b></b><span></span></div>
+    <div class="ride-btns"><button type="button" data-ride-exit data-i18n="html.ride.exit">‹ Get off</button><button type="button" data-ride-here data-i18n="html.ride.here">Get off here</button><button type="button" data-ride-next data-i18n="html.ride.next">Next stop ›</button></div>
+  </div>
   <div id="tl-bar" class="tl-bar" hidden><span class="tl-date"></span><i class="tl-prog"></i><span class="tl-sub"></span><button type="button" data-tl-stop data-i18n="html.timelapseStop">■ Stop</button></div>
 
   <div id="sheet" class="sheet" role="dialog" aria-label="Building details" data-i18n-aria="html.sheet" hidden></div>
@@ -117,6 +122,7 @@
   <div id="films" class="popover tool-pop" role="menu" hidden>
     <button type="button" data-film="timelapse"><span>⏩</span><div><b data-i18n="html.films.timelapse">Time-lapse</b><small data-i18n="html.films.timelapseDesc">Tokenopolis rising, since the start</small></div></button>
     <button type="button" data-film="race"><span>🏁</span><div><b data-i18n="html.films.race">City race</b><small data-i18n="html.films.raceDesc">week by week, with the overtakes</small></div></button>
+    <button type="button" data-film="bus"><span>🚌</span><div><b data-i18n="html.films.bus">Sightseeing bus</b><small data-i18n="html.films.busDesc">the city’s tallest buildings, from the open deck</small></div></button>
   </div>
   <div id="panels" class="popover panels tool-pop" role="menu" hidden>
     <h4 data-i18n-html="html.panels.heading">PANELS <small><kbd>P</kbd> hides them all</small></h4>

@@ -43,7 +43,8 @@ cada ao lado.
 - **A cidade** (`/`): uma região 3D onde as cidades crescem de vila a colônia em Marte e os prédios
   de casa a elevador espacial, com monumentos pelas conquistas da semana, jornal, contagens
   regressivas, prefeito do mês, mapas de dados (quem constrói agora, obras da semana, o modelo que
-  cada um mais usa, o programa de faixas), time-lapse desde o primeiro dia e corrida das cidades.
+  cada um mais usa, o programa de faixas), time-lapse desde o primeiro dia, corrida das cidades e um
+  ônibus de passeio para ver de perto os prédios mais altos de cada cidade.
   Prédio abandonado pega fogo depois de 15 dias sem Claude e vira escombros depois de 30. Modo tour
   para TV, layout de celular, montador de links com todos os parâmetros e uma região de demonstração.
 - **A escalada** (`/climb.html`): a etapa do dia num paredão de rocha. Todo mundo sai do

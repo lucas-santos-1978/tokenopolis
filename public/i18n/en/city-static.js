@@ -48,6 +48,7 @@ export default {
     timelapseStop: '■ Stop',
     sheet: 'Building details',
     roofExit: '‹ Leave the roof',
+    ride: { exit: '‹ Get off', here: 'Get off here', next: 'Next stop ›' },
     card: { aria: 'Building card', download: '⬇️ Download PNG', plain: '⬇️ Without the name', copy: '📋 Copy image' },
     welcome: {
       title: '👋 Find your building',
@@ -60,6 +61,8 @@ export default {
       timelapseDesc: '{appName} rising, {since}',
       race: 'City race',
       raceDesc: 'week by week, with the overtakes',
+      bus: 'Sightseeing bus',
+      busDesc: 'the city’s tallest buildings, from the open deck',
     },
     panels: {
       heading: 'PANELS <small><kbd>P</kbd> hides them all</small>',

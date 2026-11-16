@@ -152,6 +152,15 @@ export default {
   diary: { tier: 'is now {tier} · {city}', new: 'first floors in {city}', fire: 'caught fire in {city}', medal: 'passed {mark} tokens · a new medal', cityTier: 'is now {tier}', overtake: 'passed {other} in total floors' },
   habits: { clock: 'WHEN THEY BUILD', clockSub: 'hours used, last 7 days', clockAria: 'Hours of the day with usage in the last 7 days; the busiest is {peak}', hour: '{hour}: {days}', models: 'MODELS', modelsSub: 'share of the last 7 days' },
   // the TV tour's caption
+  // the sightseeing bus: its tip, the caption on board and the button in City Hall
+  ride: {
+    tip: { title: 'Sightseeing bus', text: ({ n, c }) => `the ${n} tallest buildings of ${city(c)} · click to board` },
+    stop: 'Stop {i} of {n}',
+    next: 'Next stop',
+    ranks: '{inCity} tallest in the city · {inRegion} in the region',
+    hall: '🚌 Tour of the tallest',
+    hallTitle: 'Board this city’s sightseeing bus (B key)',
+  },
   tour: {
     region: 'The region',
     regionSub: ({ cities, buildings, leader, n }) => `${cities} · ${buildings} · ${leader} leads the week with +${n}`,

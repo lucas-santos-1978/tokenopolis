@@ -31,10 +31,11 @@ import { copyText } from '../lib/clipboard.js';
 import { noteServerClock } from '../lib/freshness.js';
 import { t, plural, fmt, cityLabel, displayName, config } from '../i18n/index.js';
 import { tierOf, BUILDING_TIERS, TEN_BI, advisors, context, floorsText, cityTier, buildingTier, monthOf, ruinOf, markOf, markText } from './rules.js';
-import { L, seed, hash, kind, buildWorld, groundCanvas, dojoOf, megaLinks } from './world.js';
+import { L, seed, hash, kind, buildWorld, groundCanvas, dojoOf, megaLinks, busAt, busStopTime, BUS_DWELL } from './world.js';
 import { makeKit, craneJib, Batcher, mats, lit, blinkMats, matte, setAnisotropy, sweepSigns, SILVER, DARK, WARM_LIGHT, HOUSE_H, STYLE_PAL } from './buildings.js';
 import { initPanels, renderPanels, countdownKey, queueToast, liveEvents, hasToasts, keyOf, esc, staleText, renderAge, missionOf, renderBell, setMe as panelsSetMe, renderFinder, finderKey, locatePerson, MAPKEYS, mapColorFor, renderMapKey, renderPaper, renderLeague } from './panels.js';
 import { makeLife, blimpLines } from './life.js';
+import { makeBuses, BUS } from './bus.js';
 import { makeEffects, launchRocket } from './effects.js';
 import { loadHistory, renderTimeline, startTimelapse, openRace, playRace, weekDiary, reachedOn } from './history.js';
 import { initLinks } from './links.js';
@@ -243,7 +244,7 @@ const dojoHits = new Map(); // city → { x, z, h, w, dojo, c } of the city's Do
 const hqHits = new Map(); // person → { x, z, h, w, hq | found } in the Corporate District (a headquarters or a foundation)
 const MON_H = { obelisk: 31, airport: 12, ferrisWheel: 20, centralPark: 6, tvTower: 53, leadershipStatue: 12, fountainSquare: 5, mayor: 8 }; // hit box heights
 const MON_W = { obelisk: 5, tvTower: 6, leadershipStatue: 5 }; // the thin ones get a narrow hit box, so they do not hide what stands behind them
-let anims = [], cars = null, kit = null, groundTex = null, life = null, rockets = [];
+let anims = [], cars = null, kit = null, groundTex = null, life = null, buses = null, rockets = [];
 const fx = makeEffects(scene);
 const wx = (gx) => (gx + 0.5 - GW / 2) * L, wz = (gy) => (gy + 0.5 - GH / 2) * L;
 const cityOf = (id) => data?.cities.find((c) => c.id === id);
@@ -274,6 +275,7 @@ function clearScene(full = true) {
   craneMeshes = [];
   if (full) { for (const k of [...parts.keys()]) dropPart(k); drop(landGroup); landGroup.clear(); groundTex?.dispose(); groundTex = null; cars = null; }
   life?.dispose(); life = null;
+  buses?.dispose(); buses = null;
   anims = [];
 }
 // ───────── the parts of the scene: one per city ─────────
@@ -463,6 +465,9 @@ function buildScene() {
   // life: people, boats, planes, helicopter, airship, beacon, elevator
   life = makeLife({ scene, world, data: src, wx, wz, marks, airports, size: terrainSize });
   life.setBlimpMsgs(blimpLines(src, context(src).leader));
+  // the sightseeing buses: one per city, going round its tallest buildings
+  buses = makeBuses({ scene, world, cities: src.cities, wx, wz });
+  buses.step(busClock(), rideOwn());
   updateHeli();
   applyHour(hour);
   paintMe();
@@ -652,7 +657,7 @@ const fitBuilding = (h) => ({ target: new THREE.Vector3(h.x, Math.min(h.h * 0.45
 // On a narrow screen City Hall and the card are drawers at the bottom: the picture's center goes up,
 // so the touched building (always flown to the middle) stays above them.
 function frameForDrawers() {
-  if (narrow() && (selected || view.kind === 'city')) camera.setViewOffset(innerWidth, innerHeight, 0, Math.round(innerHeight * 0.18), innerWidth, innerHeight);
+  if (!ride && narrow() && (selected || view.kind === 'city')) camera.setViewOffset(innerWidth, innerHeight, 0, Math.round(innerHeight * 0.18), innerWidth, innerHeight);
   else camera.clearViewOffset();
 }
 function setMenu(on) {
@@ -660,6 +665,7 @@ function setMenu(on) {
   $('#menu-btn').setAttribute('aria-expanded', String(on));
 }
 function setView(next, person = null) { // person: the person's id, or { dojo: true } for the city's Dojo
+  if (ride) leaveRide(false); // another place: the bus is left behind
   view = next; selected = person?.dojo ? { city: next.id, dojo: true } : person ? { city: next.id, person } : null;
   renderPanels(data, view, selected); $('#hall').classList.remove('open'); frameForDrawers();
   const h = person?.dojo ? dojoHits.get(next.id) : person && hitByKey.get(keyOf(next.id, person));
@@ -682,7 +688,7 @@ function fitDistrict() {
   const top = Math.max(10, ...[...hqHits.values()].map((h) => h.h));
   return { target: new THREE.Vector3(wx((d.x0 + d.x1) / 2), top * 0.3, wz(d.DH / 2)), phi: 0.48, dist: Math.max((d.x1 - d.x0) * L * 0.7, top * 2.2) }; // from above: the campuses are low, behind the cities
 }
-function toRegion() { view = { kind: 'region', id: null }; renderPanels(data, view, selected); $('#hall').classList.remove('open'); frameForDrawers(); updateHeli(); updateRing(); }
+function toRegion() { if (ride) leaveRide(false); view = { kind: 'region', id: null }; renderPanels(data, view, selected); $('#hall').classList.remove('open'); frameForDrawers(); updateHeli(); updateRing(); }
 function selectHq(id) {
   const h = hqHits.get(id); if (!h) return;
   closeModals(); selected = { hq: id }; toRegion();
@@ -734,6 +740,7 @@ addEventListener('popstate', () => {
 // the touched building goes to the middle of the screen (the card on the left, City Hall on the
 // right), keeping the angle; from very far the camera comes a bit closer
 function select(cityId, personId) {
+  if (ride) leaveRide(false);
   if (roofBack) { roofBack = null; delete document.documentElement.dataset.roof; } // another building (or none): the roof is left behind
   selected = personId ? { city: cityId, person: personId } : null;
   renderPanels(data, view, selected); frameForDrawers();
@@ -799,8 +806,8 @@ const selectedHit = () => (selected?.hq ? hqHits.get(selected.hq) : selected?.do
 const isSelectedHit = (h) => !!selected && (selected.hq ? (h.hq ?? h.found)?.id === selected.hq
   : !!h.c && h.c.id === selected.city && (h.dojo ? !!selected.dojo : h.mon ? false : !selected.dojo && h.b?.id === selected.person));
 function stepHighlights(now) {
-  const hh = !tl && hovered && hoveredHit;
-  if (hh && !isSelectedHit(hoveredHit)) placeHi(hoverHi, hoveredHit); else hoverHi.visible = false;
+  const mark = ride?.mark ?? null, hh = !tl && (mark ?? (hovered && hoveredHit)); // on the bus, over the roofs: the building the stop shows, outlined
+  if (hh && !isSelectedHit(hh)) { placeHi(hoverHi, hh); if (mark) hoverHi.children[0].visible = false; } else hoverHi.visible = false;
   const s = !tl && selectedHit();
   if (!s) { selHi.visible = selBeam.visible = selRing.visible = selFrame.visible = false; return; }
   const pulse = 0.5 + 0.5 * Math.sin(now / 320);
@@ -874,11 +881,12 @@ renderer.domElement.addEventListener('pointerdown', (e) => { downAt = [e.clientX
 renderer.domElement.addEventListener('pointerup', (e) => {
   if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 6) return;
   downAt = null;
-  if (tl) return;
+  if (tl || ride) return;
   ptr.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
   const hit = pick();
   closePopovers();
   if (!hit) { if (selected) select(null); return; }
+  if (hit.bus) return startRide(hit.bus);
   if (hit.hq || hit.found) return selectHq((hit.hq ?? hit.found).id);
   if (hit.dojo) { if (view.kind === 'city' && hit.c.id === view.id) selectDojo(hit.c.id); else goCity(hit.c.id, { dojo: true }); return; }
   if (hit.mon) { // the rally opens the mayor's building; the other monuments only take you to their city
@@ -888,14 +896,20 @@ renderer.domElement.addEventListener('pointerup', (e) => {
   }
   if (view.kind === 'city' && hit.c.id === view.id) select(hit.c.id, hit.b.id); else goCity(hit.c.id, hit.b.id);
 });
-function pick() { ray.setFromCamera(ptr, camera); return ray.intersectObjects(hitGroup.children, false)[0]?.object.userData ?? null; }
+function pick() {
+  ray.setFromCamera(ptr, camera);
+  const hit = ray.intersectObjects(hitGroup.children, false)[0], bus = buses?.pick(ray.ray);
+  return bus && (!hit || bus.dist < hit.distance) ? bus.hit : hit?.object.userData ?? null; // the sightseeing bus, unless a building stands in front of it
+}
 function pickHover() {
-  const h = ptr.x < -1 || tl ? null : pick(), b = h ? h.b ?? h.dojo ?? h.mon ?? h.hq ?? h.found : null;
+  const h = ptr.x < -1 || tl || ride ? null : pick(), b = h ? h.b ?? h.dojo ?? h.mon ?? h.hq ?? h.found ?? (h.bus ? h : null) : null;
   renderer.domElement.style.cursor = b ? 'pointer' : '';
+  if (h?.bus) tip.position.set(h.x, h.h + 2, h.z); // it moves
   if (b === hovered) return;
   hovered = b; hoveredHit = h;
   if (!b) { tipEl.classList.add('off'); return; }
-  if (h.dojo) tipEl.innerHTML = `🥋 ${esc(t(`dojoLevel.${h.dojo.levelKey}`).name)}${view.kind === 'region' ? ` · ${esc(cityLabel(h.c))}` : ''}<small>${plural(h.dojo.count, 'tip.dojo')}</small>`;
+  if (h.bus) tipEl.innerHTML = `🚌 ${esc(t('ride.tip.title'))}<small>${esc(t('ride.tip.text', { n: fmt.int(buses.routeOf(h.bus)?.stops.length ?? 0), c: h.c }))}</small>`;
+  else if (h.dojo) tipEl.innerHTML = `🥋 ${esc(t(`dojoLevel.${h.dojo.levelKey}`).name)}${view.kind === 'region' ? ` · ${esc(cityLabel(h.c))}` : ''}<small>${plural(h.dojo.count, 'tip.dojo')}</small>`;
   else if (h.hq) { // the Corporate District: a Mega Builder's headquarters (the floors added up) or the next one's foundation
     const p = h.hq, ruin = ruinOf(p);
     tipEl.innerHTML = `💎 ${esc(displayName(p).full)}<small>${ruin ? `${t(`ruin.${ruin}`, { days: plural(p.idle, 'count.day') })} · ` : ''}${esc(t('mega.tipHq', { floors: floorsText(p.floors), cities: plural(p.cities, 'count.city') }))}</small>`;
@@ -981,6 +995,133 @@ function leaveRoof() {
   camTween = { fromT: controls.target.clone(), toT: roofBack.target, fromP: camera.position.clone(), toP: roofBack.position, t0: performance.now(), ms: 1100 };
   roofBack = null; delete document.documentElement.dataset.roof;
   frameForDrawers();
+}
+// ───────── the sightseeing bus: the ride ─────────
+// Each city's bus goes round its tallest buildings (bus.js). Boarding puts the camera on its open
+// deck: it looks ahead on the road and turns to each building at its stop, while a caption says whose
+// it is. The ride places the camera itself (OrbitControls cannot look up from the street) and keeps
+// controls.target on what it looks at, for the names on the facades and the shadows. Getting off (the
+// button, Esc, B, or going anywhere else) flies back to where the camera was.
+const busClock = () => Date.now() / 1000, RIDE_FOV = 56, VIEW_FOV = 40;
+let ride = null, rideOut = false; // ride: { city, cam, back, at, phase, off, ff, fix, look, shown, spin, lift, liftOf, liftTo, mark }
+// the ridden bus's own time: the clock, plus what "next stop" skipped. With reduced motion it does not
+// glide: it waits at the next stop while the real bus is on the road.
+function rideTime() {
+  const route = buses?.routeOf(ride.city);
+  let tt = ride.fix ?? busClock() + ride.phase + ride.off;
+  if (!ANIM && route) { const a = busAt(route, tt); if (a.stop < 0) tt = busStopTime(route, a.next) + 0.01; }
+  return tt;
+}
+const rideOwn = () => (ride && buses?.has(ride.city) ? { id: ride.city, t: rideTime() } : null);
+// cam: 'deck' (on the open deck) or 'chase' (behind and above the bus); stop: board at that stop;
+// hold: and stay there, at that part of the wait (0 to 1; the pictures)
+function startRide(cityId = view.kind === 'city' ? view.id : context(data).leader?.id ?? data?.cities[0]?.id, { cam = 'deck', stop = null, hold = false } = {}) {
+  const c = cityOf(cityId), route = buses?.routeOf(cityId);
+  if (!c || !route) return;
+  if (ride) { if (ride.city === cityId) return; leaveRide(false); }
+  if (tl) stopFilm();
+  closeModals();
+  if (roofBack) { roofBack = null; delete document.documentElement.dataset.roof; }
+  let back = { position: camera.position.clone(), target: controls.target.clone() };
+  if (view.kind !== 'city' || view.id !== cityId || selected) { // from the region (or another city): the city first, and that is where getting off returns to
+    setView({ kind: 'city', id: cityId });
+    const fit = fitCity(c);
+    back = { position: posFor(fit.target, currentView().theta, fit.phi, fit.dist), target: fit.target.clone() };
+  }
+  camTween = null;
+  ride = { city: cityId, cam, back, at: performance.now(), phase: buses.phaseOf(cityId), off: 0, ff: null, fix: null, look: null, shown: '', spin: controls.autoRotate, lift: 0, liftOf: null, liftTo: 0, mark: null };
+  if (stop != null) { const at = busStopTime(route, clamp(stop, 0, route.stops.length - 1)) + 0.05; if (hold !== false) ride.fix = at + BUS_DWELL * (hold === true ? 0.5 : hold); else ride.off = at - (busClock() + ride.phase); }
+  controls.autoRotate = false; controls.enabled = false; $('#spin').setAttribute('aria-pressed', 'false');
+  document.documentElement.dataset.ride = cam; camera.clearViewOffset(); $('#hall').classList.remove('open');
+  $('#ride-bar').hidden = false;
+  rideCaption();
+}
+function leaveRide(fly = true) {
+  if (!ride) return;
+  const r = ride; ride = null; rideOut = true;
+  controls.enabled = true; controls.autoRotate = r.spin; $('#spin').setAttribute('aria-pressed', String(r.spin));
+  delete document.documentElement.dataset.ride; $('#ride-bar').hidden = true;
+  // the orbit needs the camera above what it looks at: from the deck it was looking up
+  if (controls.target.y > camera.position.y - 4) { const d = controls.target.clone().sub(camera.position).setY(0); if (d.lengthSq() < 1) d.set(0, 0, 1); controls.target.copy(camera.position).addScaledVector(d.normalize(), 40).setY(Math.max(1, camera.position.y - 12)); }
+  if (fly) camTween = { fromT: controls.target.clone(), toT: r.back.target, fromP: camera.position.clone(), toP: r.back.position, t0: performance.now(), ms: 1300 };
+  frameForDrawers();
+}
+// the stop the caption is about: the one the bus stands at, or the next one
+function rideStop() {
+  const route = buses?.routeOf(ride.city), a = route && busAt(route, rideTime());
+  return route ? { route, a, i: a.stop >= 0 ? a.stop : a.next, st: route.stops[a.stop >= 0 ? a.stop : a.next] } : null;
+}
+function rideNext() { // straight to the next stop: the wait is cut short and the bus hurries there
+  const s = ride && rideStop(); if (!s) return;
+  if (!ANIM || ride.fix != null) { const at = busStopTime(s.route, s.a.next) + 0.05; if (ride.fix != null) ride.fix = at; else ride.off += ((at - (busClock() + ride.phase + ride.off)) % s.route.total + s.route.total) % s.route.total; return; }
+  if (s.a.stop >= 0) ride.off += (1 - s.a.u) * BUS_DWELL + 0.02;
+  ride.ff = s.a.next;
+}
+function rideHere() { // off the bus at this stop, to the building's card
+  const s = ride && rideStop(); if (!s) return;
+  const city = ride.city; leaveRide(false); goCity(city, s.st.id);
+}
+function rideCaption() {
+  const s = rideStop(), c = cityOf(ride.city), b = s && c?.buildings.find((x) => x.id === s.st.id);
+  if (!b) return;
+  const at = s.a.stop >= 0, ruin = ruinOf(b), key = `${at}|${b.id}|${Math.floor(b.floors)}|${s.route.stops.length}|${ruin}`;
+  if (key === ride.shown) return;
+  ride.shown = key;
+  const el = $('#ride-bar .ride-cap'), tr = tierOf(b.floors, BUILDING_TIERS), mk = markOf(b.total ?? 0);
+  const inRegion = data.cities.reduce((n, x) => n + x.buildings.filter((o) => o.floors > b.floors).length, 0) + 1;
+  el.children[0].textContent = at ? t('ride.stop', { i: fmt.int(s.i + 1), n: fmt.int(s.route.stops.length) }) : t('ride.next');
+  el.children[1].textContent = displayName(b).full;
+  el.children[2].textContent = [ruin && t(`ruin.${ruin}`, { days: plural(b.idle, 'count.day') }), `${tr.icon} ${buildingTier(tr.key).name}`, floorsText(b.floors), t('ride.ranks', { inCity: fmt.ordinal(s.st.rank), inRegion: fmt.ordinal(inRegion) }), mk && `🏅 ${t('medal.chip', { mark: markText(mk.floors) })}`].filter(Boolean).join(' · ');
+  $('#ride-bar [data-ride-here]').hidden = !at;
+}
+const _eye = new THREE.Vector3(), _look = new THREE.Vector3(), _focus = new THREE.Vector3(), _dir = new THREE.Vector3();
+// A building with no street at its door may stand behind its neighbors: how far above the deck the
+// camera has to rise at that stop to see the middle of it (0 where it is in plain view)
+const RIDE_LIFTS = [0, 3, 6, 10, 15, 21, 28, 36, 46, 58];
+function rideLift(cityId, route, i, h) {
+  const p = buses.poseOf(cityId, 0, { id: cityId, t: busStopTime(route, i) + 0.01 });
+  for (const up of RIDE_LIFTS) { // from there, the lowest point the gaze starts at has to be in view
+    _eye.set(p.x - p.dx * 2.1, BUS.top + 0.55 + up, p.z - p.dz * 2.1);
+    _focus.set(h.x, Math.min(_eye.y + Math.max(6, Math.hypot(h.x - _eye.x, h.z - _eye.z)) * 0.22, h.h * 0.5), h.z);
+    ray.set(_eye, _dir.subVectors(_focus, _eye).normalize());
+    const first = ray.intersectObjects(hitGroup.children, false)[0];
+    if (!first || first.object.userData === h) return up;
+  }
+  return RIDE_LIFTS.at(-1);
+}
+function stepRide(now, dt) {
+  const r = ride, c = cityOf(r.city), route = buses?.routeOf(r.city);
+  if (!c || !route) return leaveRide(); // the city left the reading
+  if (r.ff != null) { if (busAt(route, rideTime()).stop === r.ff) r.ff = null; else r.off += dt * 5; } // hurrying to the next stop
+  const p = buses.poseOf(r.city, 0, rideOwn()), chase = r.cam === 'chase';
+  const si = p.stop >= 0 ? p.stop : p.next, st = route.stops[si], h = hitByKey.get(keyOf(r.city, st.id)), mid = fitCity(c).target;
+  // coming to a stop whose building hides behind its neighbors, the camera rises above the deck until it shows
+  if (h && r.liftOf !== h) { r.liftOf = h; r.liftTo = chase ? 0 : rideLift(r.city, route, si, h); }
+  const up = h ? r.liftTo * (p.stop >= 0 ? 1 : smooth(3.4, 0.5, p.left)) : 0;
+  r.lift = ANIM ? r.lift + (up - r.lift) * (1 - Math.exp(-dt * 1.8)) : up;
+  r.mark = h && r.liftTo > 0 && (p.stop >= 0 || p.left < 1.5) ? h : null; // from up there it is one roof among many: its outline says which
+  // the eye: standing at the back of the open deck, the tourists and the road in front (or, the other
+  // camera, behind and above the bus, with the bus in the picture)
+  if (chase) { _eye.set(p.x - p.dx * 13, 7.5, p.z - p.dz * 13); _look.set(p.x + p.dx * 3, 1, p.z + p.dz * 3).sub(_eye).setLength(60).add(_eye); } // a far point that way: turning to a building then moves the picture little
+  else { _eye.set(p.x - p.dx * 2.1, BUS.top + 0.55 + r.lift, p.z - p.dz * 2.1); _look.set(p.x + p.dx * 45, _eye.y - 3 - r.lift * 0.5, p.z + p.dz * 45); }
+  // what it looks at: the road ahead; coming to a stop, the building it shows, and while the bus waits
+  // the gaze climbs it, from the door to the top (a low one: its upper half); on the way around the
+  // outside, the skyline
+  let w = 0;
+  if (h) {
+    const far = Math.max(6, Math.hypot(h.x - _eye.x, h.z - _eye.z)), low = Math.min(_eye.y + far * 0.22, h.h * 0.5), top = Math.max(low, Math.min(h.h * 0.96, _eye.y + far * 1.9));
+    _focus.set(h.x, low + (top - low) * (p.stop >= 0 ? (ANIM ? smooth(0.1, 0.8, p.u) : 0.6) : 0), h.z); // reduced motion: one still picture of the building
+    w = p.stop >= 0 ? 1 : smooth(3.4, 0.5, p.left) * 0.9;
+  }
+  const out = Math.hypot(mid.x - _eye.x, mid.z - _eye.z);
+  if (w < 0.5 && p.stop < 0 && p.left > 4 && out > Math.max(c.box.cw, c.box.ch) * L * 0.42) { _focus.set(mid.x, Math.min((c.maxH ?? 20) * 0.45, _eye.y + out * 0.4), mid.z); w = 0.5; }
+  _look.lerp(_focus, chase ? w * 0.22 : w);
+  if (!r.look || !ANIM) r.look = _look.clone(); else r.look.lerp(_look, 1 - Math.exp(-dt * 2.4));
+  const k = ANIM ? smooth(0, 1, (now - r.at) / 1700) : 1; // boarding: from where the camera was
+  camera.position.lerpVectors(r.back.position, _eye, k);
+  controls.target.lerpVectors(r.back.target, r.look, k);
+  camera.lookAt(controls.target);
+  rideCaption();
 }
 // The cards: a frame of the scene as it is now (the subject in the middle of the screen) plus the
 // person's numbers, as a PNG to download or, where the browser can, to copy. The building's card,
@@ -1191,7 +1332,7 @@ function setMapMode(m) {
   syncUrl();
 }
 document.addEventListener('click', (e) => {
-  const el = e.target.closest('[data-menu], [data-hide-panel], [data-panel], [data-panels], [data-tool], [data-back], [data-close], [data-close-modal], [data-share], [data-me], [data-building], [data-dojo], [data-hq], [data-district], [data-city], [data-dir], [data-map-mode], [data-film], [data-race], [data-tl-stop], #spin, #refit, [data-hour], [data-welcome], [data-card], [data-hq-card], [data-medal], [data-league], [data-card-copy], [data-text], [data-roof], [data-roof-exit], .sign');
+  const el = e.target.closest('[data-menu], [data-hide-panel], [data-panel], [data-panels], [data-tool], [data-back], [data-close], [data-close-modal], [data-share], [data-me], [data-building], [data-dojo], [data-hq], [data-district], [data-city], [data-dir], [data-map-mode], [data-film], [data-race], [data-tl-stop], #spin, #refit, [data-hour], [data-welcome], [data-card], [data-hq-card], [data-medal], [data-league], [data-card-copy], [data-text], [data-roof], [data-roof-exit], [data-bus], [data-ride-exit], [data-ride-next], [data-ride-here], .sign');
   if (el?.hasAttribute('data-menu')) return setMenu(!('menu' in document.documentElement.dataset));
   if (!e.target.closest('#menu')) setMenu(false);
   if (!el) { if (e.target.classList.contains('modal')) closeModals(); else if (!e.target.closest('.popover')) closePopovers(); return; }
@@ -1202,6 +1343,10 @@ document.addEventListener('click', (e) => {
   if (el.dataset.league) return openLeague(el.dataset.league);
   if (el.dataset.text) return setTextZoom(el.dataset.text);
   if (el.hasAttribute('data-roof-exit')) return leaveRoof();
+  if (el.hasAttribute('data-ride-exit')) return leaveRide();
+  if (el.hasAttribute('data-ride-next')) return rideNext();
+  if (el.hasAttribute('data-ride-here')) return rideHere();
+  if (el.dataset.bus) return startRide(el.dataset.bus);
   if (el.dataset.roof) return roofView(...el.dataset.roof.split('|'));
   if (el.hasAttribute('data-card-copy')) return copyCard();
   if (el.dataset.dojo) { const id = el.dataset.dojo; if (view.kind === 'city' && view.id === id) selectDojo(id); else goCity(id, { dojo: true }); return; }
@@ -1226,7 +1371,7 @@ document.addEventListener('click', (e) => {
   if (el.dataset.building) return select(view.id, el.dataset.building);
   if (el.dataset.city) return goCity(el.dataset.city, el.dataset.person ?? null);
   if (el.dataset.mapMode) return setMapMode(el.dataset.mapMode);
-  if (el.dataset.film) return el.dataset.film === 'timelapse' ? startFilm() : openRaceModal();
+  if (el.dataset.film) return el.dataset.film === 'timelapse' ? startFilm() : el.dataset.film === 'bus' ? startRide() : openRaceModal();
   if (el.dataset.race) return playRace();
   if (el.hasAttribute('data-tl-stop')) return stopFilm();
   if (el.dataset.dir) { const v = currentView(); const c = view.kind === 'city' && cityOf(view.id); flyTo({ ...(c ? fitCity(c) : fitRegion()), phi: v.phi, dist: v.dist }, 900, Number(el.dataset.dir) * Math.PI / 2 + 0.55); return; }
@@ -1270,7 +1415,8 @@ document.addEventListener('keydown', (e) => {
   if (e.key === '/') { e.preventDefault(); openTool('find'); return; } // the finder, as in most apps
   if (e.key === 'p' || e.key === 'P') toggleAllPanels();
   else if (e.key === '?') openTool('help');
-  else if (e.key === 'Escape') { setMenu(false); if (roofBack && !anyModal()) leaveRoof(); else if (anyModal()) closeModals(); else if (tl) stopFilm(); else { closePopovers(); if (selected) select(null); else if (view.kind === 'city') goRegion(); } }
+  else if (e.key === 'Escape') { setMenu(false); if (ride && !anyModal()) leaveRide(); else if (roofBack && !anyModal()) leaveRoof(); else if (anyModal()) closeModals(); else if (tl) stopFilm(); else { closePopovers(); if (selected) select(null); else if (view.kind === 'city') goRegion(); } }
+  else if (k === 'b' && konami !== 9) { if (ride) leaveRide(); else startRide(); } // the sightseeing bus (not the b of the Konami code)
   else if (e.key === 'g' || e.key === 'G') { controls.autoRotate = !controls.autoRotate; $('#spin').setAttribute('aria-pressed', String(controls.autoRotate)); }
 });
 addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; frameForDrawers(); camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight); labels.setSize(innerWidth, innerHeight); });
@@ -1327,8 +1473,12 @@ function stepCranes(a, dt) {
 let last = performance.now(), ambientAt = 0, partyAt = 0;
 function frame(now) {
   const dt = Math.min(0.1, (now - last) / 1000); last = now;
-  stepCamera(now);
-  controls.update();
+  // on the bus the ride places the camera itself; getting off, the flight back is free of the orbit's
+  // limits until it lands (the camera starts below what it looks at)
+  if (ride) stepRide(now, dt);
+  else { stepCamera(now); if (rideOut && camTween) camera.lookAt(controls.target); else { rideOut = false; controls.update(); } }
+  const fov = ride ? RIDE_FOV : VIEW_FOV;
+  if (Math.abs(camera.fov - fov) > 0.05) { camera.fov += (fov - camera.fov) * (ANIM ? Math.min(1, dt * 3.5) : 1); camera.updateProjectionMatrix(); }
   const dist = camera.position.distanceTo(controls.target), R = clamp(dist * 0.95, 140, 1400);
   if (Math.abs(R - shadowR) > shadowR * 0.1) { shadowR = R; Object.assign(sun.shadow.camera, { left: -R, right: R, top: R, bottom: -R }); sun.shadow.camera.updateProjectionMatrix(); }
   sun.target.position.copy(controls.target); sun.position.copy(controls.target).addScaledVector(sunDir, 900);
@@ -1339,6 +1489,7 @@ function frame(now) {
   rippleMat.map.offset.set((sec * 0.011) % 1, (sec * 0.007) % 1);
   // everyday life: always moving
   stepCars(dt);
+  if (buses) { buses.group.visible = !tl; buses.step(busClock(), rideOwn()); }
   for (const a of anims) {
     if (a.kind === 'cranes') stepCranes(a, dt);
     else if (a.kind === 'wheel') { a.obj.rotation.z -= a.speed * dt; a.obj.children.forEach((c) => { if (c.userData.cabin) c.rotation.z = -a.obj.rotation.z; }); }
@@ -1504,4 +1655,4 @@ applyHour(hour);
 load().then(() => { const el = $('#loading'); el.style.opacity = 0; setTimeout(() => el.remove(), 700); requestAnimationFrame(frame); })
   .catch(() => { $('#loading').remove(); requestAnimationFrame(frame); });
 setInterval(() => { if (pending && !tl) { const p = pending; pending = null; dataAt = 0; load().catch(() => {}); return; } load().catch(() => {}); }, REFRESH_MS);
-window.city = { scene, camera, controls, renderer, applyHour, goCity, goPerson, goRegion, select, selectDojo, selectHq, goDistrict, fitDistrict, flyTo, fitCity, fitRegion, reload: load, rebuild: buildScene, setMapMode, startFilm, stopFilm, summonMonster, celebrate, fx, hi: { hoverHi, selHi, selBeam, selRing, selFrame }, get life() { return life; }, get lastBuild() { return lastBuild; }, get onePiece() { return onePiece; }, set onePiece(v) { onePiece = !!v; }, get data() { return data; }, get world() { return world; }, get view() { return view; }, get selected() { return selected; } };
+window.city = { scene, camera, controls, renderer, applyHour, goCity, goPerson, goRegion, select, selectDojo, selectHq, goDistrict, fitDistrict, flyTo, fitCity, fitRegion, reload: load, rebuild: buildScene, setMapMode, startFilm, stopFilm, summonMonster, celebrate, startRide, leaveRide, rideNext, get ride() { return ride; }, get buses() { return buses; }, fx, hi: { hoverHi, selHi, selBeam, selRing, selFrame }, get life() { return life; }, get lastBuild() { return lastBuild; }, get onePiece() { return onePiece; }, set onePiece(v) { onePiece = !!v; }, get data() { return data; }, get world() { return world; }, get view() { return view; }, get selected() { return selected; } };

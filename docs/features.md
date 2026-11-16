@@ -102,6 +102,24 @@ sessions, boats on the river, planes leaving the airport, a helicopter with a sp
 towing the news, the mayor's rally (a speech on a stage, a crowd and confetti), and a monster (`?monster`, or the Konami code). Fireworks, confetti
 and a countdown ring when a city reaches a milestone.
 
+**The sightseeing bus.** Every city has a red open-top double-decker going round its streets, lit at
+night, with a stop for each of its 6 tallest buildings (fewer in a small city) on the street the
+building shows best from: in front of it, or, for a lot with no street at its door, where the neighbor
+in between is the lowest. The bus comes in by the front, passes every stop, reaches the back and
+returns to the front in the order that makes the shortest lap, and it never turns back on the spot; a
+city of a single block goes round its ring street. It waits 7 seconds at each stop and a lap takes
+one to two minutes. Where the bus is depends only on the clock, so everyone sees it in the same place
+and a new reading does not send it back to the start. A click on the bus boards it, as do `B`,
+"🚌 Tour of the tallest" in City Hall and "Sightseeing bus" in the 🎬 menu (from the region, the bus of
+the week's leading city). On board the camera stands on the open deck: it looks ahead on the road,
+turns to each building at its stop and climbs it from the door to the top; where neighbors hide the
+building, the camera rises above the deck until it shows. A caption says the stop, whose building it
+is, its type, floors, place in the city and in the region, its token medal, and whether it is burning
+or in rubble. "Next stop ›" hurries the bus there, "Get off here" opens that building's card, and
+"‹ Get off" (or `Esc`, `B`, or going anywhere else) flies back to where the camera was. With reduced
+motion the camera does not glide: it cuts from stop to stop. The buses are hidden during the
+time-lapse.
+
 **Panels.** Trophies, this week's builds, the weekly derby (two cities neck and neck), countdowns to
 the next milestones, the Mega Builders (with who is next in line), the mayor of the month (most floors last month, with a statue and a rally in front of it), advisors, the
 regional newspaper with classifieds, a live ticker of events, the legend (a 🔎 button in the corner that
@@ -175,7 +193,7 @@ every item of the news ticker about a city or a person, goes there on a click.
 
 **Tools.** 🔍 find a building or a city, 📍 "my building" (a pin that follows you between visits), 🗺️ data
 maps (`?map=now|week|network|model|belts|health`; ⚡ now, 📈 week, 🚩 network, 🧠 model, 🥋 belts, 🚒 health: days without Claude, from today to rubble; the key counts the buildings of each color), 📰 newspaper, 🎬 history (a time-lapse since day one,
-the timeline of a building, and a race of the cities week by week), ❔ help with a tab that builds
+the timeline of a building, a race of the cities week by week, and the sightseeing bus), ❔ help with a tab that builds
 URLs for every parameter and preset (TV, TV at night, clean, reset).
 
 **Belt program (optional).** With a `belts.json` (name or e-mail, belt, since), every belt holder
@@ -263,7 +281,7 @@ days of history. The pill "demo · fictional data" shows while it is on.
 
 ## Keyboard
 
-City: `/` find, `P` panels, `G` spin, `?` help, `Esc` back to the region; `Tab` reaches every button and
+City: `/` find, `P` panels, `G` spin, `B` the sightseeing bus (on and off), `?` help, `Esc` back to the region; `Tab` reaches every button and
 every row of the panels (`Enter` opens it; `↑` `↓` `Home` `End` walk the list), with a visible focus ring; a dialog keeps the focus inside
 and gives it back when it closes. Climb: `1`–`4` zoom, `N` names,
 `R` ranking, `T` tab, `F` next person, `Home`/`End` summit/base, arrows and `+`/`−` to move.

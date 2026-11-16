@@ -48,6 +48,7 @@ export default {
     timelapseStop: '■ Parar',
     sheet: 'Ficha do prédio',
     roofExit: '‹ Sair da cobertura',
+    ride: { exit: '‹ Descer', here: 'Descer aqui', next: 'Próxima parada ›' },
     card: { aria: 'Cartão do prédio', download: '⬇️ Baixar PNG', plain: '⬇️ Sem o nome', copy: '📋 Copiar imagem' },
     welcome: {
       title: '👋 Ache o seu prédio',
@@ -60,6 +61,8 @@ export default {
       timelapseDesc: '{appName} surgindo, {since}',
       race: 'Corrida das cidades',
       raceDesc: 'semana a semana, com as ultrapassagens',
+      bus: 'Passeio de ônibus',
+      busDesc: 'os prédios mais altos da cidade, do andar de cima',
     },
     panels: {
       heading: 'PAINÉIS <small><kbd>P</kbd> esconde todos</small>',

@@ -262,6 +262,7 @@ function renderHall(c) {
         <div><b>${fmt.int(newcomers)}</b><span>${t('hall.grid.newcomers')}</span></div>
       </div>
       <h3 class="people">${hallAll ? t('hall.everyone') : t('hall.tallest')}${hallAll ? ` <small>${plural(c.buildings.length, 'count.building')}</small>` : ''}</h3>
+      ${hallAll ? '' : `<button type="button" class="busride" data-bus="${esc(c.id)}" title="${esc(t('ride.hallTitle'))}">${esc(t('ride.hall'))}</button>`}
       ${hallAll ? `<div class="hall-tools"><input id="hall-q" type="search" value="${esc(hallQ)}" placeholder="${esc(t('hall.filter'))}" aria-label="${esc(t('hall.filter'))}" autocomplete="off" spellcheck="false" />
         <div class="sorts" role="group" aria-label="${esc(t('hall.sortBy'))}">${Object.keys(HALL_SORTS).map((k) => `<button type="button" data-hall-sort="${k}" aria-pressed="${k === hallSort}">${t(`hall.sort.${k}`)}</button>`).join('')}<button type="button" class="csv" data-csv="city" title="${esc(t('csv.cityTitle'))}">⬇️ CSV</button></div></div>` : ''}
       <ol class="tall${hallAll ? ' all' : ''}">${hallRows(c)}</ol>

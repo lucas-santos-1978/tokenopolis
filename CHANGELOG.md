@@ -3,6 +3,14 @@
 Dates are the day each version went live on the author's panel. Earlier versions were an internal
 tool with another name; the open-source release renames it Tokenopolis.
 
+## v40 (2026-11-16)
+
+- 🚌 Sightseeing bus: every city has a red open-top double-decker going round its streets, with a stop
+  in front of each of its 6 tallest buildings. Click it to board (or `B`, the button in City Hall,
+  the 🎬 menu): the camera rides on the top deck, turns to each building at its stop (and rises above
+  the deck where neighbors hide it) and a caption says whose it is, its floors and its place in the
+  city and in the region. "Next stop" hurries the bus, "Get off here" opens the building's card.
+
 ## v39 (2026-11-13)
 
 - The pages say what counts: the help of the climb and of the city, and the overall ranking, list the

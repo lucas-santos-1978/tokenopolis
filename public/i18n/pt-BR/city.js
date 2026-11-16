@@ -156,6 +156,15 @@ export default {
   diary: { tier: 'agora é {tier} · {city}', new: 'estreou em {city}', fire: 'pegou fogo em {city}', medal: 'bateu {mark} de tokens · medalha nova', cityTier: 'agora é {tier}', overtake: 'passou {other} no total de andares' },
   habits: { clock: 'QUANDO CONSTRÓI', clockSub: 'horas usadas, últimos 7 dias', clockAria: 'Horas do dia com uso nos últimos 7 dias; a mais movimentada é {peak}', hour: '{hour}: {days}', models: 'MODELOS', modelsSub: 'parte dos últimos 7 dias' },
   // a legenda do tour da TV
+  // o ônibus de passeio: a dica sobre ele, a legenda a bordo e o botão na Prefeitura
+  ride: {
+    tip: { title: 'Ônibus de passeio', text: ({ n, c }) => `os ${n} prédios mais altos ${da(c)} · clique para embarcar` },
+    stop: 'Parada {i} de {n}',
+    next: 'Próxima parada',
+    ranks: '{inCity} mais alto da cidade · {inRegion} da região',
+    hall: '🚌 Passeio pelos mais altos',
+    hallTitle: 'Embarcar no ônibus de passeio desta cidade (tecla B)',
+  },
   tour: {
     region: 'A região',
     regionSub: ({ cities, buildings, leader, n }) => `${cities} · ${buildings} · ${leader} lidera a semana com +${n}`,

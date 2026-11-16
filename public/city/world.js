@@ -4,7 +4,7 @@
 // in the middle of each city, like in a real city: in 3D the camera turns and nobody hides anybody.
 // At the back, across a channel, the Corporate District with the Mega Builders' headquarters.
 
-import { context, monumentsOf, tierOf, mayorOf, megaOf, BUILDING_TIERS } from './rules.js';
+import { context, monumentsOf, tierOf, mayorOf, megaOf, ruinOf, BUILDING_TIERS } from './rules.js';
 
 export const L = 10; // a lot, in world units
 export const BLOCK = 4; // a block of 4×4 lots
@@ -252,10 +252,18 @@ export function roadDir(gx, gy, getT) {
   return h && v ? 'xy' : v ? 'y' : 'x';
 }
 
+const isRoadT = (t) => !!t && (t.t === 'road' || t.t === 'hwy');
+// the road tile in the box closest to (cx, cy); ok: which tiles count (any street or highway, unless told otherwise)
+export function nearRoad(getT, x0, y0, x1, y1, cx, cy, ok = isRoadT) {
+  let best = null;
+  for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) if (ok(getT(x, y))) { const d = Math.hypot(x - cx, y - cy); if (!best || d < best.d) best = { x, y, d }; }
+  return best;
+}
 // Breadth-first search along streets, highways and bridges from a road tile: prev[key] = the tile
 // before it on the way (-1 at the start). pathTo reads the way from the start to any tile it reached.
-export function roadTree(getT, x, y) {
-  const isRoad = (a, b) => { const t = getT(a, b); return t && (t.t === 'road' || t.t === 'hwy'); };
+// ok: which tiles the search may cross (the sightseeing bus keeps to its own city's streets).
+export function roadTree(getT, x, y, ok = isRoadT) {
+  const isRoad = (a, b) => ok(getT(a, b));
   const prev = new Map([[K(x, y), -1]]), queue = [[x, y]];
   for (let i = 0; i < queue.length; i++) {
     const [qx, qy] = queue[i];
@@ -303,12 +311,7 @@ export function goldRoutes(d, cities, getT) {
 export function megaLinks(world, id) {
   const lot = world.district?.lots.find((o) => o.p.id === id);
   if (!lot) return [];
-  const { getT } = world, isRoad = (x, y) => { const t = getT(x, y); return t && (t.t === 'road' || t.t === 'hwy'); };
-  const near = (x0, y0, x1, y1, cx, cy) => { // the road tile in the box closest to (cx, cy)
-    let best = null;
-    for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) if (isRoad(x, y)) { const d = Math.hypot(x - cx, y - cy); if (!best || d < best.d) best = { x, y, d }; }
-    return best;
-  };
+  const { getT } = world, near = (x0, y0, x1, y1, cx, cy) => nearRoad(getT, x0, y0, x1, y1, cx, cy);
   const gate = near(lot.gx - 1, lot.gy - 1, lot.gx + 2, lot.gy + 2, lot.gx + 0.5, lot.gy + 0.5);
   if (!gate) return [];
   const prev = roadTree(getT, gate.x, gate.y), out = [], edge = (r, x0, y0, n) => [Math.min(x0 + n - 0.5, Math.max(x0 - 0.5, r.x)), Math.min(y0 + n - 0.5, Math.max(y0 - 0.5, r.y))]; // a lot's edge, toward its road
@@ -318,6 +321,198 @@ export function megaLinks(world, id) {
     if (path) out.push({ from: edge(door, o.gx, o.gy, 1), to: edge(gate, lot.gx, lot.gy, 2), path: path.reverse() });
   }
   return out;
+}
+
+// ───────── the sightseeing bus ─────────
+// One per city: a closed way along the city's own streets, with a stop for each of its BUS_STOPS tallest
+// buildings on the street the building shows best from: in front of it, or, for a lot with no street
+// at its door, where the neighbor in between is the lowest. The bus comes in by the front (the sign's
+// side), passes every stop, reaches the back and returns to the front, in the order that makes the
+// shortest lap, and it never turns back on the spot: out of a side street it goes on to the next corner.
+// A city of a single block only has the street around it, and the bus goes round it.
+// In tiles: { tiles: [[x, y]…] (each a step from the one before, the first from the last), stops:
+// [{ id, gx, gy, rank, s, hid }] in the order of the way (s: the index in tiles; rank: 1 = the tallest;
+// hid: how much of it a neighbor hides from there, in tenths of its floors, 0 = in plain view),
+// legs: [{ dist, T }] from each stop to the next, total: the seconds of a whole lap }.
+export const BUS_STOPS = 6, BUS_SPEED = 0.7, BUS_DWELL = 7, BUS_ACCEL = 1.6; // tiles a second; seconds at a stop; seconds to reach the speed
+const legTime = (d) => (d <= 0 ? 0 : d >= BUS_SPEED * BUS_ACCEL ? d / BUS_SPEED + BUS_ACCEL : 2 * Math.sqrt((d * BUS_ACCEL) / BUS_SPEED));
+// the way made after tau seconds of a leg: it pulls away, cruises and brakes
+function legPos(d, T, tau) {
+  if (d <= 0 || T <= 0) return 0;
+  const acc = BUS_SPEED / BUS_ACCEL, ta = d >= BUS_SPEED * BUS_ACCEL ? BUS_ACCEL : T / 2;
+  if (tau < ta) return 0.5 * acc * tau * tau;
+  if (tau > T - ta) return d - 0.5 * acc * (T - tau) ** 2;
+  return 0.5 * acc * ta * ta + acc * ta * (tau - ta);
+}
+// A closed walk along the streets from `start` through every tile of `via` and back, never turning back
+// on the spot: the search runs over (tile, heading), and with a handful of tiles every order is tried
+// for the shortest lap. Returns [[x, y]…], start first, or null when the streets do not allow it.
+const HEAD = [[-1, 0], [1, 0], [0, 1], [0, -1]]; // a heading and its reverse differ in the last bit; a tie goes to the first: along the front to the left, the outer side of the street
+function busLoop(isRoad, start, via) {
+  const SK = (x, y, h) => K(x, y) * 4 + h, memo = new Map();
+  // from a state: how far every other one is (d), and the one before it on the way there (p)
+  const from = (x, y, h) => {
+    const k0 = SK(x, y, h);
+    let m = memo.get(k0);
+    if (m) return m;
+    m = new Map([[k0, { d: 0, p: -1 }]]);
+    const queue = [[x, y, h]];
+    for (let i = 0; i < queue.length; i++) {
+      const [qx, qy, qh] = queue[i], kq = SK(qx, qy, qh), d = m.get(kq).d + 1;
+      for (let g = 0; g < 4; g++) {
+        const nx = qx + HEAD[g][0], ny = qy + HEAD[g][1], k = SK(nx, ny, g);
+        if (g === (qh ^ 1) || m.has(k) || !isRoad(nx, ny)) continue;
+        m.set(k, { d, p: kq }); queue.push([nx, ny, g]);
+      }
+    }
+    memo.set(k0, m);
+    return m;
+  };
+  // the shortest way to get to a tile, whatever the heading it arrives with
+  const arrive = (st, p) => { const m = from(...st); let best = null; for (let h = 0; h < 4; h++) { const e = m.get(SK(p.x, p.y, h)); if (e && (!best || e.d < best.d)) best = { d: e.d, to: [p.x, p.y, h] }; } return best; };
+  let best = null;
+  for (let h0 = 0; h0 < 4; h0++) {
+    if (!isRoad(start.x - HEAD[h0][0], start.y - HEAD[h0][1])) continue; // it gets to the start along a street
+    const s0 = [start.x, start.y, h0], used = via.map(() => false), order = [];
+    const go = (st, cost) => {
+      if (best && cost >= best.cost) return;
+      if (order.length === via.length) { // and back to where the lap began, heading the same way
+        const e = from(...st).get(SK(...s0));
+        if (e && cost + e.d > 0 && (!best || cost + e.d < best.cost)) best = { cost: cost + e.d, states: [s0, ...order, s0] };
+        return;
+      }
+      const next = [];
+      via.forEach((p, i) => { const a = !used[i] && arrive(st, p); if (a) next.push({ i, a }); });
+      next.sort((a, b) => a.a.d - b.a.d); // the closest first: a short lap is found early and cuts the search
+      for (const { i, a } of next) { used[i] = true; order.push(a.to); go(a.to, cost + a.d); order.pop(); used[i] = false; }
+    };
+    go(s0, 0);
+  }
+  if (!best) return null;
+  const tiles = [];
+  for (let i = 0; i + 1 < best.states.length; i++) { // each leg is read backwards, from where it ends
+    const a = best.states[i], m = from(...a), ka = SK(...a), leg = [];
+    for (let k = SK(...best.states[i + 1]); k !== ka; k = m.get(k).p) leg.push(k);
+    if (!leg.length) continue;
+    tiles.push([a[0], a[1]]);
+    for (const k of leg.reverse().slice(0, -1)) { const t = Math.floor(k / 4); tiles.push([Math.floor(t / 10000), t % 10000]); }
+  }
+  return tiles;
+}
+export function busRoute(world, c, n = BUS_STOPS) {
+  const { getT } = world, bx = c.box;
+  if (!bx) return null;
+  const mine = (t) => !!t && t.t === 'road' && t.city === c;
+  const cx = bx.sx + bx.cw / 2 - 0.5, cy = bx.sy + bx.ch / 2 - 0.5;
+  const all = world.objs.filter((o) => o.kind === 'bld' && o.c === c), tall = [...all].sort((a, b) => b.b.floors - a.b.floors).slice(0, n);
+  // how tall each lot stands, in floors (rubble hides nothing)
+  const lot = new Map(all.map((o) => [K(o.gx, o.gy), ruinOf(o.b) === 'rubble' ? 0 : o.b.floors]));
+  // How a building shows from a street tile: hid, the tallest neighbor in the line of sight, in tenths
+  // of the building's own floors (so a house in front does not count), and d, how far. The line has a
+  // width: a lot whose middle is within 0.8 of a tile from it is in the way, so a look between the
+  // corners of two towers does not pass for a clear one. The clearer of two tiles hides less; the same,
+  // it is the closer. A building on the street gets the tile in front of it.
+  const sight = (o, x, y) => {
+    const ux = o.gx - x, uy = o.gy - y, d = Math.hypot(ux, uy);
+    let wall = 0;
+    for (let px = Math.min(x, o.gx) - 1; px <= Math.max(x, o.gx) + 1; px++) for (let py = Math.min(y, o.gy) - 1; py <= Math.max(y, o.gy) + 1; py++) {
+      const fl = lot.get(K(px, py));
+      if (!fl || fl <= wall || (px === o.gx && py === o.gy)) continue;
+      const k = d ? Math.min(1, Math.max(0, ((px - x) * ux + (py - y) * uy) / (d * d))) : 0;
+      if (Math.hypot(px - x - ux * k, py - y - uy * k) < 0.8) wall = fl;
+    }
+    return { x, y, d, hid: Math.round((wall / Math.max(1, o.b.floors)) * 10) };
+  };
+  const clearer = (a, b) => !b || a.hid < b.hid || (a.hid === b.hid && a.d < b.d);
+  const near3 = (o, x, y) => Math.max(Math.abs(x - o.gx), Math.abs(y - o.gy)) <= 3;
+  const stops = [];
+  tall.forEach((o, i) => {
+    let r = null;
+    for (let x = o.gx - 3; x <= o.gx + 3; x++) for (let y = o.gy - 3; y <= o.gy + 3; y++) if (mine(getT(x, y))) { const v = sight(o, x, y); if (clearer(v, r)) r = v; }
+    if (r) stops.push({ id: o.b.id, gx: o.gx, gy: o.gy, rank: i + 1, x: r.x, y: r.y, o });
+  });
+  if (!stops.length) return null;
+  const ang = (p) => (Math.atan2(p.x - cx, cy - p.y) + 2 * Math.PI) % (2 * Math.PI); // round the middle: 0 at the front
+  const anchor = ([x, y]) => nearRoad(getT, x - 1, y - 1, x + 1, y + 1, x, y, mine);
+  const x0 = bx.sx - 1, x1 = bx.sx + bx.cw, y0 = bx.sy - 1, y1 = bx.sy + bx.ch, xm = Math.round(cx);
+  stops.sort((a, b) => ang(a) - ang(b) || a.rank - b.rank);
+  const front = anchor([xm, y0]), back = anchor([xm, y1]);
+  // the lap: from the front through each stop's tile and the back (two stops may share a tile)
+  const via = [];
+  for (const p of front ? [...stops, back].filter(Boolean) : []) if (!via.some((q) => q.x === p.x && q.y === p.y)) via.push({ x: p.x, y: p.y });
+  const loop = front && via.length <= 8 ? busLoop((x, y) => mine(getT(x, y)), front, via) : null;
+  let nodes = [];
+  if (loop) {
+    nodes = loop.map(([x, y]) => ({ x, y, at: [] }));
+    for (const p of stops) nodes.find((nd) => nd.x === p.x && nd.y === p.y)?.at.push(p);
+  } else {
+    // streets that do not close such a lap: round the middle by the shortest ways, past the four corners
+    const way = [...stops, ...[[x0, y0], [x1, y0], [x1, y1], [x0, y1]].map(anchor)].filter(Boolean).sort((a, b) => ang(a) - ang(b));
+    // only what the first point reaches along the city's streets (they are all linked: the street around it)
+    const reach = roadTree(getT, way[0].x, way[0].y, mine), pts = way.filter((p) => reach.has(K(p.x, p.y)));
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i], b = pts[(i + 1) % pts.length], from = nodes.length;
+      const path = pathTo(roadTree(getT, a.x, a.y, mine), b.x, b.y) ?? [K(a.x, a.y)];
+      for (const k of path.slice(0, -1)) nodes.push({ x: Math.floor(k / 10000), y: k % 10000, at: [] });
+      a.node = from; // the same tile as the next point: it sits on the next point's first tile
+    }
+    if (nodes.length < 2) return null;
+    for (const p of pts) if (p.id) nodes[p.node % nodes.length].at.push(p);
+  }
+  if (nodes.length < 2) return null;
+  // into a street and back out the same way: the two tiles go, and their stops wait at the corner
+  for (let changed = true; changed && nodes.length > 3;) {
+    changed = false;
+    for (let i = 0; i < nodes.length && nodes.length > 3; i++) {
+      const m = nodes.length, a = nodes[(i + m - 1) % m], b = nodes[i], d = nodes[(i + 1) % m];
+      if (a === d || a.x !== d.x || a.y !== d.y) continue;
+      a.at.push(...b.at, ...d.at);
+      if (i + 1 < m) nodes.splice(i, 2); else { nodes.splice(i, 1); nodes.shift(); }
+      changed = true; i = Math.max(-1, i - 2);
+    }
+  }
+  // The way is set: each building is shown from the tile of the way it shows best from (a stop moved
+  // to a corner may look at it across a taller neighbor, while another stretch of the way sees it).
+  const out = [];
+  nodes.forEach((nd, s) => { for (const p of nd.at) {
+    let best = { ...sight(p.o, nd.x, nd.y), s };
+    nodes.forEach((q, j) => { if (near3(p.o, q.x, q.y)) { const v = sight(p.o, q.x, q.y); if (clearer(v, best)) best = { ...v, s: j }; } });
+    out.push({ id: p.id, gx: p.gx, gy: p.gy, rank: p.rank, s: best.s, hid: best.hid });
+  } });
+  out.sort((a, b) => a.s - b.s);
+  if (!out.length) return null;
+  const len = nodes.length;
+  const legs = out.map((st, i) => { const dist = i + 1 < out.length ? out[i + 1].s - st.s : len - (st.s - out[0].s); return { dist, T: legTime(dist) }; });
+  return { tiles: nodes.map((nd) => [nd.x, nd.y]), stops: out, legs, total: legs.reduce((a, g) => a + g.T + BUS_DWELL, 0) };
+}
+// Where the bus is t seconds into its laps: { x, y: in tiles (fractions between them), dx, dy: the way
+// it faces, stop: the stop it stands at (-1 on the road), prev, next: the stops behind and ahead, done,
+// left: tiles since the one and to the other, u: 0..1 of the wait at a stop }. The corners are cut
+// short, so it turns instead of snapping.
+export function busAt(route, t) {
+  const n = route.stops.length, len = route.tiles.length;
+  const point = (s) => { const f = ((s % len) + len) % len, i = Math.floor(f), a = route.tiles[i], b = route.tiles[(i + 1) % len], k = f - i; return [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k]; };
+  const place = (s, more) => {
+    const p0 = point(s - 0.32), p1 = point(s + 0.32), q0 = point(s), q1 = point(s + 0.05);
+    let dx = p1[0] - p0[0], dy = p1[1] - p0[1], d = Math.hypot(dx, dy);
+    if (d < 1e-6) { dx = q1[0] - q0[0]; dy = q1[1] - q0[1]; d = Math.hypot(dx, dy) || 1; }
+    return { x: (p0[0] + p1[0]) / 2, y: (p0[1] + p1[1]) / 2, dx: dx / d, dy: dy / d, s: ((s % len) + len) % len, ...more };
+  };
+  let tt = ((t % route.total) + route.total) % route.total;
+  for (let i = 0; i < n; i++) {
+    const leg = route.legs[i], next = (i + 1) % n;
+    if (tt < BUS_DWELL) return place(route.stops[i].s, { stop: i, prev: i, next, done: 0, left: leg.dist, u: tt / BUS_DWELL });
+    tt -= BUS_DWELL;
+    if (tt < leg.T) { const d = legPos(leg.dist, leg.T, tt); return place(route.stops[i].s + d, { stop: -1, prev: i, next, done: d, left: leg.dist - d, u: 0 }); }
+    tt -= leg.T;
+  }
+  return place(route.stops[0].s, { stop: 0, prev: 0, next: 1 % n, done: 0, left: route.legs[0].dist, u: 0 });
+}
+// when the bus reaches a stop (the seconds into the lap): to board at a stop, or to jump to the next one
+export function busStopTime(route, i) {
+  let t = 0;
+  for (let k = 0; k < i; k++) t += BUS_DWELL + route.legs[k].T;
+  return t;
 }
 
 // Traffic: straight stretches of street and highway where the cars drive. Streets cross streets at
