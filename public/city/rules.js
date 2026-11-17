@@ -37,6 +37,27 @@ export function peopleOf(data) {
   return [...by.values()].map((p) => { p.parts.sort((x, y) => y.b.floors - x.b.floors); return Object.assign(p, { top: p.parts[0].b, c: p.parts[0].c }); });
 }
 
+// The names on the hill behind the region (sign.js): the number one of the overall ranking and the week's
+// leader, nobody before the week's first floor. One row when the same person is both. A tie goes to the
+// bigger total and then to the id, so that the names do not swap from one reading to the next.
+// Each row: { p (a person of peopleOf), first, week } (the titles it carries).
+export function hillRows(people) {
+  const best = (k) => people.reduce((a, p) => (!a || p[k] > a[k] || (p[k] === a[k] && (p.total > a.total || (p.total === a.total && p.id < a.id))) ? p : a), null);
+  const first = best('total'), wk = best('week');
+  if (!first || !(first.total > 0)) return [];
+  if (!(wk.week > 0)) return [{ p: first, first: true, week: false }];
+  return wk.id === first.id ? [{ p: first, first: true, week: true }] : [{ p: first, first: true, week: false }, { p: wk, first: false, week: true }];
+}
+// A name with room on the hill, in capitals: the whole of it when short, the first and the last word
+// otherwise, and the first word alone when even that is too long.
+export function hillName(full) {
+  const words = String(full ?? '').trim().split(/\s+/).filter(Boolean);
+  let s = words.join(' ');
+  if (s.length > 16 && words.length > 2) s = `${words[0]} ${words.at(-1)}`;
+  if (s.length > 18) s = words[0];
+  return s.toLocaleUpperCase();
+}
+
 // The week's medals, from the reading alone: whoever's tokens, every city added up, passed a mark since
 // Monday (the total without the week was below it), the highest mark first; and who is closest to the
 // next billion (or, below that, to any next mark). Each person: { id, total, week, top, c, mark }.

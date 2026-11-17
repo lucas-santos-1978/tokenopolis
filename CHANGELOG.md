@@ -3,6 +3,14 @@
 Dates are the day each version went live on the author's panel. Earlier versions were an internal
 tool with another name; the open-source release renames it Tokenopolis.
 
+## Unreleased
+
+- ⛰️ The names on the hill: a mountain behind the region carries, in white letters on poles (floodlit
+  at night), the number one of the overall ranking and, below it, the leader of the week; a single
+  row when the same person is both. A caption says what each name is, the pointer shows the whole
+  name, and a click opens that person's tallest building. The sign does not grow with the region,
+  and its names step aside during the time-lapse.
+
 ## v40 (2026-11-16)
 
 - 🚌 Sightseeing bus: every city has a red open-top double-decker going round its streets, with a stop

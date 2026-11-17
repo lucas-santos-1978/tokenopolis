@@ -30,12 +30,13 @@ import { skyColorsAt, zoneHour } from '../lib/sky.js';
 import { copyText } from '../lib/clipboard.js';
 import { noteServerClock } from '../lib/freshness.js';
 import { t, plural, fmt, cityLabel, displayName, config } from '../i18n/index.js';
-import { tierOf, BUILDING_TIERS, TEN_BI, advisors, context, floorsText, cityTier, buildingTier, monthOf, ruinOf, markOf, markText } from './rules.js';
+import { tierOf, BUILDING_TIERS, TEN_BI, advisors, context, floorsText, cityTier, buildingTier, monthOf, ruinOf, markOf, markText, peopleOf, hillRows, hillName } from './rules.js';
 import { L, seed, hash, kind, buildWorld, groundCanvas, dojoOf, megaLinks, busAt, busStopTime, BUS_DWELL } from './world.js';
 import { makeKit, craneJib, Batcher, mats, lit, blinkMats, matte, setAnisotropy, sweepSigns, SILVER, DARK, WARM_LIGHT, HOUSE_H, STYLE_PAL } from './buildings.js';
 import { initPanels, renderPanels, countdownKey, queueToast, liveEvents, hasToasts, keyOf, esc, staleText, renderAge, missionOf, renderBell, setMe as panelsSetMe, renderFinder, finderKey, locatePerson, MAPKEYS, mapColorFor, renderMapKey, renderPaper, renderLeague } from './panels.js';
 import { makeLife, blimpLines } from './life.js';
 import { makeBuses, BUS } from './bus.js';
+import { makeHillSign } from './sign.js';
 import { makeEffects, launchRocket } from './effects.js';
 import { loadHistory, renderTimeline, startTimelapse, openRace, playRace, weekDiary, reachedOn } from './history.js';
 import { initLinks } from './links.js';
@@ -178,6 +179,7 @@ const clouds = (() => {
   scene.add(g); return g;
 })();
 let hills = null, hillsSize = 0, fieldMat = null;
+let hillSign = null, hillSig = '', hillWho = [], hillCaps = []; // the names on the hill (sign.js): the sign, what it was made from, whose row each one is and their captions
 // The land beyond the map: a patchwork of fields and pasture up to the hills, instead of one flat green.
 function fieldsMaterial() {
   if (fieldMat) return fieldMat;
@@ -462,6 +464,7 @@ function buildScene() {
   }
   world.maxH = Math.max(0, ...src.cities.map((c) => c.maxH), ...[...hqHits.values()].map((h) => h.h)); // and the district's campuses, in case one stands above the buildings
   if (!hills || Math.abs(hillsSize - terrainSize) > terrainSize * 0.15) makeHills(terrainSize); // the hills follow the region when it grows
+  placeHill(src);
   // life: people, boats, planes, helicopter, airship, beacon, elevator
   life = makeLife({ scene, world, data: src, wx, wz, marks, airports, size: terrainSize });
   life.setBlimpMsgs(blimpLines(src, context(src).leader));
@@ -473,6 +476,35 @@ function buildScene() {
   paintMe();
   lastBuild = { ms: Math.round(performance.now() - t0), full, parts: parts.size, rebuilt };
 }
+
+// ───────── the names on the hill ─────────
+// The number one of the overall ranking and the week's leader, in letters on a mountain behind the region
+// (sign.js). The mountain is made again only when a name changes (or the region's depth, or its skyline);
+// the captions, like every label, with each reading.
+const hillLines = (q) => [q.first && t('hill.first', { floors: floorsText(q.p.total) }), q.week && t('hill.week', { floors: floorsText(q.p.week) })].filter(Boolean);
+function placeHill(src) {
+  for (const c of hillCaps) c.removeFromParent();
+  hillCaps = [];
+  const who = hillRows(peopleOf(src)).map((q) => ({ ...q, text: hillName(displayName(q.p.top).full) })).filter((q) => q.text);
+  // The sign does not grow with the region: the upper name gets 520 at most (330 on a phone, whose screen is
+  // narrow). Only a small region, where that would cover the whole back, gets a smaller one.
+  const wide = Math.min(PHONE ? 330 : 520, terrainSize * (PHONE ? 0.38 : 0.6));
+  const sig = `${GH}|${Math.round(wide)}|${Math.round(world.maxH / 10)}|${who.map((q) => q.text).join('|')}`;
+  if (sig !== hillSig) {
+    hillSign?.dispose(); hillSig = sig;
+    hillSign = who.length ? makeHillSign({ depth: GH * L, maxH: world.maxH, rows: who.map((q) => ({ text: q.text })), wide }) : null;
+    if (hillSign) scene.add(hillSign.group);
+  }
+  hillWho = hillSign ? who : [];
+  hillSign?.anchors.forEach((p, i) => { // what each name is there for (in a wrapper, as the cities' signs); a click opens the person
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `<div class="hillcap${i ? '' : ' top'}" data-hill="${i}">${hillLines(who[i]).map((line) => `<span>${esc(line)}</span>`).join('')}</div>`;
+    const cap = new CSS2DObject(wrap); cap.center.set(0.5, i ? 0 : 1); cap.position.set(p.x, p.y, p.z); cityGroup.add(cap); hillCaps.push(cap); // it hangs from its edge: however small the letters get on the screen, it stays clear of them
+  });
+}
+const openHill = (i) => { const q = hillWho[i]; if (q) goCity(q.p.c.id, q.p.id); }; // the person's tallest building, in its city
+// The letters are drawn with the page's font: when it arrives after the first sign, the sign is made again.
+document.fonts?.load('900 40px Nunito').then(() => { if (hillSign && !hillSign.font && data && world) { hillSig = ''; placeHill(tl?.real ?? data); applyHour(hour); } }, () => {});
 
 // ───────── trees, lamps and cars (instanced) ─────────
 function makeTrees(list) {
@@ -621,8 +653,8 @@ function currentView() {
 }
 const posFor = (t, theta, phi, dist) => new THREE.Vector3(t.x + Math.sin(theta) * Math.cos(phi) * dist, t.y + Math.sin(phi) * dist, t.z - Math.cos(theta) * Math.cos(phi) * dist);
 function fitRegion() {
-  const mh = world?.maxH ?? 0;
-  return { target: new THREE.Vector3(0, Math.min(30, mh * 0.2), 0), phi: 0.62, dist: terrainSize * 0.78 + mh * 0.8 };
+  const mh = world?.maxH ?? 0, back = hillSign?.frame ?? 0; // the names on the hill behind the region are part of the picture
+  return { target: new THREE.Vector3(0, Math.min(30, mh * 0.2), -back * 0.16), phi: 0.62, dist: terrainSize * 0.78 + mh * 0.8 + back * 0.36 };
 }
 function fitCity(c) {
   const bx = c.box, mh = c.maxH ?? 10;
@@ -887,6 +919,7 @@ renderer.domElement.addEventListener('pointerup', (e) => {
   closePopovers();
   if (!hit) { if (selected) select(null); return; }
   if (hit.bus) return startRide(hit.bus);
+  if (hit.hill) return goCity(hit.hill.p.c.id, hit.hill.p.id);
   if (hit.hq || hit.found) return selectHq((hit.hq ?? hit.found).id);
   if (hit.dojo) { if (view.kind === 'city' && hit.c.id === view.id) selectDojo(hit.c.id); else goCity(hit.c.id, { dojo: true }); return; }
   if (hit.mon) { // the rally opens the mayor's building; the other monuments only take you to their city
@@ -898,17 +931,22 @@ renderer.domElement.addEventListener('pointerup', (e) => {
 });
 function pick() {
   ray.setFromCamera(ptr, camera);
-  const hit = ray.intersectObjects(hitGroup.children, false)[0], bus = buses?.pick(ray.ray);
-  return bus && (!hit || bus.dist < hit.distance) ? bus.hit : hit?.object.userData ?? null; // the sightseeing bus, unless a building stands in front of it
+  const hit = ray.intersectObjects(hitGroup.children, false)[0], bus = buses?.pick(ray.ray), hs = hillSign?.pick(ray);
+  let best = hit ? { d: hit.distance, v: hit.object.userData } : null; // whatever stands nearest: a building, the sightseeing bus or a name on the hill
+  if (bus && !(best?.d <= bus.dist)) best = { d: bus.dist, v: bus.hit };
+  if (hs && hillWho[hs.row] && !(best?.d <= hs.dist)) best = { d: hs.dist, v: { hill: hillWho[hs.row], x: hs.x, h: hs.h, z: hs.z } };
+  return best?.v ?? null;
 }
 function pickHover() {
-  const h = ptr.x < -1 || tl || ride ? null : pick(), b = h ? h.b ?? h.dojo ?? h.mon ?? h.hq ?? h.found ?? (h.bus ? h : null) : null;
+  const h = ptr.x < -1 || tl || ride ? null : pick(), b = h ? h.b ?? h.dojo ?? h.mon ?? h.hq ?? h.found ?? h.hill ?? (h.bus ? h : null) : null;
   renderer.domElement.style.cursor = b ? 'pointer' : '';
   if (h?.bus) tip.position.set(h.x, h.h + 2, h.z); // it moves
   if (b === hovered) return;
   hovered = b; hoveredHit = h;
+  hillCaps.forEach((c, i) => c.element.firstChild?.classList.toggle('hid', !!b && hillWho[i] === b)); // the tip says it all: the caption gives way
   if (!b) { tipEl.classList.add('off'); return; }
   if (h.bus) tipEl.innerHTML = `🚌 ${esc(t('ride.tip.title'))}<small>${esc(t('ride.tip.text', { n: fmt.int(buses.routeOf(h.bus)?.stops.length ?? 0), c: h.c }))}</small>`;
+  else if (h.hill) tipEl.innerHTML = `${esc(displayName(b.p.top).full)}${hillLines(b).map((line) => `<small>${esc(line)}</small>`).join('')}<small>${esc(t('hill.tip', { c: b.p.c }))}</small>`; // the whole name, why it is up there, where a click leads
   else if (h.dojo) tipEl.innerHTML = `🥋 ${esc(t(`dojoLevel.${h.dojo.levelKey}`).name)}${view.kind === 'region' ? ` · ${esc(cityLabel(h.c))}` : ''}<small>${plural(h.dojo.count, 'tip.dojo')}</small>`;
   else if (h.hq) { // the Corporate District: a Mega Builder's headquarters (the floors added up) or the next one's foundation
     const p = h.hq, ruin = ruinOf(p);
@@ -1263,8 +1301,8 @@ function toggleAllPanels() { const show = PANELS.every((p) => hiddenPanels.has(p
 // would cover (other signs, then the "in common" pills, then the mayors' tags) fade until there is room.
 let clutterAt = 0;
 function declutter() {
-  const rank = (e) => (e.classList.contains('sign') ? 0 : e.classList.contains('route') ? 1 : 2);
-  const boxes = [...labels.domElement.querySelectorAll('.sign, .route, .rally')].filter((e) => e.offsetParent !== null)
+  const rank = (e) => (e.classList.contains('sign') ? 0 : e.classList.contains('hillcap') ? 0.5 : e.classList.contains('route') ? 1 : 2);
+  const boxes = [...labels.domElement.querySelectorAll('.sign, .hillcap, .route, .rally')].filter((e) => e.offsetParent !== null)
     .map((e) => ({ e, r: e.getBoundingClientRect(), k: rank(e) })).filter((b) => b.r.width > 0).sort((a, b) => a.k - b.k || b.r.bottom - a.r.bottom);
   const kept = [];
   for (const b of boxes) {
@@ -1332,7 +1370,7 @@ function setMapMode(m) {
   syncUrl();
 }
 document.addEventListener('click', (e) => {
-  const el = e.target.closest('[data-menu], [data-hide-panel], [data-panel], [data-panels], [data-tool], [data-back], [data-close], [data-close-modal], [data-share], [data-me], [data-building], [data-dojo], [data-hq], [data-district], [data-city], [data-dir], [data-map-mode], [data-film], [data-race], [data-tl-stop], #spin, #refit, [data-hour], [data-welcome], [data-card], [data-hq-card], [data-medal], [data-league], [data-card-copy], [data-text], [data-roof], [data-roof-exit], [data-bus], [data-ride-exit], [data-ride-next], [data-ride-here], .sign');
+  const el = e.target.closest('[data-menu], [data-hide-panel], [data-panel], [data-panels], [data-tool], [data-back], [data-close], [data-close-modal], [data-share], [data-me], [data-building], [data-dojo], [data-hq], [data-district], [data-city], [data-dir], [data-map-mode], [data-film], [data-race], [data-tl-stop], #spin, #refit, [data-hour], [data-welcome], [data-card], [data-hq-card], [data-medal], [data-league], [data-card-copy], [data-text], [data-roof], [data-roof-exit], [data-bus], [data-ride-exit], [data-ride-next], [data-ride-here], [data-hill], .sign');
   if (el?.hasAttribute('data-menu')) return setMenu(!('menu' in document.documentElement.dataset));
   if (!e.target.closest('#menu')) setMenu(false);
   if (!el) { if (e.target.classList.contains('modal')) closeModals(); else if (!e.target.closest('.popover')) closePopovers(); return; }
@@ -1347,6 +1385,7 @@ document.addEventListener('click', (e) => {
   if (el.hasAttribute('data-ride-next')) return rideNext();
   if (el.hasAttribute('data-ride-here')) return rideHere();
   if (el.dataset.bus) return startRide(el.dataset.bus);
+  if (el.dataset.hill) return openHill(Number(el.dataset.hill));
   if (el.dataset.roof) return roofView(...el.dataset.roof.split('|'));
   if (el.hasAttribute('data-card-copy')) return copyCard();
   if (el.dataset.dojo) { const id = el.dataset.dojo; if (view.kind === 'city' && view.id === id) selectDojo(id); else goCity(id, { dojo: true }); return; }
@@ -1490,6 +1529,7 @@ function frame(now) {
   // everyday life: always moving
   stepCars(dt);
   if (buses) { buses.group.visible = !tl; buses.step(busClock(), rideOwn()); }
+  hillSign?.show(!tl); // the film tells another time: today's names step aside, the mountain stays
   for (const a of anims) {
     if (a.kind === 'cranes') stepCranes(a, dt);
     else if (a.kind === 'wheel') { a.obj.rotation.z -= a.speed * dt; a.obj.children.forEach((c) => { if (c.userData.cabin) c.rotation.z = -a.obj.rotation.z; }); }
@@ -1655,4 +1695,4 @@ applyHour(hour);
 load().then(() => { const el = $('#loading'); el.style.opacity = 0; setTimeout(() => el.remove(), 700); requestAnimationFrame(frame); })
   .catch(() => { $('#loading').remove(); requestAnimationFrame(frame); });
 setInterval(() => { if (pending && !tl) { const p = pending; pending = null; dataAt = 0; load().catch(() => {}); return; } load().catch(() => {}); }, REFRESH_MS);
-window.city = { scene, camera, controls, renderer, applyHour, goCity, goPerson, goRegion, select, selectDojo, selectHq, goDistrict, fitDistrict, flyTo, fitCity, fitRegion, reload: load, rebuild: buildScene, setMapMode, startFilm, stopFilm, summonMonster, celebrate, startRide, leaveRide, rideNext, get ride() { return ride; }, get buses() { return buses; }, fx, hi: { hoverHi, selHi, selBeam, selRing, selFrame }, get life() { return life; }, get lastBuild() { return lastBuild; }, get onePiece() { return onePiece; }, set onePiece(v) { onePiece = !!v; }, get data() { return data; }, get world() { return world; }, get view() { return view; }, get selected() { return selected; } };
+window.city = { scene, camera, controls, renderer, applyHour, goCity, goPerson, goRegion, select, selectDojo, selectHq, goDistrict, fitDistrict, flyTo, fitCity, fitRegion, reload: load, rebuild: buildScene, setMapMode, startFilm, stopFilm, summonMonster, celebrate, startRide, leaveRide, rideNext, get ride() { return ride; }, get buses() { return buses; }, get hillSign() { return hillSign; }, fx, hi: { hoverHi, selHi, selBeam, selRing, selFrame }, get life() { return life; }, get lastBuild() { return lastBuild; }, get onePiece() { return onePiece; }, set onePiece(v) { onePiece = !!v; }, get data() { return data; }, get world() { return world; }, get view() { return view; }, get selected() { return selected; } };

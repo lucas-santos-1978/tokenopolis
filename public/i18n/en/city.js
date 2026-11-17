@@ -161,6 +161,12 @@ export default {
     hall: '🚌 Tour of the tallest',
     hallTitle: 'Board this city’s sightseeing bus (B key)',
   },
+  // the names on the hill: each name's caption and the tip under the pointer
+  hill: {
+    first: '🏆 No. 1 of the overall ranking · {floors}',
+    week: '🔥 Leader of the week · +{floors}',
+    tip: ({ c }) => `tallest building in ${city(c)} · click to visit`,
+  },
   tour: {
     region: 'The region',
     regionSub: ({ cities, buildings, leader, n }) => `${cities} · ${buildings} · ${leader} leads the week with +${n}`,

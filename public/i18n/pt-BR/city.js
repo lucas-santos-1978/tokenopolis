@@ -165,6 +165,12 @@ export default {
     hall: '🚌 Passeio pelos mais altos',
     hallTitle: 'Embarcar no ônibus de passeio desta cidade (tecla B)',
   },
+  // o letreiro no morro: a legenda de cada nome e a dica ao passar o mouse
+  hill: {
+    first: '🏆 Nº 1 do ranking geral · {floors}',
+    week: '🔥 Líder da semana · +{floors}',
+    tip: ({ c }) => `o prédio mais alto fica ${na(c)} · clique para visitar`,
+  },
   tour: {
     region: 'A região',
     regionSub: ({ cities, buildings, leader, n }) => `${cities} · ${buildings} · ${leader} lidera a semana com +${n}`,

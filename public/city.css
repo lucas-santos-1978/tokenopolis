@@ -757,3 +757,11 @@ html:not([data-ride]) .ride-bar { display: none; }
   .sheet, .hall, .popover, .toasts, .mapkey, .welcome { zoom: var(--ui-zoom, 1); }
   .rcol { zoom: var(--ui-zoom, 1); width: min(320px, calc((100vw - 16px) / var(--ui-zoom, 1))); }
 }
+
+/* the captions by the names on the hill (sign.js): what each name is there for; a click opens the person */
+.hillcap { padding: 3px 11px 4px; border-radius: 9px; background: rgba(38, 49, 59, .88); border: 2px solid var(--gold); color: #fff; font-size: 12.5px; font-weight: 900; letter-spacing: .3px; white-space: nowrap; text-align: center; cursor: pointer; pointer-events: auto; transform: scale(var(--signk, 1)); transform-origin: 50% 0; transition: opacity .25s; }
+.hillcap.top { transform-origin: 50% 100%; }
+.hillcap span { display: block; }
+.hillcap:hover { background: rgba(60, 75, 90, .95); }
+.hillcap.hid { visibility: hidden; } /* the pointer is on its name: the tip says the same and more */
+[data-hidden~=names] .hillcap, [data-view=city] .hillcap, [data-timelapse] .hillcap, [data-ride] .hillcap { display: none; }

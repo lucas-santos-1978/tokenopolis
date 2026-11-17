@@ -102,3 +102,29 @@ test('the overall ranking: one entry per person, every city added up', () => {
   assert.equal(ps[0].c.id, 'a', 'shown in the city of her tallest building');
   assert.deepEqual(ps[0].parts.map(({ c }) => c.id), ['a', 'b']);
 });
+
+test('the names on the hill: the number one of the overall ranking and the week\'s leader', () => {
+  const rows = (cities) => rules.hillRows(rules.peopleOf({ cities })).map((q) => [q.p.id, q.first, q.week]);
+  const two = [
+    { id: 'a', buildings: [person('ana', 700, { week: 10 }), person('bia', 900, { week: 5 }), person('caio', 50, { week: 25 })] },
+    { id: 'b', buildings: [person('ana', 400, { week: 10 })] },
+  ];
+  assert.deepEqual(rows(two), [['ana', true, false], ['caio', false, true]], 'ana leads with both cities added up; caio built the most this week');
+  two[1].buildings[0].week = 20;
+  assert.deepEqual(rows(two), [['ana', true, true]], 'the same person is both: one row with the two titles');
+  const quiet = [{ id: 'a', buildings: [person('ana', 700), person('bia', 900)] }];
+  assert.deepEqual(rows(quiet), [['bia', true, false]], 'nobody leads a week before its first floor');
+  const tie = [{ id: 'a', buildings: [person('zeca', 500, { week: 7 }), person('bia', 500, { week: 7 }), person('ana', 300, { week: 7 })] }];
+  assert.deepEqual(rows(tie), [['bia', true, true]], 'a tie goes to the bigger total and then to the id, the same in every reading');
+  assert.deepEqual(rows([{ id: 'a', buildings: [] }]), [], 'an empty region has no names');
+  assert.deepEqual(rows([{ id: 'a', buildings: [person('ana', 0)] }]), [], 'nor has one without a floor');
+});
+
+test('a name on the hill: whole when short, the first and the last word otherwise', () => {
+  assert.equal(rules.hillName('Caio Vieira'), 'CAIO VIEIRA');
+  assert.equal(rules.hillName('  Ana  Beatriz de Souza Albuquerque '), 'ANA ALBUQUERQUE');
+  assert.equal(rules.hillName('Maximiliano Vasconcelos'), 'MAXIMILIANO', 'two long words: the first one alone');
+  assert.equal(rules.hillName('Ana Maria Lima'), 'ANA MARIA LIMA', 'three short words fit');
+  assert.equal(rules.hillName(''), '');
+  assert.equal(rules.hillName(null), '');
+});
