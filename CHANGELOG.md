@@ -3,7 +3,7 @@
 Dates are the day each version went live on the author's panel. Earlier versions were an internal
 tool with another name; the open-source release renames it Tokenopolis.
 
-## Unreleased
+## v41 (2026-11-17)
 
 - ⛰️ The names on the hill: a mountain behind the region carries, in white letters on poles (floodlit
   at night), the number one of the overall ranking and, below it, the leader of the week; a single
