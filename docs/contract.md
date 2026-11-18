@@ -46,7 +46,8 @@ from ids, indices, numbers and ISO dates (see `docs/i18n.md`).
   "refreshSeconds": 15,
   "features": { "belts": true },
   "idle": { "fire": 15, "rubble": 30 },
-  "mega": { "floors": 1000 }
+  "mega": { "floors": 1000 },
+  "stock": null
 }
 ```
 `locale` is only the default for first-time visitors. `scoreTypes` is `SCORE_TYPES` (lowercase; an empty list = every type): the pages say what counts with it. `features.belts` is true when a belts file
@@ -54,7 +55,9 @@ exists or the source provides belts (mock/demo). `idle` holds `IDLE_FIRE_DAYS` a
 building with more than `idle.fire` days without Claude is on fire, more than `idle.rubble` is rubble
 (`0` = that stage is off). `mega.floors` is `MEGA_FLOORS`: the floors a person must add up across 2 or
 more cities to be a Mega Builder (`0` = off). The page groups the buildings by person id; nothing new
-comes in `/api/cities`.
+comes in `/api/cities`. `stock` is `null` unless `STOCK_SYMBOL` is set; then it is
+`{ label, refreshSeconds }` (the share's code as the building shows it, and `STOCK_REFRESH_SECONDS`),
+and the page draws the Stock Exchange and reads `/api/stock`.
 
 ## `GET /api/state` (the climb)
 
@@ -85,6 +88,26 @@ Unchanged fields are not listed. Changes:
 | `belts` | `{ total, unmatched }` — counts only (was `dojo: { total, semPredio: [...] }`, which leaked e-mails) |
 | `error` | see conventions |
 
+## `GET /api/stock` (the Stock Exchange)
+
+Only when `STOCK_SYMBOL` is set; otherwise 404. One quote for every visitor, read from the quote
+source every `STOCK_REFRESH_SECONDS`.
+
+```json
+{
+  "symbol": "PETR4.SA", "label": "PETR4", "name": "Petrobras", "currency": "BRL", "exchange": "São Paulo",
+  "price": 43.98, "prevClose": 44.02, "change": -0.04, "changePct": -0.09,
+  "at": 1794949530000, "open": false, "session": { "start": 1794920400000, "end": 1794945600000 },
+  "day": [[1794920400000, 44.13]], "year": [[1763470800000, 32.88]],
+  "source": "yahoo", "generatedAt": 1795000866256, "error": null
+}
+```
+`day` holds the last session's points and `year` one close per trading day, the last one today's,
+both as `[ms, price]` in time order. `change` and `changePct` are measured from `prevClose`. `at` is
+the last trade, `open` whether the market is open now, `session` the span of the session `day`
+belongs to (or `null`). `source` is `yahoo`, `mock` or the custom module's `mode`. `error` follows the
+conventions: when a reading fails the last good quote is served with it; with no quote yet, 502.
+
 ## `GET /api/history`
 
 Unchanged: `generatedAt, start, days, floorTokens, cities[{ id, people[{ id, d[] }] }]`. `d[i]` is the
@@ -93,7 +116,8 @@ person's floors on day `i` (counted from `start`), in tenths of a floor.
 ## `?demo`
 
 `/api/state?demo`, `/api/cities?demo` and `/api/history?demo` serve the demo region regardless of
-`DATA_SOURCE`. `/api/config?demo` reports `mode: "demo"`.
+`DATA_SOURCE`. `/api/config?demo` reports `mode: "demo"`. `/api/stock` is the same with or without
+`?demo`: a quote is not about anyone.
 
 ## HTTP
 

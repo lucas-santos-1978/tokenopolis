@@ -46,7 +46,8 @@ names, avatars, photos), `belts.json` (the belt program). Examples ship next to 
   month, data maps (who is building now, this week's builds, the model each person uses, the belt
   program), a time-lapse since day one, a race of the cities, a sightseeing bus to ride past each
   city's tallest buildings and, on the hill behind it all, the names of the number one and of the
-  week's leader. Buildings left alone catch fire
+  week's leader. Optionally, a Stock Exchange that follows one share (your company's, say), with its
+  ticker, the month's line and a card with the day, 30 days and 12 months. Buildings left alone catch fire
   after 15 days without Claude and fall into rubble after 30. A tour mode for TVs, a phone layout, a
   link builder for every URL parameter, and a demo region to show it all at once.
 - **The climb** (`/climb.html`): the daily stage on a rock wall. Everyone starts at base camp at
@@ -70,6 +71,7 @@ The full tour, with the rules of every mechanic, is in [docs/features.md](docs/f
 | `DATA_SOURCE` | `datadog`, `mock`, `demo`, `file` or a module path |
 | `CITIES_START`, `CITY_FLOOR_TOKENS`, `CITY_NAMES` | When floors start counting, tokens per floor, team names |
 | `SCORE_TYPES`, `MIN_TOKENS`, `TOP_N`, `SEASON_LENGTH` | What counts, who takes part, how the season runs |
+| `STOCK_SYMBOL` | Optional: a share to follow (`PETR4.SA`, `AAPL`…) puts a Stock Exchange in the region; empty = none |
 | `PANEL_PASSWORD`, `ANONYMIZE`, `ID_SALT` | Access and privacy |
 
 Everything, with defaults, in [docs/configuration.md](docs/configuration.md) and `.env.example`.

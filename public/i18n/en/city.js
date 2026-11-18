@@ -162,6 +162,19 @@ export default {
     hallTitle: 'Board this city’s sightseeing bus (B key)',
   },
   // the names on the hill: each name's caption and the tip under the pointer
+  stock: {
+    title: 'Stock Exchange',
+    tip: '{price} · {change} today · click for the chart',
+    wait: 'fetching the quote…',
+    down: 'no quote right now',
+    stale: 'the source did not answer the last reading',
+    ranges: { day: 'Day', month: '30 days', year: '12 months' },
+    nums: { day: 'today', month: 'in 30 days', year: 'in 12 months' },
+    open: 'Market open', closed: 'Market closed',
+    note: 'last trade: {time} · quotes arrive a few minutes late',
+    noLine: 'No points to draw the line yet.',
+    chartAria: 'The line of the share, {range}: from {from} to {to}',
+  },
   hill: {
     first: '🏆 No. 1 of the overall ranking · {floors}',
     week: '🔥 Leader of the week · +{floors}',

@@ -74,6 +74,11 @@ export function createFmt({ locale = 'en', timeZone = 'UTC' } = {}) {
     zone: zoneName(timeZone),
     int,
     dec,
+    // 22.74, "BRL" → "R$ 22,74" / "R$22.74"; without a currency (or one the browser does not know), the number alone
+    money: (v, currency) => {
+      try { if (currency) return num({ style: 'currency', currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(v) || 0); } catch { /* not an ISO code */ }
+      return dec(v, 2, 2);
+    },
     percent: (v01) => num({ style: 'percent', maximumFractionDigits: 0 }).format(Number(v01) || 0),
     ordinal: (n) => (pt ? `${int(n)}º` : `${int(n)}${ORD[ordinalRules.select(Math.round(n))]}`),
     list: (arr) => {

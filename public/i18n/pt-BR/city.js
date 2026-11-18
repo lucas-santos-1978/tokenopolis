@@ -166,6 +166,19 @@ export default {
     hallTitle: 'Embarcar no ônibus de passeio desta cidade (tecla B)',
   },
   // o letreiro no morro: a legenda de cada nome e a dica ao passar o mouse
+  stock: {
+    title: 'Bolsa de Valores',
+    tip: '{price} · {change} no dia · clique para ver o gráfico',
+    wait: 'buscando a cotação…',
+    down: 'sem cotação no momento',
+    stale: 'a fonte não respondeu na última leitura',
+    ranges: { day: 'Dia', month: '30 dias', year: '12 meses' },
+    nums: { day: 'no dia', month: 'em 30 dias', year: 'em 12 meses' },
+    open: 'Pregão aberto', closed: 'Pregão fechado',
+    note: 'último negócio: {time} · as cotações chegam com alguns minutos de atraso',
+    noLine: 'Ainda sem pontos para desenhar a linha.',
+    chartAria: 'Linha da ação, {range}: de {from} a {to}',
+  },
   hill: {
     first: '🏆 Nº 1 do ranking geral · {floors}',
     week: '🔥 Líder da semana · +{floors}',

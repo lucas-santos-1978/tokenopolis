@@ -134,6 +134,22 @@ person's tallest building. The captions show in the region view, from close by, 
 other names (👁️). During the time-lapse the names step aside, since the film tells another day, and
 the mountain stays.
 
+**The Stock Exchange.** Optional: it exists only when the server follows a share
+([`STOCK_SYMBOL`](configuration.md#the-stock-exchange-optional)). The region then gets a building of
+its own, outside every ranking: a stone hall with a portico and a bronze bull by the steps, a glass
+tower over it, and three things that tell the share's day. A ticker runs along the frieze with the
+code, the price and the day's change; a screen on the tower draws the line of the last 30 days; and a
+beacon on the mast is green on a day up and red on a day down (the arrow, ▲ or ▼, always goes with the
+color). From afar the building is small, and a plate over its roof carries the code and the day's
+change. It stands on a square of 3 lots a side in the fields, as near the middle of the region as it
+finds one with open ground in front and where the plate does not fall on a city's sign. The pointer
+on it shows the price; a click (on the building or on the plate) flies the camera to its front and
+opens the share's card: the change in the day, in 30 days and in 12 months, and the line over each
+of those three ranges, with the value of any point under the pointer. `Esc` closes the card and, once
+more, goes back to the region; `?stock` in the address opens it directly. The quote is read by the
+server on its own rhythm and comes minutes late from the source; outside trading hours the building
+shows the last close. The plate hides with the other names (👁️) and during the time-lapse.
+
 **Panels.** Trophies, this week's builds, the weekly derby (two cities neck and neck), countdowns to
 the next milestones, the Mega Builders (with who is next in line), the mayor of the month (most floors last month, with a statue and a rally in front of it), advisors, the
 regional newspaper with classifieds, a live ticker of events, the legend (a 🔎 button in the corner that
@@ -219,7 +235,7 @@ The `belts` map paints each building with its belt color and the rest grey.
 **URL parameters.** `city`, `person`, `hour` (0–24, fixes the sun), `map`, `style`
 (`brick|concrete|glass|deco|neon|global|future|mars`), `panels=0`, `names=0`, `quality=low`, `ruins=0`, `monuments=all`,
 `monster`, `spin`, `tour` (flies from region to city to city with a caption that says what is on screen, for TVs; touching the screen holds it for a minute), `cam=angle,tilt,distance`,
-`giant=N` (test tall buildings), `parts=0` (the region as one piece: fewer draw calls, a full redraw on every change), `mega=<floors>` (the Mega Builders' line), `dojo` (the city's Dojo card), `hq=<id>` (a headquarters), `demo`, `lang`, `debug`. The help modal documents all of them.
+`giant=N` (test tall buildings), `parts=0` (the region as one piece: fewer draw calls, a full redraw on every change), `mega=<floors>` (the Mega Builders' line), `dojo` (the city's Dojo card), `hq=<id>` (a headquarters), `stock` (the Stock Exchange's card, when there is one), `demo`, `lang`, `debug`. The help modal documents all of them.
 
 ## The climb
 

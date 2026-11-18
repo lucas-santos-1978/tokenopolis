@@ -200,6 +200,21 @@ export const config = {
     missionGrowth: Math.max(0, Number(env('MISSION_GROWTH', 10))) || 0,
   },
 
+  // The Stock Exchange (an optional building of the region): the quote of one share. Without STOCK_SYMBOL
+  // it does not exist. The symbol is written the way the source knows it (PETR4.SA, AAPL); the building
+  // shows it without the market's suffix.
+  stock: (() => {
+    const symbol = env('STOCK_SYMBOL', '').trim(), source = env('STOCK_SOURCE', 'yahoo').trim(), every = Number(env('STOCK_REFRESH_SECONDS', 300));
+    return {
+      symbol,
+      label: symbol.replace(/.[A-Za-z]{1,4}$/, '').replace(/^^/, '').toUpperCase(),
+      name: env('STOCK_NAME', '').trim(), // the company's name on the card; default: the one the source gives
+      source, // yahoo | mock | path to a module exporting createQuotes(config)
+      // a quote is delayed by minutes at the source: no point in asking more often than once a minute
+      refreshSeconds: Math.min(3600, Math.max(source === 'mock' ? 15 : 60, Number.isFinite(every) && every > 0 ? every : 300)),
+    };
+  })(),
+
   // Belt program (an optional recognition program): a JSON file with names or e-mails and belts.
   beltsFile: env('BELTS_FILE', 'belts.json'),
 

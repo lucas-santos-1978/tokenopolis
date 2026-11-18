@@ -9,6 +9,7 @@ import { createSource } from './sources/index.js';
 import { createDemoSource } from './sources/demo.js';
 import { createGame } from './game.js';
 import { createCities } from './cities.js';
+import { createStock } from './stock.js';
 
 const publicDir = resolve(config.root, 'public');
 
@@ -101,6 +102,11 @@ function createStack(cfg, source, refreshSeconds) {
 const source = await createSource(config);
 const main = createStack(config, source);
 
+// The Stock Exchange (STOCK_SYMBOL): one quote for every stack, read at its own, slower rhythm. Without
+// the setting there is no loop, and /api/stock is not a route.
+const stock = await createStock(config);
+const stockLoop = stock && createLoop('stock', (now) => stock.build(now), config.stock.refreshSeconds);
+
 // Demo mode (?demo in the URL): the region drawn in sources/demo.js, served next to the real data
 // on the same paths. No team.json, no anonymization: everything is fictional. Built on first use.
 let demoStack = null;
@@ -129,6 +135,7 @@ function configJson(stack) {
     features: { belts: stack.cities.beltsEnabled() },
     idle: { fire: config.cities.idleFireDays, rubble: config.cities.idleRubbleDays }, // days without Claude: on fire, then rubble (0 = off)
     mega: { floors: config.cities.megaFloors }, // Mega Builders: floors added up across 2+ cities (0 = off)
+    stock: stock ? { label: config.stock.label, refreshSeconds: config.stock.refreshSeconds } : null, // the Stock Exchange: null = no building
   };
 }
 
@@ -208,7 +215,7 @@ const server = createServer(async (req, res) => {
     const body = (await stack.city.current()) && stack.cities.historyJson();
     return body ? send(res, 200, 'application/json; charset=utf-8', body) : json(res, 502, { error: stack.city.error });
   }
-  const loop = pathname === '/api/state' ? stack.game : pathname === '/api/cities' ? stack.city : null;
+  const loop = pathname === '/api/state' ? stack.game : pathname === '/api/cities' ? stack.city : pathname === '/api/stock' ? stockLoop : null;
   if (loop) {
     const state = await loop.current();
     if (!state) return json(res, 502, { error: loop.error });
@@ -223,4 +230,5 @@ server.listen(config.port, () => {
   console.log(`🏙️  ${config.appName} at http://localhost:${config.port} — data source: ${where}${panelDigest ? ' — password protected' : ''} — time zone: ${config.timeZone}`);
   main.game.refresh(); // and every refresh schedules the next one
   main.city.refresh();
+  stockLoop?.refresh();
 });

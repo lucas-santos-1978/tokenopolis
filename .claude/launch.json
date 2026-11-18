@@ -18,6 +18,12 @@
       "runtimeExecutable": "powershell",
       "runtimeArgs": ["-NoProfile", "-Command", "$env:PORT=3300; node server/index.js --mock"],
       "port": 3300
+    },
+    {
+      "name": "tokenopolis-mock-stock",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": ["-NoProfile", "-Command", "$env:STOCK_SYMBOL='TKNP3'; $env:STOCK_SOURCE='mock'; node server/index.js --mock"],
+      "port": 3000
     }
   ]
 }

@@ -12,7 +12,7 @@
 // In the URL (docs/i18n.md): ?city=<id, name or code> opens in a city; ?person=<id> selects the
 // building; ?tour alternates the region and the cities with the camera turning (TV); ?hour=14.5
 // fixes the time; ?spin turns the camera; ?map=now|week|network|model|belts opens a data map;
-// ?monuments=all raises every monument; ?style= forces a style; ?giant=N gives N floors to the
+// ?stock opens the Stock Exchange's card (when the server has one); ?monuments=all raises every monument; ?style= forces a style; ?giant=N gives N floors to the
 // tallest building; ?monster calls the monster; ?quality=low turns off shadows and glow; ?panels=0
 // and ?names=0 hide the panels and the signs; ?ruins=0 keeps the abandoned buildings standing;
 // ?mega=<floors> moves the Mega Builders' line (0 hides the Corporate District).
@@ -33,10 +33,12 @@ import { t, plural, fmt, cityLabel, displayName, config } from '../i18n/index.js
 import { tierOf, BUILDING_TIERS, TEN_BI, advisors, context, floorsText, cityTier, buildingTier, monthOf, ruinOf, markOf, markText, peopleOf, hillRows, hillName } from './rules.js';
 import { L, seed, hash, kind, buildWorld, groundCanvas, dojoOf, megaLinks, busAt, busStopTime, BUS_DWELL } from './world.js';
 import { makeKit, craneJib, Batcher, mats, lit, blinkMats, matte, setAnisotropy, sweepSigns, SILVER, DARK, WARM_LIGHT, HOUSE_H, STYLE_PAL } from './buildings.js';
-import { initPanels, renderPanels, countdownKey, queueToast, liveEvents, hasToasts, keyOf, esc, staleText, renderAge, missionOf, renderBell, setMe as panelsSetMe, renderFinder, finderKey, locatePerson, MAPKEYS, mapColorFor, renderMapKey, renderPaper, renderLeague } from './panels.js';
+import { initPanels, renderPanels, countdownKey, queueToast, liveEvents, hasToasts, keyOf, esc, staleText, renderAge, missionOf, renderBell, setMe as panelsSetMe, renderFinder, finderKey, locatePerson, MAPKEYS, mapColorFor, renderMapKey, renderPaper, renderLeague, setStock as panelsSetStock } from './panels.js';
 import { makeLife, blimpLines } from './life.js';
 import { makeBuses, BUS } from './bus.js';
 import { makeHillSign } from './sign.js';
+import { makeExchange } from './exchange.js';
+import { quoteView, tipText, markDown } from './stock.js';
 import { makeEffects, launchRocket } from './effects.js';
 import { loadHistory, renderTimeline, startTimelapse, openRace, playRace, weekDiary, reachedOn } from './history.js';
 import { initLinks } from './links.js';
@@ -179,6 +181,8 @@ const clouds = (() => {
   scene.add(g); return g;
 })();
 let hills = null, hillsSize = 0, fieldMat = null;
+let exchChip = null; // its plate over the roof: the share's code and the day's change, read from afar
+let exchange = null, exchSig = '', stock = null, exchNear = false; // the Stock Exchange (exchange.js): the building, what placed it, the last quote and whether the camera is by it
 let hillSign = null, hillSig = '', hillWho = [], hillCaps = [], hillNear = false; // the names on the hill (sign.js): the sign, what it was made from, whose row each one is and their captions
 // The land beyond the map: a patchwork of fields and pasture up to the hills, instead of one flat green.
 function fieldsMaterial() {
@@ -367,7 +371,7 @@ function buildPart(objs, sig, colorOf) {
 }
 function buildScene() {
   const t0 = performance.now(), src = data;
-  world = buildWorld(src, { allMonuments: params.get('monuments') === 'all' });
+  world = buildWorld(src, { allMonuments: params.get('monuments') === 'all', exchange: !!config.stock });
   GW = world.GW; GH = world.GH; terrainSize = Math.max(GW, GH) * L;
   // a big scene (the dense ?demo region): a smaller shadow map, otherwise the shadow pass rules the frame
   const want = LOW_Q ? 1024 : PHONE || src.cities.reduce((a, c) => a + c.buildings.length, 0) > 1500 ? 2048 : 4096;
@@ -465,6 +469,7 @@ function buildScene() {
   world.maxH = Math.max(0, ...src.cities.map((c) => c.maxH), ...[...hqHits.values()].map((h) => h.h)); // and the district's campuses, in case one stands above the buildings
   if (!hills || Math.abs(hillsSize - terrainSize) > terrainSize * 0.15) makeHills(terrainSize); // the hills follow the region when it grows
   placeHill(src);
+  placeExchange(); plateExchange();
   // life: people, boats, planes, helicopter, airship, beacon, elevator
   life = makeLife({ scene, world, data: src, wx, wz, marks, airports, size: terrainSize });
   life.setBlimpMsgs(blimpLines(src, context(src).leader));
@@ -476,6 +481,54 @@ function buildScene() {
   paintMe();
   lastBuild = { ms: Math.round(performance.now() - t0), full, parts: parts.size, rebuilt };
 }
+
+// ───────── the Stock Exchange ─────────
+// The region's own building, there only when the server quotes a share (config.stock; STOCK_SYMBOL). The
+// world gives it a square (world.exchange) and exchange.js draws it; it is made again only when the square
+// moves. The quote comes on its own rhythm (/api/stock), apart from the cities' readings. A click flies
+// the camera to its front and opens the share's card; Esc closes the card, and again goes back.
+const EXCH_HIT = { stock: true }; // what the pointer is on
+function placeExchange() {
+  const e = world.exchange, sig = e ? `${e.gx}|${e.gy}|${e.size}|${GW}|${GH}` : '';
+  if (sig === exchSig) return;
+  exchange?.dispose(); exchSig = sig;
+  exchange = e ? makeExchange({ x: wx(e.gx + e.size / 2 - 0.5), z: wz(e.gy + e.size / 2 - 0.5), side: e.size * L }) : null;
+  if (exchange) { scene.add(exchange.group); exchange.setQuote(quoteView(stock, config.stock.label)); }
+}
+// The plate over the building, made again with each reading (like every label): from afar the building is
+// a few pixels, and the plate is what tells the day.
+function plateExchange() {
+  exchChip = null;
+  if (!exchange) return;
+  const wrap = document.createElement('div');
+  wrap.innerHTML = '<div class="stockchip" data-stock="1"></div>';
+  exchChip = wrap.firstChild; writeChip();
+  const lab = new CSS2DObject(wrap); lab.center.set(0.5, 1); lab.position.set(exchange.mid.x, exchange.top + 1.5, exchange.mid.z); cityGroup.add(lab);
+}
+function writeChip() {
+  if (!exchChip) return;
+  const v = quoteView(stock, config.stock.label);
+  exchChip.innerHTML = `🏛️ ${esc(v.label)}${v.change ? ` <b class="${v.dir > 0 ? 'up' : v.dir < 0 ? 'down' : ''}">${esc(v.change)}</b>` : ''}`;
+}
+async function loadStock() {
+  try {
+    const res = await fetch('api/stock', { cache: 'no-store' }), json = await res.json().catch(() => null);
+    if (res.ok && json?.price > 0) stock = json;
+  } catch { /* offline: the last quote stays up */ }
+  markDown(!stock); // nothing to show yet and the reading failed: the building and the card say so
+  exchange?.setQuote(quoteView(stock, config.stock.label)); writeChip();
+  panelsSetStock(stock);
+  if (selected?.stock && data) renderPanels(data, view, selected);
+  if (hovered === EXCH_HIT) hovered = null; // the tip is written again with the new price
+}
+function goExchange() {
+  if (!exchange) return;
+  closeModals(); selected = { stock: true }; toRegion();
+  const wide = innerWidth > 900;
+  flyTo({ target: exchange.mid.clone().setX(exchange.mid.x - (wide ? exchange.side * 0.22 : 0)), phi: 0.2, dist: exchange.side * (wide ? 3.3 : 4.6) }, 1400, Math.PI); // on a wide screen the card stands on the left: the building goes to the right of it
+  syncUrl();
+}
+if (config.stock) { loadStock(); setInterval(loadStock, clamp(config.stock.refreshSeconds, 15, 60) * 1000); }
 
 // ───────── the names on the hill ─────────
 // The number one of the overall ranking and the week's leader, in letters on a mountain behind the region
@@ -643,6 +696,7 @@ function applyHour(h) {
   if (groundMat) groundMat.envMapIntensity = 0.2 * (0.15 + 0.85 * dayF); // the ground darkens with everything else (it stayed bright green at night)
   const night = 1 - dayF;
   for (const { m, i } of lit) { m.userData.base = i; m.emissiveIntensity = i * night; }
+  exchange?.setNight(night);
   useBloom = !LOW_Q && night > 0.35; bloom.strength = 0.65 * night;
   // the clouds take the hour's light: white by day, orange at dusk, slate under the moon
   const cloudCol = new THREE.Color('#ffffff').lerp(new THREE.Color('#ffb98f'), dusk * 0.55 * dayF).lerp(new THREE.Color('#46507a'), 1 - dayF);
@@ -748,15 +802,16 @@ function goPerson(cityId, personId) { goCity(cityId, personId); }
 // as the user moves: Back returns to where they were, and a reload or a copied address opens the same
 // screen. A new place is a step in the history; a map or an hour only rewrites the current step. Not
 // during the TV tour, which would fill the history.
-const NAV_KEYS = ['city', 'person', 'dojo', 'hq', 'map', 'hour'];
+const NAV_KEYS = ['city', 'person', 'dojo', 'hq', 'stock', 'map', 'hour'];
 let urlBusy = false, lastNav = '', hourSync = 0;
-const navNow = () => `${view.kind === 'city' ? view.id : ''}|${selected?.person ?? ''}|${selected?.dojo ? 1 : ''}|${selected?.hq ?? ''}`;
+const navNow = () => `${view.kind === 'city' ? view.id : ''}|${selected?.person ?? ''}|${selected?.dojo ? 1 : ''}|${selected?.hq ?? ''}|${selected?.stock ? 1 : ''}`;
 function syncUrl() {
   if (urlBusy || !data || params.has('tour')) return;
   const u = new URL(location.href), q = u.searchParams;
   for (const k of NAV_KEYS) q.delete(k);
   if (view.kind === 'city') { q.set('city', view.id); if (selected?.dojo) q.set('dojo', '1'); else if (selected?.person) q.set('person', selected.person); }
   else if (selected?.hq) q.set('hq', selected.hq);
+  else if (selected?.stock) q.set('stock', '1');
   if (mapMode) q.set('map', mapMode);
   if (!hourAuto) q.set('hour', String(Math.round(hour * 4) / 4));
   const href = u.pathname + u.search.replace(/=(?=&|$)/g, '') + u.hash, nav = navNow(); // "?demo", not "?demo="
@@ -773,6 +828,7 @@ addEventListener('popstate', () => {
     const m = MAPKEYS[p.get('map')] ? p.get('map') : null;
     if (m !== mapMode) setMapMode(m);
     if (!c && hq && hqHits.has(hq)) selectHq(hq);
+    else if (!c && p.has('stock') && exchange) goExchange();
     else if (c) { const person = p.get('person'); setView({ kind: 'city', id: c.id }, p.has('dojo') ? { dojo: true } : c.buildings.some((b) => b.id === person) ? person : null); }
     else { selected = null; setView({ kind: 'region', id: null }); }
     if (h !== null && h !== '' && Number.isFinite(Number(h))) { hourAuto = false; applyHour(Number(h)); }
@@ -929,6 +985,7 @@ renderer.domElement.addEventListener('pointerup', (e) => {
   closePopovers();
   if (!hit) { if (selected) select(null); return; }
   if (hit.bus) return startRide(hit.bus);
+  if (hit.stock) return goExchange();
   if (hit.hill) return hit.hill === HILL_FAR ? goHill() : goCity(hit.hill.p.c.id, hit.hill.p.id);
   if (hit.hq || hit.found) return selectHq((hit.hq ?? hit.found).id);
   if (hit.dojo) { if (view.kind === 'city' && hit.c.id === view.id) selectDojo(hit.c.id); else goCity(hit.c.id, { dojo: true }); return; }
@@ -946,17 +1003,23 @@ function pick() {
   if (bus && !(best?.d <= bus.dist)) best = { d: bus.dist, v: bus.hit };
   const name = hs && (hillNear ? hillWho[hs.row] : HILL_FAR); // up close, a name; from afar, the sign as a whole
   if (name && !(best?.d <= hs.dist)) best = { d: hs.dist, v: { hill: name, x: hs.x, h: hs.h, z: hs.z } };
+  const ex = exchange?.pick(ray);
+  if (ex && !(best?.d <= ex.dist)) best = { d: ex.dist, v: { stock: EXCH_HIT, x: ex.x, h: ex.h, z: ex.z, w: exchange.side * 0.9 } };
   return best?.v ?? null;
 }
 function pickHover() {
-  const h = ptr.x < -1 || tl || ride ? null : pick(), b = h ? h.b ?? h.dojo ?? h.mon ?? h.hq ?? h.found ?? h.hill ?? (h.bus ? h : null) : null;
+  let h = ptr.x < -1 || tl || ride ? null : pick();
+  if (h?.stock && selected?.stock) h = null; // its card is open: nothing more to say
+  const b = h ? h.b ?? h.dojo ?? h.mon ?? h.hq ?? h.found ?? h.hill ?? h.stock ?? (h.bus ? h : null) : null;
   renderer.domElement.style.cursor = b ? 'pointer' : '';
   if (h?.bus) tip.position.set(h.x, h.h + 2, h.z); // it moves
   if (b === hovered) return;
   hovered = b; hoveredHit = h;
   hillCaps.forEach((c, i) => c.element.firstChild?.classList.toggle('hid', !!b && hillWho[i] === b)); // the tip says it all: the caption gives way
+  exchChip?.classList.toggle('hid', b === EXCH_HIT);
   if (!b) { tipEl.classList.add('off'); return; }
   if (h.bus) tipEl.innerHTML = `🚌 ${esc(t('ride.tip.title'))}<small>${esc(t('ride.tip.text', { n: fmt.int(buses.routeOf(h.bus)?.stops.length ?? 0), c: h.c }))}</small>`;
+  else if (h.stock) tipEl.innerHTML = `🏛️ ${esc(t('stock.title'))} · ${esc(config.stock.label)}<small>${esc(tipText(stock))}</small>`;
   else if (b === HILL_FAR) tipEl.innerHTML = `⛰️ ${esc(t('hill.far.title'))}<small>${esc(t('hill.far.text'))}</small>`;
   else if (h.hill) tipEl.innerHTML = `${esc(displayName(b.p.top).full)}${hillLines(b).map((line) => `<small>${esc(line)}</small>`).join('')}<small>${esc(t('hill.tip', { c: b.p.c }))}</small>`; // the whole name, why it is up there, where a click leads
   else if (h.dojo) tipEl.innerHTML = `🥋 ${esc(t(`dojoLevel.${h.dojo.levelKey}`).name)}${view.kind === 'region' ? ` · ${esc(cityLabel(h.c))}` : ''}<small>${plural(h.dojo.count, 'tip.dojo')}</small>`;
@@ -1313,8 +1376,8 @@ function toggleAllPanels() { const show = PANELS.every((p) => hiddenPanels.has(p
 // would cover (other signs, then the "in common" pills, then the mayors' tags) fade until there is room.
 let clutterAt = 0;
 function declutter() {
-  const rank = (e) => (e.classList.contains('sign') ? 0 : e.classList.contains('hillcap') ? 0.5 : e.classList.contains('route') ? 1 : 2);
-  const boxes = [...labels.domElement.querySelectorAll('.sign, .hillcap, .route, .rally')].filter((e) => e.offsetParent !== null)
+  const rank = (e) => (e.classList.contains('sign') ? 0 : e.classList.contains('stockchip') ? 0.4 : e.classList.contains('hillcap') ? 0.5 : e.classList.contains('route') ? 1 : 2);
+  const boxes = [...labels.domElement.querySelectorAll('.sign, .stockchip, .hillcap, .route, .rally')].filter((e) => e.offsetParent !== null)
     .map((e) => ({ e, r: e.getBoundingClientRect(), k: rank(e) })).filter((b) => b.r.width > 0).sort((a, b) => a.k - b.k || b.r.bottom - a.r.bottom);
   const kept = [];
   for (const b of boxes) {
@@ -1382,7 +1445,7 @@ function setMapMode(m) {
   syncUrl();
 }
 document.addEventListener('click', (e) => {
-  const el = e.target.closest('[data-menu], [data-hide-panel], [data-panel], [data-panels], [data-tool], [data-back], [data-close], [data-close-modal], [data-share], [data-me], [data-building], [data-dojo], [data-hq], [data-district], [data-city], [data-dir], [data-map-mode], [data-film], [data-race], [data-tl-stop], #spin, #refit, [data-hour], [data-welcome], [data-card], [data-hq-card], [data-medal], [data-league], [data-card-copy], [data-text], [data-roof], [data-roof-exit], [data-bus], [data-ride-exit], [data-ride-next], [data-ride-here], [data-hill], .sign');
+  const el = e.target.closest('[data-menu], [data-hide-panel], [data-panel], [data-panels], [data-tool], [data-back], [data-close], [data-close-modal], [data-share], [data-me], [data-building], [data-dojo], [data-hq], [data-district], [data-city], [data-dir], [data-map-mode], [data-film], [data-race], [data-tl-stop], #spin, #refit, [data-hour], [data-welcome], [data-card], [data-hq-card], [data-medal], [data-league], [data-card-copy], [data-text], [data-roof], [data-roof-exit], [data-bus], [data-ride-exit], [data-ride-next], [data-ride-here], [data-hill], [data-stock], .sign');
   if (el?.hasAttribute('data-menu')) return setMenu(!('menu' in document.documentElement.dataset));
   if (!e.target.closest('#menu')) setMenu(false);
   if (!el) { if (e.target.classList.contains('modal')) closeModals(); else if (!e.target.closest('.popover')) closePopovers(); return; }
@@ -1398,6 +1461,7 @@ document.addEventListener('click', (e) => {
   if (el.hasAttribute('data-ride-here')) return rideHere();
   if (el.dataset.bus) return startRide(el.dataset.bus);
   if (el.dataset.hill) return openHill(Number(el.dataset.hill));
+  if (el.dataset.stock) return goExchange();
   if (el.dataset.roof) return roofView(...el.dataset.roof.split('|'));
   if (el.hasAttribute('data-card-copy')) return copyCard();
   if (el.dataset.dojo) { const id = el.dataset.dojo; if (view.kind === 'city' && view.id === id) selectDojo(id); else goCity(id, { dojo: true }); return; }
@@ -1466,7 +1530,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === '/') { e.preventDefault(); openTool('find'); return; } // the finder, as in most apps
   if (e.key === 'p' || e.key === 'P') toggleAllPanels();
   else if (e.key === '?') openTool('help');
-  else if (e.key === 'Escape') { setMenu(false); if (ride && !anyModal()) leaveRide(); else if (roofBack && !anyModal()) leaveRoof(); else if (anyModal()) closeModals(); else if (tl) stopFilm(); else { closePopovers(); if (selected) select(null); else if (view.kind === 'city') goRegion(); else if (hillNear) refit(); } }
+  else if (e.key === 'Escape') { setMenu(false); if (ride && !anyModal()) leaveRide(); else if (roofBack && !anyModal()) leaveRoof(); else if (anyModal()) closeModals(); else if (tl) stopFilm(); else { closePopovers(); if (selected) select(null); else if (view.kind === 'city') goRegion(); else if (hillNear || exchNear) refit(); } }
   else if (k === 'b' && konami !== 9) { if (ride) leaveRide(); else startRide(); } // the sightseeing bus (not the b of the Konami code)
   else if (e.key === 'g' || e.key === 'G') { controls.autoRotate = !controls.autoRotate; $('#spin').setAttribute('aria-pressed', String(controls.autoRotate)); }
 });
@@ -1541,6 +1605,8 @@ function frame(now) {
   // everyday life: always moving
   stepCars(dt);
   if (buses) { buses.group.visible = !tl; buses.step(busClock(), rideOwn()); }
+  if (exchange) { exchange.step(dt); exchNear = !tl && camera.position.distanceTo(exchange.mid) < exchange.reach; }
+  if (!!selected?.stock !== ('stock' in document.documentElement.dataset)) document.documentElement.toggleAttribute('data-stock', !!selected?.stock); // the share's card is open: the close-up is the building's alone
   hillSign?.show(!tl); // the film tells another time: today's names step aside, the mountain stays
   const near = !!hillSign && !tl && camera.position.distanceTo(hillSign.mid) < hillSign.reach; // near enough to read the names: their captions show, and each name is its own target
   if (near !== hillNear) { hillNear = near; document.documentElement.toggleAttribute('data-hill-near', near); }
@@ -1646,6 +1712,7 @@ async function load() {
       if (person) { const h = hitByKey.get(keyOf(c.id, person)); if (h) flyTo(fitBuilding(h), 0); } // a building's link: opened right on it
       if (params.has('tour')) { document.documentElement.dataset.tour = '1'; tourIdx = c ? data.cities.findIndex((x) => x.id === c.id) + 1 : 0; tourTimer = setInterval(tourStep, TOUR_MS); setTimeout(tourCaption, 0); }
       if (params.has('monster')) setTimeout(summonMonster, 2500);
+      if (!c && params.has('stock') && exchange) { urlBusy = true; goExchange(); urlBusy = false; } // the Stock Exchange's link
       const hq0 = !c && params.get('hq'); // a headquarters' link: opened right on it
       if (hq0 && hqHits.has(hq0)) { urlBusy = true; selectHq(hq0); urlBusy = false; }
       lastNav = navNow();
@@ -1709,4 +1776,4 @@ applyHour(hour);
 load().then(() => { const el = $('#loading'); el.style.opacity = 0; setTimeout(() => el.remove(), 700); requestAnimationFrame(frame); })
   .catch(() => { $('#loading').remove(); requestAnimationFrame(frame); });
 setInterval(() => { if (pending && !tl) { const p = pending; pending = null; dataAt = 0; load().catch(() => {}); return; } load().catch(() => {}); }, REFRESH_MS);
-window.city = { scene, camera, controls, renderer, applyHour, goCity, goPerson, goRegion, select, selectDojo, selectHq, goDistrict, fitDistrict, flyTo, fitCity, fitRegion, reload: load, rebuild: buildScene, setMapMode, startFilm, stopFilm, summonMonster, celebrate, startRide, leaveRide, rideNext, get ride() { return ride; }, get buses() { return buses; }, get hillSign() { return hillSign; }, get hillNear() { return hillNear; }, goHill, fx, hi: { hoverHi, selHi, selBeam, selRing, selFrame }, get life() { return life; }, get lastBuild() { return lastBuild; }, get onePiece() { return onePiece; }, set onePiece(v) { onePiece = !!v; }, get data() { return data; }, get world() { return world; }, get view() { return view; }, get selected() { return selected; } };
+window.city = { scene, camera, controls, renderer, applyHour, goCity, goPerson, goRegion, select, selectDojo, selectHq, goDistrict, fitDistrict, flyTo, fitCity, fitRegion, reload: load, rebuild: buildScene, setMapMode, startFilm, stopFilm, summonMonster, celebrate, startRide, leaveRide, rideNext, get ride() { return ride; }, get buses() { return buses; }, get exchange() { return exchange; }, get stock() { return stock; }, goExchange, get hillSign() { return hillSign; }, get hillNear() { return hillNear; }, goHill, fx, hi: { hoverHi, selHi, selBeam, selRing, selFrame }, get life() { return life; }, get lastBuild() { return lastBuild; }, get onePiece() { return onePiece; }, set onePiece(v) { onePiece = !!v; }, get data() { return data; }, get world() { return world; }, get view() { return view; }, get selected() { return selected; } };

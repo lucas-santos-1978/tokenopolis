@@ -3,6 +3,7 @@
 // and what changed between two readings (liveEvents).
 
 import { t, plural, fmt, cityLabel, displayName, config, locale as uiLocale } from '../i18n/index.js';
+import { renderStockSheet } from './stock.js';
 import { tierOf, BUILDING_TIERS, TEN_BI, monumentsOf, context, mayorOf, raceOf, derby, countdowns, paperHtml, cityTier, buildingTier, monumentText, monthOf, floorsText, htmlCity, ruinOf, megaOf, markOf, markText, peopleOf } from './rules.js';
 import { dojoOf } from './world.js';
 import { ageText, readingTime } from '../lib/freshness.js';
@@ -30,6 +31,8 @@ export function renderAge() {
 let api = null, data = null, me = null, mega = null; // mega: rules.js megaOf of the reading (it also marks b.mega)
 export function initPanels(a) { api = a; }
 export const setMe = (id) => { me = id; };
+let stock = null; // the Stock Exchange's last quote (main.js reads it), for its card
+export const setStock = (q) => { stock = q; };
 
 const weekRank = () => [...data.cities].sort((a, b) => b.week - a.week || b.floors - a.floors);
 const rankOf = (c) => weekRank().indexOf(c) + 1;
@@ -297,6 +300,7 @@ const medalChip = (id, total) => { const m = markOf(total ?? 0); return m ? `<sp
 // The details card of the touched (or clicked) building.
 function renderSheet(c, selected) {
   const el = $('#sheet');
+  if (selected?.stock) return renderStockSheet(el, stock);
   if (selected?.hq) return renderHqSheet(selected.hq);
   if (c && selected?.dojo) return renderDojoSheet(c);
   const b = c && selected && c.buildings.find((x) => x.id === selected.person);

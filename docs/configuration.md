@@ -55,6 +55,24 @@ to `.env`; every value has a default. An empty value counts as "not set".
 | `MEGA_FLOORS` | `1000` | Floors added up across 2 or more cities that make a Mega Builder (a campus in the Corporate District; the next in line, from half of it, get a foundation). `0` turns it off |
 | `CITY_NAMES` | | Display names per organization id, whole or prefix: `a1b2c3d4=Platform,e5f6a7b8=Data`. Unnamed teams show as "Team A1B2" |
 
+## The Stock Exchange (optional)
+
+A share to follow. With `STOCK_SYMBOL` set the region gets a Stock Exchange building
+([features](features.md#the-city)); without it there is no building, no `/api/stock` route and the
+server asks nobody for anything.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `STOCK_SYMBOL` | | The share's code, written the way the source knows it: `PETR4.SA`, `AAPL`, `SAP.DE`… The building shows it without the market's suffix (`PETR4`). Empty turns the whole thing off |
+| `STOCK_NAME` | the source's | The company's name on the card |
+| `STOCK_SOURCE` | `yahoo` | `yahoo`, `mock` (a generated quote, to try the building out) or a path to a module exporting `createQuotes(config)` ([interface](data-sources.md#quotes-the-stock-exchange)) |
+| `STOCK_REFRESH_SECONDS` | `300` | Seconds between readings, 60 to 3600 (from 15 with `mock`). On errors the last good quote stays up and the server backs off, like the other readings |
+
+The only thing that leaves the server is the symbol, in the request to the quote source; the browser
+talks to the panel alone. `yahoo` is Yahoo Finance's public chart endpoint: it needs no key, but it is
+not a documented API, so it may change or limit requests, quotes come minutes late, and the data is
+under Yahoo's terms. For anything that has to be dependable, point `STOCK_SOURCE` at a module of your own.
+
 ## People, access and privacy
 
 | Variable | Default | Meaning |

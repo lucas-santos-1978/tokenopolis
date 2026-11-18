@@ -3,6 +3,16 @@
 Dates are the day each version went live on the author's panel. Earlier versions were an internal
 tool with another name; the open-source release renames it Tokenopolis.
 
+## Unreleased
+
+- 🏛️ The Stock Exchange, optional: with `STOCK_SYMBOL` set the region gets a building that follows
+  one share, with a ticker running along its front, the line of the last 30 days on a screen, a
+  beacon that is green on a day up and red on a day down, and a plate over the roof with the day's
+  change. A click flies the camera to it and opens a card with the day, 30 days and 12 months.
+  Without the setting there is no building, no `/api/stock` route and no outside request. The quote
+  comes from a public source (`STOCK_SOURCE`: `yahoo`, `mock` or a module of your own), read by the
+  server every `STOCK_REFRESH_SECONDS`.
+
 ## v42 (2026-11-17)
 
 - ⛰️ The names on the hill are much smaller, and the same in every region (the upper name 180 wide at

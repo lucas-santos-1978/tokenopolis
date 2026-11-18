@@ -54,6 +54,32 @@ do not empty and the session badges do not vanish over one bad answer.
 A script that exports your usage into this shape (from a database, a CSV, another vendor's API)
 is all it takes to run Tokenopolis anywhere.
 
+## Quotes (the Stock Exchange)
+
+Apart from the usage data, and only when `STOCK_SYMBOL` is set ([configuration](configuration.md#the-stock-exchange-optional)),
+the server reads one share's quote on its own rhythm. `STOCK_SOURCE` picks the source:
+
+- `yahoo` (default): two requests per reading to Yahoo Finance's public chart endpoint, the last
+  session in 5-minute points and, once an hour, a year of daily closes. No key.
+- `mock`: a generated walk that depends only on the symbol and the calendar, with a session from
+  10:00 to 17:00 in `TIMEZONE`, Monday to Friday.
+- a path (relative to the project root) to a module exporting `createQuotes(config)`, which returns
+  `{ mode?, quote(now) }`. `quote(now)` resolves to:
+
+| Field | Meaning |
+|---|---|
+| `price` | The last price (required, unless `day` or `year` end with it) |
+| `prevClose` | The close of the session before (default: the one-but-last point of `year`) |
+| `day` | `[[ms, price]…]` of the last session, in time order |
+| `year` | `[[ms, close]…]`, one point per trading day, the last one today's |
+| `at` | When the last trade was, in ms |
+| `open` | Whether the market is open now |
+| `session` | `{ start, end }` of the session `day` belongs to, in ms (the day's chart spans it) |
+| `name`, `currency`, `exchange` | The company's name, an ISO currency code (`BRL`, `USD`) and the market's name |
+
+Points that are not positive numbers are dropped. Thrown errors may carry `status`, `retryAfter` and
+`cause`, as below.
+
 ## Your own module
 
 `DATA_SOURCE=./my-source.js` (relative to the project root) loads a module that exports

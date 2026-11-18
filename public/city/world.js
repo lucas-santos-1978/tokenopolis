@@ -29,7 +29,7 @@ export function dojoOf(c) {
 // The building type (a BUILDING_TIERS key), which is also what the kit draws
 export const kind = (f) => { for (let i = BUILDING_TIERS.length - 1; i > 0; i--) if (f >= BUILDING_TIERS[i].min) return BUILDING_TIERS[i].key; return 'house'; };
 
-export function buildWorld(d, { allMonuments = false } = {}) {
+export function buildWorld(d, { allMonuments = false, exchange = false } = {}) {
   const cities = d.cities;
   for (const c of cities) {
     const blocks = Math.max(1, Math.ceil(c.buildings.length / (BLOCK * BLOCK)));
@@ -159,6 +159,7 @@ export function buildWorld(d, { allMonuments = false } = {}) {
       if (ok) for (let x = fx; x < fx + fw; x++) for (let y = fy; y < fy + fh; y++) tiles.set(K(x, y), { t: 'farm', alt: y % 2 });
     }
   }
+  const exch = exchange ? placeExchange({ tiles, getT, GW, GH, OY, cities, district }) : null;
   // the river bends: on the banks, where there is still field, it takes a lot here and there
   if (PY > 1) for (let gx = 0; gx < GW; gx++) {
     for (const [gy, ph] of [[OY + PLOT - 2, 0], [OY + PLOT + 1, 2.1]]) {
@@ -184,7 +185,44 @@ export function buildWorld(d, { allMonuments = false } = {}) {
     Ln.gold = n >= 2;
   }
   const maxWeek = Math.max(1, ...cities.flatMap((c) => c.buildings.map((b) => b.week)));
-  return { PLOT, PX, PY, GW, GH, OY, tiles, objs, getT, cities, maxWeek, lanes, routes, onRoute, mega, district };
+  return { PLOT, PX, PY, GW, GH, OY, tiles, objs, getT, cities, maxWeek, lanes, routes, onRoute, mega, district, exchange: exch };
+}
+
+// ───────── the Stock Exchange ─────────
+// The region's own building (only when the server has a share to quote): a paved square in the fields,
+// EXCHANGE lots a side (one less where nothing bigger fits). It looks for the place the region's picture
+// shows best: as near the middle as it can, with a few rows of open ground in front of it (a river, a
+// highway, fields), so no tower stands between it and whoever looks from the front, and where the plate
+// over its roof does not fall on a city's sign in the region's picture: the sign stands at the back of its
+// city and, in the picture of a big region, takes the room of SIGN_ROOM lots; the plate shows some lots
+// behind the building's foot, so the square keeps to the front half of a plot, or to its front fields. With no
+// field left anywhere it goes outside the map, past the front highway (off: true, no tiles of its own).
+// Returns { gx, gy, size, off }: the square's corner and side, in tiles.
+export const EXCHANGE = 3;
+const SIGN_ROOM = { across: 13, from: 1, to: 13 }; // lots from a city's middle to each side, and in front of its back street, where a plate would fall on the city's sign
+export function placeExchange({ tiles, getT, GW, GH, OY, cities, district }) {
+  const signs = cities.filter((c) => c.box).map((c) => [c.center[0], c.box.sy]);
+  if (district) signs.push([district.sign[0], district.sign[1] + 2]);
+  const free = (x, y) => { const t = getT(x, y)?.t; return t === 'grass' || t === 'farm'; };
+  const built = (x, y) => { const t = getT(x, y)?.t; return t === 'plaza' || t === 'lawn' || t === 'mon' || t === 'site'; }; // a building, a house, a monument, a foundation
+  const midX = GW / 2, midY = OY + (GH - OY) * 0.55;
+  for (let size = EXCHANGE; size >= 2; size--) {
+    let best = null;
+    for (let gx = 1; gx + size < GW; gx++) for (let gy = OY + 1; gy + size < GH; gy++) {
+      let ok = true;
+      for (let u = 0; u < size && ok; u++) for (let v = 0; v < size; v++) if (!free(gx + u, gy + v)) { ok = false; break; }
+      if (!ok) continue;
+      let open = 0; // rows in front of the square with nothing built on them (up to 8)
+      scan: for (; open < 8; open++) for (let u = -1; u <= size; u++) if (built(gx + u, gy + size + open)) break scan;
+      const cx = gx + size / 2, cy = gy + size / 2, hid = signs.some(([sx, sy]) => Math.abs(cx - sx) < SIGN_ROOM.across && cy - sy > SIGN_ROOM.from && cy - sy < SIGN_ROOM.to);
+      const score = Math.abs(cx - midX) + Math.abs(cy - midY) * 0.7 - Math.min(open, 3) * 4 - Math.max(0, open - 3) * 0.5 + (hid ? 40 : 0);
+      if (!best || score < best.score) best = { gx, gy, size, score };
+    }
+    if (!best) continue;
+    for (let u = 0; u < size; u++) for (let v = 0; v < size; v++) tiles.set(K(best.gx + u, best.gy + v), { t: 'mon', exchange: true });
+    return { gx: best.gx, gy: best.gy, size, off: false };
+  }
+  return { gx: Math.floor(GW / 2) - 1, gy: GH + 1, size: EXCHANGE, off: true };
 }
 
 // ───────── the Corporate District ─────────

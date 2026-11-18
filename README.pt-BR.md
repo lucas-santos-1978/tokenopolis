@@ -45,7 +45,9 @@ cada ao lado.
   regressivas, prefeito do mês, mapas de dados (quem constrói agora, obras da semana, o modelo que
   cada um mais usa, o programa de faixas), time-lapse desde o primeiro dia, corrida das cidades, um
   ônibus de passeio para ver de perto os prédios mais altos de cada cidade e, no morro atrás de
-  tudo, um letreiro com o nome do nº 1 do ranking e do líder da semana.
+  tudo, um letreiro com o nome do nº 1 do ranking e do líder da semana. Opcionalmente, uma Bolsa de
+  Valores que acompanha uma ação (a da sua empresa, por exemplo), com a faixa de cotação, a linha
+  do mês e uma ficha com o dia, 30 dias e 12 meses.
   Prédio abandonado pega fogo depois de 15 dias sem Claude e vira escombros depois de 30. Modo tour
   para TV, layout de celular, montador de links com todos os parâmetros e uma região de demonstração.
 - **A escalada** (`/climb.html`): a etapa do dia num paredão de rocha. Todo mundo sai do
@@ -66,6 +68,7 @@ cada ao lado.
 | `DATA_SOURCE` | `datadog`, `mock`, `demo`, `file` ou o caminho de um módulo |
 | `CITIES_START`, `CITY_FLOOR_TOKENS`, `CITY_NAMES` | Desde quando os andares contam, tokens por andar, nomes dos times |
 | `SCORE_TYPES`, `MIN_TOKENS`, `TOP_N`, `SEASON_LENGTH` | O que conta, quem participa, como a temporada roda |
+| `STOCK_SYMBOL` | Opcional: uma ação para acompanhar (`PETR4.SA`, `AAPL`…) põe uma Bolsa de Valores na região; vazio = nenhuma |
 | `PANEL_PASSWORD`, `ANONYMIZE`, `ID_SALT` | Acesso e privacidade |
 
 Tudo, com os padrões, em [docs/configuration.md](docs/configuration.md) e no `.env.example`.
