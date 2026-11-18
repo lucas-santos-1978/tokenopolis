@@ -3,7 +3,7 @@
 Dates are the day each version went live on the author's panel. Earlier versions were an internal
 tool with another name; the open-source release renames it Tokenopolis.
 
-## Unreleased
+## v44 (2026-11-18)
 
 - 🏛️ The Stock Exchange's 30 days and 12 months follow the price: their last point is the price of
   every reading, and a session that has just opened gets its point at once. Before, with the `yahoo`
