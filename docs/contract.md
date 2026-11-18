@@ -102,8 +102,8 @@ source every `STOCK_REFRESH_SECONDS`.
   "source": "yahoo", "generatedAt": 1795000866256, "error": null
 }
 ```
-`day` holds the last session's points and `year` one close per trading day, the last one today's,
-both as `[ms, price]` in time order. `change` and `changePct` are measured from `prevClose`. `at` is
+`day` holds the last session's points and `year` one close per trading day, the last one today's
+(`[at, price]` while the session runs), both as `[ms, price]` in time order. `change` and `changePct` are measured from `prevClose`. `at` is
 the last trade, `open` whether the market is open now, `session` the span of the session `day`
 belongs to (or `null`). `source` is `yahoo`, `mock` or the custom module's `mode`. `error` follows the
 conventions: when a reading fails the last good quote is served with it; with no quote yet, 502.

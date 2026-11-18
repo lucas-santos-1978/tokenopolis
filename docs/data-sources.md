@@ -61,6 +61,7 @@ the server reads one share's quote on its own rhythm. `STOCK_SOURCE` picks the s
 
 - `yahoo` (default): two requests per reading to Yahoo Finance's public chart endpoint, the last
   session in 5-minute points and, once an hour, a year of daily closes. No key.
+  Between those hourly readings the year's last point still follows the price (see `year` below).
 - `mock`: a generated walk that depends only on the symbol and the calendar, with a session from
   10:00 to 17:00 in `TIMEZONE`, Monday to Friday.
 - a path (relative to the project root) to a module exporting `createQuotes(config)`, which returns
@@ -77,8 +78,11 @@ the server reads one share's quote on its own rhythm. `STOCK_SOURCE` picks the s
 | `session` | `{ start, end }` of the session `day` belongs to, in ms (the day's chart spans it) |
 | `name`, `currency`, `exchange` | The company's name, an ISO currency code (`BRL`, `USD`) and the market's name |
 
-Points that are not positive numbers are dropped. Thrown errors may carry `status`, `retryAfter` and
-`cause`, as below.
+Points that are not positive numbers are dropped. The server keeps the last point of `year` at
+`price`, so a source may read its year less often than its price: a last point from `session.start`
+on (or, with no `session`, from the first point of `day`) takes the price and the time of `at`, and
+one from before it gets today's point added after it. Thrown errors may carry `status`, `retryAfter`
+and `cause`, as below.
 
 ## Your own module
 

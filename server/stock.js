@@ -6,7 +6,8 @@
 // module exporting createQuotes(config) → { mode?, quote(now) }. Every source answers with
 //   { name, currency, exchange, price, prevClose, at, open, session: { start, end } | null,
 //     day: [[ms, price]…] (the last session), year: [[ms, close]…] (daily closes, the last one today's) }
-// and build() turns that into what /api/stock serves (docs/contract.md).
+// and build() turns that into what /api/stock serves (docs/contract.md), with the year's last point
+// brought up to the price.
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 
@@ -30,7 +31,7 @@ async function yahooChart(symbol, range, interval) {
   return { meta: r.meta, points: (r.timestamp ?? []).map((s, i) => [s * 1000, close[i]]).filter((p) => Number.isFinite(p[1])) };
 }
 function yahoo(symbol) {
-  let slow = null; // the year of daily closes changes once a day: read once an hour
+  let slow = null; // the year of daily closes: read once an hour (build() keeps its last point at the price)
   return async (now) => {
     const day = await yahooChart(symbol, '1d', '5m');
     if (!slow || now - slow.at > HOUR) slow = { at: now, ...(await yahooChart(symbol, '1y', '1d')) };
@@ -74,6 +75,19 @@ function mock(symbol, config) {
 }
 
 // ───────── the exchange ─────────
+// The year's last point is the price now, whatever the pace the source reads its year at (yahoo: once an
+// hour): otherwise the month and the year would trail the day, and miss a session that has just opened.
+// `from` is where the price's session starts. A point of the year from then on is that session's and
+// takes the price; one from before it is the day before's, and today's is added. A price older than the
+// session (its first minutes, the source still on yesterday's last trade) leaves the year as it came.
+function upToDate(year, price, at, from) {
+  const last = year.at(-1);
+  if (!last) return year;
+  const since = from ?? last[0]; // nothing says where the session starts: the last point is today's
+  if (!(at >= since)) return year;
+  return last[0] >= since ? [...year.slice(0, -1), [Math.max(at, last[0]), price]] : [...year, [at, price]];
+}
+
 export async function createStock(config) {
   const { symbol, source, label } = config.stock;
   if (!symbol) return null;
@@ -92,16 +106,17 @@ export async function createStock(config) {
   return {
     mode,
     async build(now) {
-      const q = await quote(now), day = points(q.day), year = points(q.year);
-      const price = num(q.price) ?? day.at(-1)?.[1] ?? year.at(-1)?.[1] ?? null;
+      const q = await quote(now), day = points(q.day), given = points(q.year);
+      const price = num(q.price) ?? day.at(-1)?.[1] ?? given.at(-1)?.[1] ?? null;
       if (!(price > 0)) throw new Error(`no price for STOCK_SYMBOL "${symbol}"`);
+      const start = num(q.session?.start), end = num(q.session?.end), at = num(q.at) || day.at(-1)?.[0] || now;
+      const year = upToDate(given, price, at, start || day[0]?.[0]);
       const prevClose = num(q.prevClose) > 0 ? num(q.prevClose) : year.at(-2)?.[1] ?? price;
-      const start = num(q.session?.start), end = num(q.session?.end);
       return {
         symbol, label, name: config.stock.name || String(q.name ?? '').replace(/\s+/g, ' ').trim() || label,
         currency: String(q.currency ?? '').toUpperCase().slice(0, 3), exchange: String(q.exchange ?? ''),
         price, prevClose, change: price - prevClose, changePct: (price / prevClose - 1) * 100,
-        at: num(q.at) || day.at(-1)?.[0] || now, open: !!q.open, session: start && end ? { start, end } : null,
+        at, open: !!q.open, session: start && end ? { start, end } : null,
         day, year, source: mode, generatedAt: now,
       };
     },

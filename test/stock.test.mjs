@@ -1,6 +1,6 @@
 // The Stock Exchange's quote: the server's module (server/stock.js) with the generated source and with a
 // source of one's own, and the page's helpers that cut the ranges (public/city/stock.js). No network here:
-// the public source (yahoo) is not called.
+// the public source (yahoo) is answered by a stand-in for fetch.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
@@ -81,6 +81,71 @@ test('a source that is not there, or has no price, fails with a clear message', 
   const empty = join(dir, 'empty.mjs');
   writeFileSync(empty, 'export const createQuotes = () => ({ quote: async () => ({ day: [], year: [] }) });');
   await assert.rejects((await createStock(config({ symbol: 'X', source: empty }))).build(1), /no price/);
+});
+
+test("the year's last point is the price now, even when the source's year is behind", async () => {
+  const file = join(dir, 'lagging.mjs');
+  writeFileSync(file, 'export const createQuotes = () => ({ quote: async () => globalThis.__quote });');
+  const stock = await createStock(config({ symbol: 'LAG', label: 'LAG', source: file }));
+  const build = (q) => { globalThis.__quote = { prevClose: 9, session: { start: 1000, end: 2000 }, day: [[1000, 9.5]], ...q }; return stock.build(5000); };
+  // the year already has a point of this session, read some time ago: it becomes the price
+  let q = await build({ price: 10, at: 1500, year: [[100, 8], [500, 9], [1000, 9.5]] });
+  assert.deepEqual(q.year, [[100, 8], [500, 9], [1500, 10]]);
+  // the year was read before the session opened: today's point is added
+  q = await build({ price: 10, at: 1500, year: [[100, 8], [500, 9]] });
+  assert.deepEqual(q.year, [[100, 8], [500, 9], [1500, 10]]);
+  // the first minutes of a session, the source still on yesterday's last trade: nothing to add
+  q = await build({ price: 9, at: 600, day: [], year: [[100, 8], [500, 9]] });
+  assert.deepEqual(q.year, [[100, 8], [500, 9]]);
+  // no session told: the day's first point says where it starts
+  q = await build({ price: 10, at: 1500, session: null, year: [[100, 8], [500, 9]] });
+  assert.deepEqual(q.year, [[100, 8], [500, 9], [1500, 10]]);
+  // nothing says where the session starts: the last point is today's, as the source should give it
+  q = await build({ price: 10, at: 1500, session: null, day: [], year: [[100, 8], [500, 9]] });
+  assert.deepEqual(q.year, [[100, 8], [1500, 10]]);
+  // without a year there is none to bring up to date, and the close before comes from the year when not told
+  q = await build({ price: 10, at: 1500, year: [] });
+  assert.deepEqual(q.year, []);
+  q = await build({ price: 10, at: 1500, prevClose: null, year: [[100, 8], [500, 9]] });
+  assert.equal(q.prevClose, 9, "yesterday's close, not the one before it");
+  delete globalThis.__quote;
+});
+
+test('the public source reads the year once an hour, and the month and the year still follow the price', async (t) => {
+  const DAY = 24 * HOUR, MIN = 60_000, opens = Date.UTC(2026, 10, 18, 13), period = { start: opens / 1000, end: (opens + 7 * HOUR) / 1000 };
+  const calls = { '1d': 0, '1y': 0 };
+  let price = 6.12, at = opens - 16 * HOUR, today = false; // before the first trade the source is still on yesterday
+  t.mock.method(globalThis, 'fetch', async (url) => {
+    const range = new URL(url).searchParams.get('range');
+    calls[range]++;
+    const closes = [[opens - 2 * DAY, 5.44], [opens - DAY, 6.12], ...(today ? [[opens, price]] : [])];
+    const pts = range === '1d' ? (today ? [[opens, 6.1], [at, price]] : []) : closes;
+    const meta = { longName: 'Test S.A.', currency: 'BRL', fullExchangeName: 'São Paulo', regularMarketPrice: price, previousClose: today ? 6.12 : 5.44, regularMarketTime: at / 1000, currentTradingPeriod: { regular: period }, tradingPeriods: [[period]] };
+    return Response.json({ chart: { result: [{ meta, timestamp: pts.map((p) => p[0] / 1000), indicators: { quote: [{ close: pts.map((p) => p[1]) }] } }] } });
+  });
+  const stock = await createStock(config({ symbol: 'TEST3.SA', label: 'TEST3', source: 'yahoo' }));
+  let q = await stock.build(opens + 2 * MIN);
+  assert.deepEqual(q.year.at(-1), [opens - DAY, 6.12], 'no trade yet today: the year ends yesterday');
+  assert.equal(q.open, true); assert.equal(q.name, 'Test S.A.');
+  // the first trades arrive; the year in hand is the one read before them
+  today = true; price = 6.11; at = opens + 5 * MIN;
+  q = await stock.build(opens + 12 * MIN);
+  assert.equal(calls['1y'], 1, 'the year is not read again within the hour');
+  assert.deepEqual(q.year.at(-1), [at, 6.11], "today's point is there all the same");
+  assert.equal(q.year.length, 3); assert.equal(q.year.at(-2)[1], q.prevClose);
+  price = 6.35; at = opens + 50 * MIN;
+  q = await stock.build(opens + 57 * MIN);
+  assert.equal(calls['1y'], 1);
+  assert.deepEqual(q.year.at(-1), [at, 6.35], 'and it moves with the price');
+  assert.equal(q.year.length, 3, 'one point a day');
+  const month = S.rangeOf(q, 'month');
+  assert.equal(month.points.at(-1)[1], q.price, 'the month ends at the price the day shows');
+  // past the hour the year is read again, and it brings its own point of today: still one a day
+  price = 6.4; at = opens + 60 * MIN;
+  q = await stock.build(opens + 67 * MIN);
+  assert.equal(calls['1y'], 2);
+  assert.deepEqual(q.year, [[opens - 2 * DAY, 5.44], [opens - DAY, 6.12], [at, 6.4]]);
+  assert.equal(calls['1d'], 4, 'the day is read every time');
 });
 
 test('the page cuts the day, the month and the year out of a quote', () => {
