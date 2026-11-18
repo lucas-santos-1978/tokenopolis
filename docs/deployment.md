@@ -48,4 +48,7 @@ an encrypted package that `publicar.mjs` builds from `public/`, `server/`, `pack
 and the optional root data files. They are specific to that setup and kept here as an example of
 a push-based deploy without a registry; the generic path is the Dockerfile above. Behind a reverse
 proxy on the same Docker network, `compose.mjs <version> <project> none` publishes no port on the
-server, and `publicar.mjs` takes the proxy's https address instead of `http://<ip>:<port>`.
+server, and `publicar.mjs` takes the proxy's https address instead of `http://<ip>:<port>`. Settings
+that are no secret and belong to that server alone can go in the container's environment, after the
+host port: `compose.mjs <version> <project> none STOCK_SYMBOL=PETR4.SA`; they win over the same key in
+the package's `.env`.
