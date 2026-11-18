@@ -764,4 +764,4 @@ html:not([data-ride]) .ride-bar { display: none; }
 .hillcap span { display: block; }
 .hillcap:hover { background: rgba(60, 75, 90, .95); }
 .hillcap.hid { visibility: hidden; } /* the pointer is on its name: the tip says the same and more */
-[data-hidden~=names] .hillcap, [data-view=city] .hillcap, [data-timelapse] .hillcap, [data-ride] .hillcap { display: none; }
+[data-hidden~=names] .hillcap, [data-view=city] .hillcap, [data-timelapse] .hillcap, [data-ride] .hillcap, html:not([data-hill-near]) .hillcap { display: none; } /* and only from close by: from afar they would be bigger than the names */

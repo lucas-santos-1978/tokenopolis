@@ -170,6 +170,7 @@ export default {
     first: '🏆 Nº 1 do ranking geral · {floors}',
     week: '🔥 Líder da semana · +{floors}',
     tip: ({ c }) => `o prédio mais alto fica ${na(c)} · clique para visitar`,
+    far: { title: 'Letreiro do morro', text: 'o nº 1 do ranking geral e o líder da semana · clique para ver de perto' },
   },
   tour: {
     region: 'A região',

@@ -3,6 +3,13 @@
 Dates are the day each version went live on the author's panel. Earlier versions were an internal
 tool with another name; the open-source release renames it Tokenopolis.
 
+## v42 (2026-11-18)
+
+- ⛰️ The names on the hill are much smaller, and the same in every region (the upper name 180 wide at
+  most, its letters up to 16 high): something to find on the mountain and look at from close by. A
+  click on the sign from afar flies the camera to its front, where the captions show and each name
+  opens its person; `Esc` goes back to the region.
+
 ## v41 (2026-11-17)
 
 - ⛰️ The names on the hill: a mountain behind the region carries, in white letters on poles (floodlit

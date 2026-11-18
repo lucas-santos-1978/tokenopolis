@@ -166,6 +166,7 @@ export default {
     first: '🏆 No. 1 of the overall ranking · {floors}',
     week: '🔥 Leader of the week · +{floors}',
     tip: ({ c }) => `tallest building in ${city(c)} · click to visit`,
+    far: { title: 'The names on the hill', text: 'the number one of the overall ranking and the leader of the week · click for a closer look' },
   },
   tour: {
     region: 'The region',

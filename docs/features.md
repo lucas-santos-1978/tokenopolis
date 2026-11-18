@@ -120,18 +120,19 @@ or in rubble. "Next stop ›" hurries the bus there, "Get off here" opens that b
 motion the camera does not glide: it cuts from stop to stop. The buses are hidden during the
 time-lapse.
 
-**The names on the hill.** A mountain stands behind the region with two names on its slope, in white
-letters on poles, floodlit at night: the upper one is the number one of the overall ranking (every
+**The names on the hill.** A mountain stands behind the region with a small sign on its slope, white
+letters on poles, floodlit at night: the upper name is the number one of the overall ranking (every
 city added up) and the lower, smaller one the leader of the week in progress (nobody before the week's
-first floor). When the same person is both, there is a single row with both titles. A caption by each
-name says what it is and the floors behind it. A long name is shortened on the hill to its first and
-last word; the pointer on a name shows the whole of it, and a click on the letters or on the caption
-opens that person's tallest building. The sign does not grow with the region: the upper name takes
-at most 520 (a lot is 10 wide; 330 on a phone) and its letters stand up to 46 high, less for a long
-name; only a small region, where that would cover the whole back, gets a smaller sign (60% of its
-side). The captions show in the
-region view and hide with the other names (👁️). During the time-lapse the names step aside, since
-the film tells another day, and the mountain stays.
+first floor). When the same person is both, there is a single row with both titles. The sign is small
+on purpose, the same in every region (the upper name 180 wide at most, a lot being 10 wide, and its
+letters up to 16 high, less for a long name): something to find on the mountain and look at from
+close by. From afar the whole sign is one target: the pointer says what it is and a click flies the
+camera to its front (`Esc`, or ⤢, goes back to the region). Up close a caption by each name says what
+it is and the floors behind it; a long name is shortened on the hill to its first and last word, the
+pointer on a name shows the whole of it, and a click on the letters or on the caption opens that
+person's tallest building. The captions show in the region view, from close by, and hide with the
+other names (👁️). During the time-lapse the names step aside, since the film tells another day, and
+the mountain stays.
 
 **Panels.** Trophies, this week's builds, the weekly derby (two cities neck and neck), countdowns to
 the next milestones, the Mega Builders (with who is next in line), the mayor of the month (most floors last month, with a statue and a rally in front of it), advisors, the

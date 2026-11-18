@@ -1,8 +1,9 @@
 // The names on the hill: a mountain of its own behind the region, with white letters standing on its
 // slope, the way a famous hillside does it. The upper row is the region's number one, the lower row the
 // week's leader (one row when it is the same person). The letters are flat sheets on poles (a few layers,
-// so they have an edge), cut from one canvas of glyphs; by night they are floodlit. The sign does not
-// grow with the region: whoever calls gives the room for the upper name, and everything follows from it.
+// so they have an edge), cut from one canvas of glyphs; by night they are floodlit. The names are small on
+// purpose, something to find on the mountain and look at from close by: from afar the whole sign is one
+// target for the pointer (main.js flies the camera to it), and up close each name is its own.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { matte, mats, lit, DARK, WARM_LIGHT } from './buildings.js';
@@ -76,8 +77,9 @@ function pane(x0, x1, y0, y1) {
 // or 2); wide: how wide the upper name may get before its letters shrink (the sign's whole size comes from it).
 // Returns { group, anchors: [{ x, y, z, h, w, base }] (a caption's place by each row), frame (how much
 // more ground the region's picture needs behind the map), font (the letters came out in the page's font),
-// pick(raycaster) → { row, dist, x, h, z } | null, show(on) (the names, not the mountain), dispose }.
-export function makeHillSign({ depth, maxH = 0, rows, wide = 270 }) {
+// mid and reach (the middle of the names, and how near a camera reads them), pick(raycaster) →
+// { row (-1: the sign, not a name), dist, x, h, z } | null, show(on) (the names, not the mountain), dispose }.
+export function makeHillSign({ depth, maxH = 0, rows, wide = 180 }) {
   materials();
   rows = rows.filter((q) => q?.text);
   const g = new THREE.Group(), r = seed('hillsign'), out = { group: g, anchors: [], frame: 0, font: true, pick: () => null, show() {}, dispose() {} };
@@ -107,16 +109,18 @@ export function makeHillSign({ depth, maxH = 0, rows, wide = 270 }) {
     }
     for (const l of list) l.x -= w / 2;
     above = H;
-    return { H, w, list, at: k ? 0.3 : rows.length > 1 ? 0.63 : 0.5 }; // how high on the mountain the row stands
+    return { H, w, list };
   });
 
-  // The mountain: a green back behind the region, wide enough for the upper row to stand level on it and
-  // high enough for the names to show above most of the skyline.
+  // The mountain is a landmark of its own, about as high as most of the skyline; the names stand on its
+  // slope close to each other, whatever its height.
   const W = Math.max(...lay.map((l) => l.w));
-  const h = Math.max(lay[0].H * 3.7, maxH * 0.7), a = Math.max(W * 1.25, h * 2.2), b = Math.max(a * 0.34, h * 1.3);
+  const h = Math.min(130, Math.max(lay[0].H * 3.7, maxH * 0.7)), a = Math.max(W * 1.25, h * 2.2), b = Math.max(a * 0.34, h * 1.3);
   const cz = -(depth / 2 + 6 + b), rise = (x, z) => 1 - (x / a) ** 2 - ((z - cz) / b) ** 2, yOf = (x, z) => h * Math.max(0, rise(x, z)) ** BELL;
   const zAt = (x, y0) => cz + b * Math.sqrt(Math.max(0.01, 1 - (y0 / h) ** (1 / BELL) - (x / a) ** 2)); // the slope's line at one height, on the region's side
-  const bands = lay.map((row) => ({ y0: h * row.at - row.H * 0.7, y1: h * row.at + row.H * 1.7, w: row.w / 2 + row.H * 1.5 })); // where the letters stand
+  const ys = [h * (lay.length > 1 ? 0.6 : 0.55)]; // each row's foot on the slope
+  if (lay[1]) ys.push(ys[0] - lay[0].H * 0.6 - lay[1].H * 1.15);
+  const bands = lay.map((row, k) => ({ y0: ys[k] - row.H * 0.7, y1: ys[k] + row.H * 1.7, w: row.w / 2 + row.H * 1.5 })); // where the letters stand
   const onSign = (x, y, z) => z > 0 && bands.some((q) => y > q.y0 && y < q.y1 && Math.abs(x) < q.w);
   const green = matte('#5d8c5f', { flatShading: true }), skin = bell(a, h, b, r, onSign), rough = new THREE.SphereGeometry(1, 11, 5, 0, Math.PI * 2, 0, Math.PI / 2);
   const hill = new THREE.Mesh(skin, green); hill.position.set(0, 0, cz); hill.receiveShadow = true; g.add(hill);
@@ -130,8 +134,8 @@ export function makeHillSign({ depth, maxH = 0, rows, wide = 270 }) {
 
   const fronts = [], bodies = [], steel = [], lamps = [], panes = [], cuts = [], tips = [], M = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler(), P = new THREE.Vector3(), ONE = new THREE.Vector3(1, 1, 1);
   let need = 0;
-  lay.forEach((row) => {
-    const H = row.H, y0 = h * row.at, thick = H * 0.05, cell = CELL * s0 * H, drop = (CELL - BASE) * s0 * H;
+  lay.forEach((row, k) => {
+    const H = row.H, y0 = ys[k], thick = H * 0.05, cell = CELL * s0 * H, drop = (CELL - BASE) * s0 * H;
     row.list.forEach((l, i) => {
       const z = zAt(l.x, y0), zf = z + thick * 0.6, gy = Math.max(ground(l.x - l.lw * 0.4, zf), ground(l.x, zf), ground(l.x + l.lw * 0.4, zf)); // it stands on the highest ground under it
       const lift = H * (0.03 + r() * 0.07); // and each one a little higher or lower, as on the real hillside
@@ -160,13 +164,17 @@ export function makeHillSign({ depth, maxH = 0, rows, wide = 270 }) {
   const mesh = (list, mat, cast) => { const m = new THREE.Mesh(mergeGeometries(list, false), mat); m.castShadow = cast; m.frustumCulled = false; g.add(m); return m; };
   const names = [mesh(fronts, FRONT, true), mesh(bodies, BODY, false), mesh(steel.map((x) => x.toNonIndexed()), DARK, false), mesh(lamps.map((x) => x.toNonIndexed()), WARM_LIGHT, false)];
   out.letters = names[0];
-  // the pointer's target is never drawn (it is not in the scene): one pane per letter, in the world's own coordinates
+  // The pointer's target is never drawn (it is not in the scene): one pane per letter, in the world's own
+  // coordinates, and one over the whole sign, since from afar the letters are a few pixels tall.
+  const inNames = panes.length * 2, low = lay.length - 1, yb = ys[low] - lay[low].H * 0.8, yt = ys[0] + lay[0].H * 1.9;
+  panes.push(pane(-W / 2 - lay[0].H, W / 2 + lay[0].H, yb, yt).translate(0, 0, zAt(0, ys[low]) + lay[low].H));
+  out.mid = new THREE.Vector3(0, (yb + yt) / 2, zAt(0, ys[0])); out.reach = Math.max(W, 120) * 3.4;
   const target = new THREE.Mesh(mergeGeometries(panes, false), new THREE.MeshBasicMaterial()); target.layers.set(1);
   let shown = true;
   out.pick = (rc) => {
-    const hit = shown ? rc.intersectObject(target, false)[0] : null; if (!hit) return null;
-    const row = Math.max(0, cuts.findIndex((n) => hit.faceIndex < n));
-    return { row, dist: hit.distance, x: hit.point.x, h: tips[row], z: hit.point.z };
+    const hits = shown ? rc.intersectObject(target, false) : []; if (!hits.length) return null;
+    const hit = hits.find((q) => q.faceIndex < inNames) ?? hits[0], row = hit.faceIndex < inNames ? cuts.findIndex((n) => hit.faceIndex < n) : -1;
+    return { row, dist: hits[0].distance, x: hit.point.x, h: row < 0 ? yt : tips[row], z: hit.point.z };
   };
   out.show = (on) => { if (on !== shown) { shown = on; for (const m of names) m.visible = on; } };
 
@@ -176,7 +184,7 @@ export function makeHillSign({ depth, maxH = 0, rows, wide = 270 }) {
   for (let tries = 0; put < N && tries < N * 12; tries++) {
     const x = (r() * 2 - 1) * a * 0.9, z = cz + (r() * 1.5 - 0.5) * b, y = ground(x, z);
     if (y < h * 0.02 || onSign(x, y, z - cz)) continue;
-    const k = wide * (0.01 + r() * 0.015); o.position.set(x, y + k * 0.2, z); o.scale.set(k * (1 + r()), k * (0.6 + r() * 0.5), k * (1 + r())); o.rotation.y = r() * 6; o.updateMatrix(); bush.setMatrixAt(put++, o.matrix);
+    const k = 2.7 + r() * 4; o.position.set(x, y + k * 0.2, z); o.scale.set(k * (1 + r()), k * (0.6 + r() * 0.5), k * (1 + r())); o.rotation.y = r() * 6; o.updateMatrix(); bush.setMatrixAt(put++, o.matrix);
   }
   bush.count = put; g.add(bush);
 
